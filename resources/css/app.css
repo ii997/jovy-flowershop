@@ -1,0 +1,50 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+/* Ensure the Philippine Peso sign (₱) renders using a reliable system font stack */
+@font-face {
+    font-family: 'PesoFallback';
+    src: local('system-ui'), local('-apple-system'), local('BlinkMacSystemFont'), local('Segoe UI'), local('Roboto'), local('Helvetica'), local('Arial'), local('sans-serif');
+    unicode-range: U+20B1; /* Unicode code point for the Peso symbol (₱) */
+}
+
+@theme {
+    --font-sans: 'PesoFallback', 'Montserrat', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-serif: 'PesoFallback', 'Cormorant', Georgia, 'Times New Roman', serif;
+}
+
+/* Orbiting Animation Utilities */
+@keyframes orbit-cw {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes orbit-ccw {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(-360deg); }
+}
+
+.animate-orbit-cw {
+    animation: orbit-cw var(--orbit-duration, 30s) linear infinite;
+}
+
+.animate-orbit-ccw {
+    animation: orbit-ccw var(--orbit-duration, 40s) linear infinite;
+}
+
+.animate-orbit-counter-cw {
+    animation: orbit-ccw var(--orbit-duration, 30s) linear infinite;
+}
+
+.animate-orbit-counter-ccw {
+    animation: orbit-cw var(--orbit-duration, 40s) linear infinite;
+}
+
+/* Pause whole system on hover */
+.hover-pause:hover,
+.hover-pause:hover .hover-child {
+    animation-play-state: paused !important;
+}
