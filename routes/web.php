@@ -5,7 +5,6 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\AdminController;
-use App\Http\Controllers\NewsletterController;
 use App\Http\Controllers\NotificationController;
 
 Route::get('/', function () {
@@ -33,9 +32,6 @@ Route::post('/api/orders/{id}/cancel', [OrderController::class, 'cancel'])->midd
 Route::get('/api/notifications', [NotificationController::class, 'index'])->middleware('auth');
 Route::post('/api/notifications/read', [NotificationController::class, 'markRead'])->middleware('auth');
 
-// Newsletter route
-Route::post('/api/newsletter', [NewsletterController::class, 'subscribe'])->middleware('throttle:5,1');
-
 // Secure Admin API routes group (secured via Gate middleware)
 Route::prefix('/api/admin')->middleware(['auth', 'throttle:60,1'])->group(function () {
     // Admin-only endpoints
@@ -58,6 +54,7 @@ Route::prefix('/api/admin')->middleware(['auth', 'throttle:60,1'])->group(functi
         Route::post('/upload-image', [AdminController::class, 'uploadImage']);
         Route::get('/flowers', [AdminController::class, 'flowers']);
         Route::post('/flowers/{id}/availability', [AdminController::class, 'toggleFlowerAvailability']);
+        Route::get('/sms-logs', [AdminController::class, 'getSmsLogs']);
         Route::post('/settings', [AdminController::class, 'saveSettings']);
     });
 });

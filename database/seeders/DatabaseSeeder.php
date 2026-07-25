@@ -202,16 +202,12 @@ class DatabaseSeeder extends Seeder
         $this->call(UserSeeder::class);
 
         // Seed customer users
-
-
         User::create([
             'name' => 'Jane Customer',
             'email' => 'customer@jovy.com',
             'password' => \Illuminate\Support\Facades\Hash::make('password'),
             'role' => \App\Enums\UserRole::Customer,
         ]);
-
-
 
         User::create([
             'name' => 'Carlos Gomez',

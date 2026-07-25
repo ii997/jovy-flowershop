@@ -37,7 +37,7 @@ export interface Order {
     delivery_address: string;
     delivery_date: string;
     delivery_type?: string;
-    wrapper_type: string;
+    wrapper_type?: string;
     order_type: string;
     total_price: number | string;
     gift_message?: string;

@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Flower;
-use App\Models\PaymentTransaction;
 use App\Models\OrderCancellation;
 use App\Enums\UserRole;
 use Illuminate\Http\Request;
@@ -15,7 +14,7 @@ use App\Services\NotificationService;
 
 class AdminController extends Controller
 {
-    public function stats(Request $request)
+    public function stats()
     {
         $grossSales = Order::sum('total_price');
         $totalOrders = Order::count();
@@ -285,7 +284,7 @@ class AdminController extends Controller
     }
 
 
-    public function toggleProductAvailability(Request $request, $id)
+    public function toggleProductAvailability($id)
     {
         $product = Product::findOrFail($id);
         $product->availability = !$product->availability;
@@ -376,7 +375,7 @@ class AdminController extends Controller
         return response()->json(['url' => '/storage/' . $path]);
     }
 
-    public function flowers(Request $request)
+    public function flowers()
     {
         return response()->json(Flower::orderBy('name')->get());
     }
@@ -406,7 +405,7 @@ class AdminController extends Controller
         return response()->json($flower);
     }
 
-    public function toggleFlowerAvailability(Request $request, $id)
+    public function toggleFlowerAvailability($id)
     {
         $flower = Flower::findOrFail($id);
         $flower->available = !$flower->available;
@@ -424,7 +423,6 @@ class AdminController extends Controller
                 'store_address' => "123 Rizal Avenue, Makati City, Metro Manila",
                 'maintenance_mode' => false,
                 'same_day_delivery' => true,
-                'delivery_fee' => 150,
                 'qr_image' => "",
                 'downpayment_pct' => 30
             ]);
@@ -441,7 +439,6 @@ class AdminController extends Controller
             'store_address' => 'required|string|max:500',
             'maintenance_mode' => 'required|boolean',
             'same_day_delivery' => 'required|boolean',
-            'delivery_fee' => 'required|numeric|min:0',
             'qr_image' => 'nullable|string|max:1000',
             'downpayment_pct' => 'required|integer|min:0|max:100',
         ]);
@@ -454,7 +451,8 @@ class AdminController extends Controller
             mkdir($dir, 0755, true);
         }
 
-        file_put_contents($path, json_encode($validated, JSON_PRETTY_PRINT));
+        // Use LOCK_EX to prevent concurrent writes from corrupting the settings file
+        file_put_contents($path, json_encode($validated, JSON_PRETTY_PRINT), LOCK_EX);
 
         return response()->json($validated);
     }
@@ -466,5 +464,11 @@ class AdminController extends Controller
             return redirect('/');
         }
         return view('admin');
+    }
+
+    public function getSmsLogs()
+    {
+        $logs = \App\Models\SmsLog::orderBy('created_at', 'desc')->take(100)->get();
+        return response()->json($logs);
     }
 }

@@ -118,7 +118,7 @@ class OrderPaymentTest extends TestCase
 
         $order = $this->createOrder();
 
-        $file = UploadedFile::fake()->image('receipt.jpg', 800, 600);
+        $file = UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg');
         $response = $this->actingAs($this->customer)
             ->postJson("/api/orders/{$order->id}/payment", [
                 'receipt' => $file,
@@ -135,7 +135,7 @@ class OrderPaymentTest extends TestCase
         Storage::fake('public');
 
         $order = $this->createOrder();
-        $file = UploadedFile::fake()->image('receipt.jpg', 800, 600);
+        $file = UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg');
 
         $this->actingAs($this->customer)
             ->postJson("/api/orders/{$order->id}/payment", [
@@ -156,7 +156,7 @@ class OrderPaymentTest extends TestCase
         Storage::fake('public');
 
         $order = $this->createOrder(['payment_status' => 'verified']);
-        $file = UploadedFile::fake()->image('receipt.jpg');
+        $file = UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg');
 
         $response = $this->actingAs($this->customer)
             ->postJson("/api/orders/{$order->id}/payment", [
@@ -172,7 +172,7 @@ class OrderPaymentTest extends TestCase
         Storage::fake('public');
 
         $order = $this->createOrder();
-        $file = UploadedFile::fake()->image('receipt.jpg');
+        $file = UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg');
 
         $response = $this->actingAs($this->customer)
             ->postJson("/api/orders/{$order->id}/payment", [
@@ -493,7 +493,7 @@ class OrderPaymentTest extends TestCase
     {
         Storage::fake('public');
         $order = $this->createOrder(['status' => 'delivered']);
-        $file = UploadedFile::fake()->image('receipt.jpg');
+        $file = UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg');
 
         $response = $this->actingAs($this->customer)
             ->postJson("/api/orders/{$order->id}/payment", [
@@ -514,7 +514,7 @@ class OrderPaymentTest extends TestCase
             'order_type' => 'reservation',
             'total_price' => 1000.00
         ]);
-        $file = UploadedFile::fake()->image('receipt.jpg');
+        $file = UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg');
 
         // Try submitting 250 (25%, which is less than 300 required)
         $response = $this->actingAs($this->customer)
@@ -534,7 +534,7 @@ class OrderPaymentTest extends TestCase
             'order_type' => 'reservation',
             'total_price' => 1000.00
         ]);
-        $file = UploadedFile::fake()->image('receipt.jpg');
+        $file = UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg');
 
         // Submit exactly 300 (30% downpayment)
         $response = $this->actingAs($this->customer)
@@ -561,7 +561,6 @@ class OrderPaymentTest extends TestCase
             'store_address' => "123 Rizal Avenue",
             'maintenance_mode' => false,
             'same_day_delivery' => true,
-            'delivery_fee' => 150,
             'qr_image' => "",
             'downpayment_pct' => 20
         ];
@@ -577,7 +576,7 @@ class OrderPaymentTest extends TestCase
                 'order_type' => 'reservation',
                 'total_price' => 1000.00
             ]);
-            $file = UploadedFile::fake()->image('receipt.jpg');
+            $file = UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg');
 
             // 1. Check that 15% (150) fails
             $responseFail = $this->actingAs($this->customer)

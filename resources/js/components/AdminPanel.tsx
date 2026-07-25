@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Product, User, Order, DashboardStats } from '../types';
+import { Product, User } from '../types';
 import { ProductEditModal } from './ProductEditModal';
 import { ProductCreateModal } from './ProductCreateModal';
 import { toast } from './ui/Toast';
@@ -11,6 +11,13 @@ import { OrdersTab } from './admin/OrdersTab';
 import { InventoryTab } from './admin/InventoryTab';
 import { FlowersTab } from './admin/FlowersTab';
 import { SettingsTab } from './admin/SettingsTab';
+import {
+    useAdminStats,
+    useAdminOrders,
+    useAdminFlowers,
+    useUpdateProductPrice,
+    useToggleAvailability,
+} from '../lib/adminQueries';
 
 interface AdminPanelProps {
     user: User | null;
@@ -18,9 +25,10 @@ interface AdminPanelProps {
     onUpdateProducts: (updatedProducts: Product[]) => void;
     onBackToStore: () => void;
     onLogout: () => void;
+    isLoadingProducts?: boolean;
 }
 
-export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, onLogout }: AdminPanelProps) {
+export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, onLogout, isLoadingProducts = false }: AdminPanelProps) {
     const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'inventory' | 'flowers' | 'settings'>('dashboard');
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
@@ -37,71 +45,29 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Admin state
-    const [stats, setStats] = useState<DashboardStats>({ gross_sales: 0, total_orders: 0, active_listings: 0, recent_orders: [], revenue_tracking: { paid: 0, pending: 0 }, top_products: [], occasions_breakdown: {}, seasons_breakdown: {}, trends: { daily: [], monthly: [], yearly: [] }, patterns: { average_order_size: 0, repeat_rate: 0, total_customers: 0 } });
-    const [orders, setOrders] = useState<Order[]>([]);
-    const [flowers, setFlowers] = useState<any[]>([]);
+    // TanStack Queries for reactive admin state
+    const { data: stats = { gross_sales: 0, total_orders: 0, active_listings: 0, recent_orders: [], revenue_tracking: { paid: 0, pending: 0 }, top_products: [], occasions_breakdown: {}, seasons_breakdown: {}, trends: { daily: [], monthly: [], yearly: [] }, patterns: { average_order_size: 0, repeat_rate: 0, total_customers: 0 } }, isLoading: isLoadingStats } = useAdminStats();
+    const { data: orders = [], isLoading: isLoadingOrders } = useAdminOrders();
+    const { data: flowers = [], isLoading: isLoadingFlowers } = useAdminFlowers();
+
+    // TanStack Mutations
+    const updatePriceMutation = useUpdateProductPrice();
+    const toggleAvailabilityMutation = useToggleAvailability();
+
     const [prices, setPrices] = useState<Record<number, string>>({});
     const [selectedProductForEdit, setSelectedProductForEdit] = useState<Product | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-    // CSRF Utility
-    const csrfToken = () => {
-        const meta = document.querySelector('meta[name="csrf-token"]');
-        return meta ? meta.getAttribute('content') : '';
-    };
-
-    // Load admin metrics & inventory
-    const loadStats = async () => {
-        try {
-            const res = await fetch('/api/admin/stats');
-            if (res.ok) {
-                const data = await res.json();
-                setStats(data);
-            }
-        } catch (error) {
-            console.error('Failed to load stats');
-        }
-    };
-
-    const loadOrders = async () => {
-        try {
-            const res = await fetch('/api/admin/orders?per_page=200');
-            if (res.ok) {
-                const data = await res.json();
-                setOrders(data.data ?? data);
-            }
-        } catch (error) {
-            console.error('Failed to load orders');
-        }
-    };
-
-    const loadFlowers = async () => {
-        try {
-            const res = await fetch('/api/admin/flowers');
-            if (res.ok) {
-                const data = await res.json();
-                setFlowers(data);
-            }
-        } catch {
-            console.error('Failed to load flowers');
-        }
-    };
-
     useEffect(() => {
-        loadStats();
-        loadOrders();
-        loadFlowers();
-        // Initialize prices from products state
         setPrices(products.reduce((acc, p) => ({ ...acc, [p.id]: p.price.toString() }), {}));
-    }, [products, activeTab]);
+    }, [products]);
 
     const handlePriceChange = (productId: number, val: string) => {
         setPrices(prev => ({ ...prev, [productId]: val }));
     };
 
-    // Handle price update on the database
+    // Handle price update via TanStack Mutation
     const handleSavePrice = async (productId: number) => {
         const numeric = parseFloat(prices[productId]);
         if (isNaN(numeric) || numeric < 0) {
@@ -110,49 +76,22 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
         }
 
         try {
-            const res = await fetch(`/api/admin/products/${productId}/price`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken() || '',
-                },
-                body: JSON.stringify({ price: numeric }),
-            });
-
-            if (res.ok) {
-                const updatedProduct = await res.json();
-                onUpdateProducts(products.map(p => p.id === productId ? updatedProduct : p));
-                toast.success('Price updated successfully.');
-            } else {
-                toast.error('Failed to update price.');
-            }
-        } catch (error) {
-            toast.error('Connection error. Please try again.');
+            const updatedProduct = await updatePriceMutation.mutateAsync({ productId, price: numeric });
+            onUpdateProducts(products.map(p => p.id === productId ? updatedProduct : p));
+            toast.success('Price updated successfully.');
+        } catch {
+            toast.error('Failed to update price.');
         }
     };
 
-    // Handle availability toggle on the database
+    // Handle availability toggle via TanStack Mutation
     const handleToggleAvailability = async (productId: number) => {
         try {
-            const res = await fetch(`/api/admin/products/${productId}/availability`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken() || '',
-                },
-            });
-
-            if (res.ok) {
-                const updatedProduct = await res.json();
-                onUpdateProducts(products.map(p => p.id === productId ? updatedProduct : p));
-                toast.success(`Arrangement availability updated.`);
-            } else {
-                toast.error('Failed to toggle availability.');
-            }
-        } catch (error) {
-            toast.error('Connection error. Please try again.');
+            const updatedProduct = await toggleAvailabilityMutation.mutateAsync(productId);
+            onUpdateProducts(products.map(p => p.id === productId ? updatedProduct : p));
+            toast.success('Arrangement availability updated.');
+        } catch {
+            toast.error('Failed to toggle availability.');
         }
     };
 
@@ -271,10 +210,10 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
 
                 {/* Tab Content */}
                 <main className="flex-1 p-6 md:p-10 overflow-y-auto max-h-[calc(100vh-65px)] md:max-h-[calc(100vh-68px)]">
-                    {activeTab === 'dashboard' && <DashboardTab stats={stats} />}
+                    {activeTab === 'dashboard' && <DashboardTab stats={stats} isLoading={isLoadingStats} />}
 
                     {activeTab === 'orders' && (
-                        <OrdersTab orders={orders} onUpdateOrders={setOrders} />
+                        <OrdersTab orders={orders} isLoading={isLoadingOrders} />
                     )}
 
                     {activeTab === 'inventory' && (
@@ -290,14 +229,15 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
                                 setIsEditModalOpen(true);
                             }}
                             onOpenCreateModal={() => setIsCreateModalOpen(true)}
+                            isLoading={isLoadingProducts}
                         />
                     )}
 
                     {activeTab === 'flowers' && (
                         <FlowersTab
                             flowers={flowers}
-                            onFlowersChange={setFlowers}
                             isAdmin={user?.role === 'admin'}
+                            isLoading={isLoadingFlowers}
                         />
                     )}
 

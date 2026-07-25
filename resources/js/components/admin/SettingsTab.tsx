@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User } from '../../types';
 import { toast } from '../ui/Toast';
+import { SettingsTabSkeleton } from '../ui/Skeleton';
 
 interface SettingsTabProps {
     user: User | null;
+    isLoading?: boolean;
 }
 
-export function SettingsTab({ user }: SettingsTabProps) {
+export function SettingsTab({ user, isLoading: externalLoading = false }: SettingsTabProps) {
+    const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+
     // Admin Profile States
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -22,7 +26,6 @@ export function SettingsTab({ user }: SettingsTabProps) {
     const [storeAddress, setStoreAddress] = useState("123 Rizal Avenue, Makati City, Metro Manila");
     const [maintenanceMode, setMaintenanceMode] = useState(false);
     const [sameDayDelivery, setSameDayDelivery] = useState(true);
-    const [deliveryFee, setDeliveryFee] = useState("150");
     const [downpaymentPct, setDownpaymentPct] = useState(30);
     const [storeSuccess, setStoreSuccess] = useState('');
     const [qrImage, setQrImage] = useState('');
@@ -50,18 +53,23 @@ export function SettingsTab({ user }: SettingsTabProps) {
                         setStoreAddress(data.store_address || "123 Rizal Avenue, Makati City, Metro Manila");
                         setMaintenanceMode(!!data.maintenance_mode);
                         setSameDayDelivery(!!data.same_day_delivery);
-                        setDeliveryFee(String(data.delivery_fee ?? "150"));
                         setQrImage(data.qr_image || "");
                         setDownpaymentPct(data.downpayment_pct ?? 30);
                     }
                 }
             } catch (e) {
                 console.error("Failed to load store settings from API", e);
+            } finally {
+                setIsLoadingSettings(false);
             }
         };
 
         fetchSettings();
     }, [user]);
+
+    if (externalLoading || isLoadingSettings) {
+        return <SettingsTabSkeleton />;
+    }
 
     const csrfToken = () => {
         const meta = document.querySelector('meta[name="csrf-token"]');
@@ -117,7 +125,6 @@ export function SettingsTab({ user }: SettingsTabProps) {
             store_address: storeAddress,
             maintenance_mode: maintenanceMode,
             same_day_delivery: sameDayDelivery,
-            delivery_fee: parseFloat(deliveryFee) || 0,
             qr_image: qrImage,
             downpayment_pct: downpaymentPct
         };
@@ -140,7 +147,6 @@ export function SettingsTab({ user }: SettingsTabProps) {
                 localStorage.setItem('store_settings_address', storeAddress);
                 localStorage.setItem('store_settings_maintenance', String(maintenanceMode));
                 localStorage.setItem('store_settings_delivery', String(sameDayDelivery));
-                localStorage.setItem('store_settings_fee', deliveryFee);
                 localStorage.setItem('store_settings_qr_image', qrImage);
                 localStorage.setItem('store_settings_downpayment_pct', String(downpaymentPct));
 
@@ -249,17 +255,6 @@ export function SettingsTab({ user }: SettingsTabProps) {
                                     type="text"
                                     value={storePhone}
                                     onChange={(e) => setStorePhone(e.target.value)}
-                                    className="px-4 py-2.5 rounded-xl border border-[#0A2A1B]/15 bg-gray-50/50 focus:bg-white text-xs font-semibold text-[#0A2A1B] outline-hidden focus:border-[#D97706] transition-colors"
-                                    required
-                                />
-                            </div>
-
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-[11px] uppercase font-bold tracking-wider text-[#0A2A1B]/60">Delivery Fee (₱)</label>
-                                <input
-                                    type="number"
-                                    value={deliveryFee}
-                                    onChange={(e) => setDeliveryFee(e.target.value)}
                                     className="px-4 py-2.5 rounded-xl border border-[#0A2A1B]/15 bg-gray-50/50 focus:bg-white text-xs font-semibold text-[#0A2A1B] outline-hidden focus:border-[#D97706] transition-colors"
                                     required
                                 />
@@ -376,7 +371,12 @@ export function SettingsTab({ user }: SettingsTabProps) {
 
                             <div className="flex items-center justify-between p-4 bg-gray-50/60 rounded-2xl border border-[#0A2A1B]/5 hover:border-[#0A2A1B]/10 transition-colors">
                                 <div className="space-y-0.5 pr-4">
-                                    <h4 className="text-xs font-bold text-[#0A2A1B]">Under Maintenance</h4>
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="text-xs font-bold text-[#0A2A1B]">Under Maintenance</h4>
+                                        <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${maintenanceMode ? 'bg-[#D97706]/15 text-[#D97706] border border-[#D97706]/30 animate-pulse' : 'bg-gray-200 text-gray-600'}`}>
+                                            {maintenanceMode ? 'ACTIVE' : 'OFF'}
+                                        </span>
+                                    </div>
                                     <p className="text-[10px] text-[#0A2A1B]/50 font-medium">Render a maintenance notice block to customers and temporarily disable purchases.</p>
                                 </div>
                                 <button

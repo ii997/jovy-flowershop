@@ -180,6 +180,13 @@ class NotificationTest extends TestCase
 
         // Verify httpSMS request was dispatched twice (one to customer, one to admin)
         Http::assertSentCount(2);
+
+        // Verify SMS log records created in database
+        $this->assertDatabaseHas('sms_logs', [
+            'phone_number' => '+639170000000',
+            'gateway' => 'httpsms',
+            'status' => 'sent',
+        ]);
     }
 
     public function test_sms_delivery_failure_creates_in_app_warning_alert_for_admin(): void
@@ -214,6 +221,116 @@ class NotificationTest extends TestCase
             'title' => '⚠️ SMS Gateway Alert',
             'type' => 'sms_failure',
             'is_admin' => true,
+        ]);
+
+        // Verify failure was logged in sms_logs table
+        $this->assertDatabaseHas('sms_logs', [
+            'phone_number' => '+639170000000',
+            'gateway' => 'none',
+            'status' => 'failed',
+        ]);
+    }
+
+    public function test_sms_falls_back_to_textbee_when_httpsms_fails(): void
+    {
+        config([
+            'services.httpsms.key' => 'httpsms-key',
+            'services.httpsms.from' => '+639171111111',
+            'services.textbee.key' => 'textbee-api-key',
+            'services.textbee.device_id' => 'textbee-device-123',
+        ]);
+
+        Http::fake([
+            'api.httpsms.com/*' => Http::response(['message' => 'Service Unavailable'], 503),
+            'api.textbee.dev/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $customer = User::factory()->create(['role' => UserRole::Customer]);
+        $product = Product::first();
+        $product->availability = true;
+        $product->save();
+
+        $response = $this->actingAs($customer)->postJson('/api/orders', [
+            'order_type' => 'purchase',
+            'recipient_name' => 'John Doe',
+            'recipient_phone' => '+639170000000',
+            'delivery_type' => 'pickup',
+            'delivery_date' => now()->addDays(2)->format('Y-m-d'),
+            'wrapper_type' => 'Classic Kraft Paper',
+            'gift_message' => 'Happy Birthday!',
+            'items' => [
+                ['id' => $product->id, 'quantity' => 1]
+            ]
+        ]);
+
+        $response->assertStatus(200);
+
+        // Verify httpSMS was tried, then TextBee was called as fallback
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'api.textbee.dev/api/v1/gateway/devices/textbee-device-123/send-sms')
+                && $request->hasHeader('x-api-key', 'textbee-api-key')
+                && $request['recipients'][0] === '+639170000000';
+        });
+
+        // Verify TextBee fallback was logged in sms_logs table
+        $this->assertDatabaseHas('sms_logs', [
+            'phone_number' => '+639170000000',
+            'gateway' => 'textbee',
+            'status' => 'sent',
+        ]);
+
+        // Verify no failure alert was logged since fallback succeeded
+        $this->assertDatabaseMissing('notifications', [
+            'type' => 'sms_failure',
+        ]);
+    }
+
+    public function test_both_sms_gateways_failing_triggers_admin_warning(): void
+    {
+        config([
+            'services.httpsms.key' => 'httpsms-key',
+            'services.httpsms.from' => '+639171111111',
+            'services.textbee.key' => 'textbee-api-key',
+            'services.textbee.device_id' => 'textbee-device-123',
+        ]);
+
+        Http::fake([
+            'api.httpsms.com/*' => Http::response(['message' => 'Service Unavailable'], 503),
+            'api.textbee.dev/*' => Http::response(['message' => 'Device Offline'], 500),
+        ]);
+
+        $customer = User::factory()->create(['role' => UserRole::Customer]);
+        $product = Product::first();
+        $product->availability = true;
+        $product->save();
+
+        $response = $this->actingAs($customer)->postJson('/api/orders', [
+            'order_type' => 'purchase',
+            'recipient_name' => 'John Doe',
+            'recipient_phone' => '+639170000000',
+            'delivery_type' => 'pickup',
+            'delivery_date' => now()->addDays(2)->format('Y-m-d'),
+            'wrapper_type' => 'Classic Kraft Paper',
+            'gift_message' => 'Happy Birthday!',
+            'items' => [
+                ['id' => $product->id, 'quantity' => 1]
+            ]
+        ]);
+
+        $response->assertStatus(200);
+
+        // Verify failure warning logged for admin when both primary & fallback fail
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => null,
+            'title' => '⚠️ SMS Gateway Alert',
+            'type' => 'sms_failure',
+            'is_admin' => true,
+        ]);
+
+        $this->assertDatabaseHas('sms_logs', [
+            'phone_number' => '+639170000000',
+            'gateway' => 'none',
+            'status' => 'failed',
         ]);
     }
 

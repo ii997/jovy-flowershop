@@ -2,13 +2,23 @@ import { useState, useEffect } from 'react';
 import { Order, PaymentTransaction } from '../../types';
 import { Pagination } from '../Pagination';
 import { toast } from '../ui/Toast';
+import { OrdersTabSkeleton } from '../ui/Skeleton';
+import {
+    useUpdateOrderStatus,
+    useUpdatePaymentStatus,
+    useCancelOrder,
+} from '../../lib/adminQueries';
 
 interface OrdersTabProps {
     orders: Order[];
-    onUpdateOrders: (updatedOrders: Order[]) => void;
+    onUpdateOrders?: (updatedOrders: Order[]) => void;
+    isLoading?: boolean;
 }
 
-export function OrdersTab({ orders, onUpdateOrders }: OrdersTabProps) {
+export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersTabProps) {
+    if (isLoading) {
+        return <OrdersTabSkeleton />;
+    }
     const [orderSearch, setOrderSearch] = useState('');
     const [orderSortBy, setOrderSortBy] = useState<'date' | 'price'>('date');
     const [orderSortOrder, setOrderSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -19,69 +29,64 @@ export function OrdersTab({ orders, onUpdateOrders }: OrdersTabProps) {
     const [orderPage, setOrderPage] = useState(1);
 
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-    const [updatingStatus, setUpdatingStatus] = useState(false);
     const [showCancelForm, setShowCancelForm] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
     const [cancelRefundAmount, setCancelRefundAmount] = useState('');
     const [cancelRefundMethod, setCancelRefundMethod] = useState('none');
-    const [cancelling, setCancelling] = useState(false);
     const [adminNotes, setAdminNotes] = useState('');
     const [zoomImage, setZoomImage] = useState<string | null>(null);
+
+    const updateStatusMutation = useUpdateOrderStatus();
+    const updatePaymentMutation = useUpdatePaymentStatus();
+    const cancelOrderMutation = useCancelOrder();
+    const updatingStatus = updateStatusMutation.isPending || updatePaymentMutation.isPending || cancelOrderMutation.isPending;
+    const cancelling = cancelOrderMutation.isPending;
 
     useEffect(() => {
         setOrderPage(1);
     }, [orderSearch, selectedOrderType, selectedStatusFilter, selectedPaymentFilter, orderSortBy, orderSortOrder]);
 
-    const csrfToken = () => {
-        const meta = document.querySelector('meta[name="csrf-token"]');
-        return meta ? meta.getAttribute('content') : '';
-    };
-
     const handleStatusChange = async (orderId: number, newStatus: string) => {
-        setUpdatingStatus(true);
         try {
-            const res = await fetch(`/api/admin/orders/${orderId}/status`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken() || '' },
-                body: JSON.stringify({ status: newStatus }),
-            });
-            if (res.ok) {
-                const updatedOrder = await res.json();
-                onUpdateOrders(orders.map(o => o.id === orderId ? updatedOrder : o));
-                if (selectedOrder && selectedOrder.id === orderId) setSelectedOrder(updatedOrder);
-            } else {
-                toast.error('Failed to update order status');
-            }
-        } catch (error) {
-            console.error('Failed to update order status:', error);
-            toast.error('Connection error. Please try again.');
-        } finally {
-            setUpdatingStatus(false);
+            const updatedOrder = await updateStatusMutation.mutateAsync({ orderId, status: newStatus });
+            onUpdateOrders?.(orders.map(o => o.id === orderId ? updatedOrder : o));
+            if (selectedOrder && selectedOrder.id === orderId) setSelectedOrder(updatedOrder);
+            toast.success('Order status updated');
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to update order status');
         }
     };
 
     const handlePaymentStatusChange = async (orderId: number, newPaymentStatus: string) => {
-        setUpdatingStatus(true);
         try {
-            const res = await fetch(`/api/admin/orders/${orderId}/payment-status`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken() || '' },
-                body: JSON.stringify({ payment_status: newPaymentStatus, admin_notes: adminNotes || null }),
+            const updatedOrder = await updatePaymentMutation.mutateAsync({
+                orderId,
+                payment_status: newPaymentStatus,
+                admin_notes: adminNotes || null,
             });
-            if (res.ok) {
-                const updatedOrder = await res.json();
-                onUpdateOrders(orders.map(o => o.id === orderId ? updatedOrder : o));
-                if (selectedOrder && selectedOrder.id === orderId) setSelectedOrder(updatedOrder);
-                setAdminNotes('');
-            } else {
-                const err = await res.json();
-                toast.error(err.message || 'Failed to update payment status');
-            }
-        } catch (error) {
-            console.error('Failed to update payment status:', error);
-            toast.error('Connection error. Please try again.');
-        } finally {
-            setUpdatingStatus(false);
+            onUpdateOrders?.(orders.map(o => o.id === orderId ? updatedOrder : o));
+            if (selectedOrder && selectedOrder.id === orderId) setSelectedOrder(updatedOrder);
+            setAdminNotes('');
+            toast.success('Payment status updated');
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to update payment status');
+        }
+    };
+
+    const handleApproveAndPrepare = async (orderId: number) => {
+        try {
+            await updatePaymentMutation.mutateAsync({
+                orderId,
+                payment_status: 'verified',
+                admin_notes: adminNotes || 'Payment verified and order set to preparing.',
+            });
+            const updatedOrder = await updateStatusMutation.mutateAsync({ orderId, status: 'preparing' });
+            onUpdateOrders?.(orders.map(o => o.id === orderId ? updatedOrder : o));
+            if (selectedOrder && selectedOrder.id === orderId) setSelectedOrder(updatedOrder);
+            setAdminNotes('');
+            toast.success('Payment verified & order set to Preparing!');
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to complete approval flow');
         }
     };
 
@@ -90,33 +95,22 @@ export function OrdersTab({ orders, onUpdateOrders }: OrdersTabProps) {
             toast.error('Please provide a reason for cancellation (minimum 5 characters).');
             return;
         }
-        setCancelling(true);
         try {
-            const res = await fetch(`/api/admin/orders/${orderId}/cancel`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken() || '' },
-                body: JSON.stringify({
-                    reason: cancelReason,
-                    refund_amount: cancelRefundAmount ? parseFloat(cancelRefundAmount) : null,
-                    refund_method: cancelRefundMethod,
-                }),
+            const updatedOrder = await cancelOrderMutation.mutateAsync({
+                orderId,
+                reason: cancelReason,
+                refund_amount: cancelRefundAmount ? parseFloat(cancelRefundAmount) : null,
+                refund_method: cancelRefundMethod,
             });
-            if (res.ok) {
-                const updatedOrder = await res.json();
-                onUpdateOrders(orders.map(o => o.id === orderId ? updatedOrder : o));
-                if (selectedOrder && selectedOrder.id === orderId) setSelectedOrder(updatedOrder);
-                setShowCancelForm(false);
-                setCancelReason(''); setCancelRefundAmount(''); setCancelRefundMethod('none');
-                toast.success('Order cancelled successfully.');
-            } else {
-                const err = await res.json();
-                toast.error(err.message || 'Failed to cancel order');
-            }
-        } catch (error) {
-            console.error('Failed to cancel order:', error);
-            toast.error('Connection error. Please try again.');
-        } finally {
-            setCancelling(false);
+            onUpdateOrders?.(orders.map(o => o.id === orderId ? updatedOrder : o));
+            if (selectedOrder && selectedOrder.id === orderId) setSelectedOrder(updatedOrder);
+            setShowCancelForm(false);
+            setCancelReason('');
+            setCancelRefundAmount('');
+            setCancelRefundMethod('none');
+            toast.success('Order cancelled successfully');
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to cancel order');
         }
     };
 
@@ -236,7 +230,7 @@ export function OrdersTab({ orders, onUpdateOrders }: OrdersTabProps) {
                                 <td className="py-4 px-4">
                                     <p className="font-semibold text-[#0A2A1B]">{o.recipient_name}</p>
                                     <p className="text-[10px] text-[#0A2A1B]/60 mt-0.5">
-                                        <span className="font-bold text-[#D97706] uppercase text-[9px] mr-1.5">{o.delivery_type || 'delivery'}</span>
+                                        <span className="font-bold text-[#D97706] uppercase text-[9px] mr-1.5">{o.delivery_type || 'pickup'}</span>
                                         {o.delivery_address || 'Store Pickup'}
                                     </p>
                                 </td>
@@ -258,8 +252,51 @@ export function OrdersTab({ orders, onUpdateOrders }: OrdersTabProps) {
                                 </td>
                                 <td className="py-4 px-4 text-right font-semibold">₱{parseFloat(o.total_price.toString()).toFixed(2)}</td>
                                 <td className="py-4 px-4 text-right">
-                                    <button onClick={() => setSelectedOrder(o)}
-                                        className="px-3.5 py-1.5 bg-[#0A2A1B]/5 hover:bg-[#D97706]/10 text-[#0A2A1B] hover:text-[#D97706] text-[10px] font-bold rounded-xl transition-colors cursor-pointer">Manage</button>
+                                    <div className="flex items-center justify-end gap-1.5">
+                                        {o.status !== 'cancelled' && (
+                                            <>
+                                                {o.payment_status === 'awaiting_verification' && (
+                                                    <button
+                                                        disabled={updatingStatus}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleApproveAndPrepare(o.id);
+                                                        }}
+                                                        className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-200 text-white text-[10px] font-bold rounded-xl shadow-2xs hover:shadow-xs transition-all cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
+                                                        title="Verify payment and start preparation in 1 click"
+                                                    >
+                                                        <span>✓ Verify & Prepare</span>
+                                                    </button>
+                                                )}
+                                                {o.payment_status !== 'awaiting_verification' && o.status === 'confirmed' && (
+                                                    <button
+                                                        disabled={updatingStatus}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleStatusChange(o.id, 'preparing');
+                                                        }}
+                                                        className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 text-white text-[10px] font-bold rounded-xl shadow-2xs hover:shadow-xs transition-all cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
+                                                    >
+                                                        <span>⚡ Prepare</span>
+                                                    </button>
+                                                )}
+                                                {o.status === 'preparing' && (
+                                                    <button
+                                                        disabled={updatingStatus}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleStatusChange(o.id, 'delivered');
+                                                        }}
+                                                        className="px-2.5 py-1.5 bg-[#0A2A1B] hover:bg-[#D97706] disabled:bg-gray-200 text-white text-[10px] font-bold rounded-xl shadow-2xs hover:shadow-xs transition-all cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
+                                                    >
+                                                        <span>🚚 Deliver</span>
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+                                        <button onClick={() => setSelectedOrder(o)}
+                                            className="px-3 py-1.5 bg-[#0A2A1B]/5 hover:bg-[#D97706]/10 text-[#0A2A1B] hover:text-[#D97706] text-[10px] font-bold rounded-xl transition-colors cursor-pointer shrink-0">Manage</button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -291,9 +328,11 @@ export function OrdersTab({ orders, onUpdateOrders }: OrdersTabProps) {
                                     <h4 className="text-[10px] font-bold text-[#0A2A1B]/50 uppercase tracking-wider border-b border-[#0A2A1B]/5 pb-2">Fulfillment Details</h4>
                                     <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Recipient</span><span className="font-bold">{selectedOrder.recipient_name}</span></div>
                                     <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Phone</span><span className="font-semibold">{selectedOrder.recipient_phone}</span></div>
-                                    <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Preference</span><span className="font-bold uppercase text-[10px] text-[#D97706]">{selectedOrder.delivery_type || 'delivery'}</span></div>
-                                    <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Delivery Date</span><span className="font-semibold">{selectedOrder.delivery_date}</span></div>
-                                    <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Wrap</span><span className="font-semibold">{selectedOrder.wrapper_type}</span></div>
+                                    <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Preference</span><span className="font-bold uppercase text-[10px] text-[#D97706]">{selectedOrder.delivery_type || 'pickup'}</span></div>
+                                    <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Pickup Date</span><span className="font-semibold">{selectedOrder.delivery_date}</span></div>
+                                    {selectedOrder.wrapper_type && (
+                                        <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Wrap</span><span className="font-semibold">{selectedOrder.wrapper_type}</span></div>
+                                    )}
                                     {selectedOrder.delivery_type !== 'pickup' && (
                                         <div className="space-y-1">
                                             <span className="text-[#0A2A1B]/60 block">Delivery Address</span>
@@ -343,6 +382,28 @@ export function OrdersTab({ orders, onUpdateOrders }: OrdersTabProps) {
 
                             {/* Right Column: Fulfillment, Payments, and Verification Actions */}
                             <div className="space-y-5 text-xs text-[#0A2A1B]">
+                                {/* Fast Approval Banner */}
+                                {selectedOrder.payment_status === 'awaiting_verification' && selectedOrder.status === 'confirmed' && (
+                                    <div className="bg-gradient-to-r from-amber-500/10 via-emerald-500/10 to-emerald-500/15 border-2 border-emerald-500/30 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                                                ✓
+                                            </div>
+                                            <div>
+                                                <h5 className="font-bold text-[#0A2A1B] text-xs">Payment Awaiting Approval</h5>
+                                                <p className="text-[11px] text-[#0A2A1B]/70">Customer uploaded proof of payment. Approve payment & start preparation in 1 click.</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            disabled={updatingStatus}
+                                            onClick={() => handleApproveAndPrepare(selectedOrder.id)}
+                                            className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-200 text-white font-bold text-xs rounded-xl shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-95 shrink-0 flex items-center justify-center gap-1.5"
+                                        >
+                                            <span>✓ Verify & Start Preparation</span>
+                                        </button>
+                                    </div>
+                                )}
+
                                 {/* Stepper Progress Section */}
                                 <div className="bg-[#FAF9F6] p-5 rounded-2xl border border-[#0A2A1B]/5 space-y-4">
                                     <div className="flex flex-col gap-2">
@@ -579,13 +640,32 @@ export function OrdersTab({ orders, onUpdateOrders }: OrdersTabProps) {
                                                 rows={2} className="w-full px-3 py-2 bg-white border border-[#0A2A1B]/15 rounded-xl text-xs text-[#0A2A1B] outline-none focus:border-[#D97706] resize-none" />
                                             
                                             {(selectedOrder.payment_status === 'awaiting_verification' || selectedOrder.payment_status === 'pending') && (
-                                                <div className="grid grid-cols-2 gap-2.5">
-                                                    <button onClick={() => handlePaymentStatusChange(selectedOrder.id, 'verified')}
-                                                        disabled={updatingStatus}
-                                                        className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-100 text-white disabled:text-gray-400 text-[10px] font-bold rounded-xl cursor-pointer transition-colors disabled:cursor-not-allowed">Verify Payment</button>
-                                                    <button onClick={() => handlePaymentStatusChange(selectedOrder.id, 'failed')}
-                                                        disabled={updatingStatus}
-                                                        className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-100 text-white disabled:text-gray-400 text-[10px] font-bold rounded-xl cursor-pointer transition-colors disabled:cursor-not-allowed">Mark Failed</button>
+                                                <div className="flex flex-col gap-2">
+                                                    {selectedOrder.status === 'confirmed' && (
+                                                        <button
+                                                            onClick={() => handleApproveAndPrepare(selectedOrder.id)}
+                                                            disabled={updatingStatus}
+                                                            className="w-full px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-100 text-white disabled:text-gray-400 text-xs font-bold rounded-xl cursor-pointer transition-all shadow-2xs hover:shadow-xs active:scale-[0.98] disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                                                        >
+                                                            <span>✓ Verify Payment & Start Preparing</span>
+                                                        </button>
+                                                    )}
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <button
+                                                            onClick={() => handlePaymentStatusChange(selectedOrder.id, 'verified')}
+                                                            disabled={updatingStatus}
+                                                            className="w-full px-3 py-2 border-2 border-green-600 text-green-700 hover:bg-green-50 disabled:bg-gray-100 disabled:border-gray-200 text-[10px] font-bold rounded-xl cursor-pointer transition-colors disabled:cursor-not-allowed text-center"
+                                                        >
+                                                            Verify Payment Only
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handlePaymentStatusChange(selectedOrder.id, 'failed')}
+                                                            disabled={updatingStatus}
+                                                            className="w-full px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-100 text-white disabled:text-gray-400 text-[10px] font-bold rounded-xl cursor-pointer transition-colors disabled:cursor-not-allowed text-center"
+                                                        >
+                                                            Mark Failed
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             )}
                                             {selectedOrder.payment_status === 'verified' && (

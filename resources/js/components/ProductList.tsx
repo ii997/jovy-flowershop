@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { Product } from '../types';
 import { ProductCard } from './ProductCard';
+import { CatalogSkeleton } from './ui/Skeleton';
 
 interface ProductListProps {
     products: Product[];
     onOrderBouquet: (product: Product) => void;
     isAuthenticated: boolean;
     onAuthClick: () => void;
+    isLoading?: boolean;
 }
 
 const OCCASIONS = ['All', 'Birthday', 'Anniversary', "Valentine's", 'Wedding', 'Funeral'];
 
-export function ProductList({ products, onOrderBouquet, isAuthenticated, onAuthClick }: ProductListProps) {
+export function ProductList({ products, onOrderBouquet, isAuthenticated, onAuthClick, isLoading = false }: ProductListProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedOccasion, setSelectedOccasion] = useState('All');
     const [showOutOfStock, setShowOutOfStock] = useState(false);
@@ -118,7 +120,9 @@ export function ProductList({ products, onOrderBouquet, isAuthenticated, onAuthC
                         </div>
 
                         {/* Products Grid */}
-                        {filteredProducts.length === 0 ? (
+                        {isLoading ? (
+                            <CatalogSkeleton count={8} />
+                        ) : filteredProducts.length === 0 ? (
                             <div className="text-center py-20 bg-white rounded-3xl border border-[#0A2A1B]/5 space-y-4">
                                 <svg className="h-12 w-12 mx-auto text-[#0A2A1B]/20 select-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" aria-hidden="true">
                                     <circle cx="11" cy="11" r="7" />

@@ -18,14 +18,27 @@ class OrderController extends Controller
      */
     public function store(Request $request)
     {
+        // Enforce Maintenance Mode check
+        $settingsPath = storage_path('app/settings.json');
+        if (file_exists($settingsPath)) {
+            $settings = json_decode(file_get_contents($settingsPath), true);
+            if (!empty($settings['maintenance_mode'])) {
+                $user = Auth::user();
+                if (!$user || !in_array($user->role, ['admin', 'staff'])) {
+                    return response()->json([
+                        'message' => 'The store is currently undergoing scheduled maintenance. New orders and reservations are temporarily disabled.',
+                    ], 503);
+                }
+            }
+        }
+
         $validated = $request->validate([
             'order_type' => 'required|string|in:purchase,reservation',
             'recipient_name' => 'required|string|max:255',
             'recipient_phone' => 'required|string|max:20',
-            'delivery_type' => 'required|string|in:delivery,pickup',
+            'delivery_type' => 'nullable|string|in:delivery,pickup',
             'delivery_date' => 'required|date|after_or_equal:today',
-            'delivery_address' => 'required_if:delivery_type,delivery|string|max:500',
-            'wrapper_type' => 'required|string|max:100',
+            'delivery_address' => 'nullable|string|max:500',
             'gift_message' => 'nullable|string',
             'items' => 'required|array',
             'items.*.id' => 'required|integer|exists:products,id',
@@ -63,12 +76,11 @@ class OrderController extends Controller
             $order = Order::create([
                 'user_id' => Auth::id(),
                 'order_type' => $validated['order_type'],
-                'delivery_type' => $validated['delivery_type'],
+                'delivery_type' => $validated['delivery_type'] ?? 'pickup',
                 'recipient_name' => $validated['recipient_name'],
                 'recipient_phone' => $validated['recipient_phone'],
                 'delivery_address' => $validated['delivery_address'] ?? null,
                 'delivery_date' => $validated['delivery_date'],
-                'wrapper_type' => $validated['wrapper_type'],
                 'gift_message' => $validated['gift_message'] ?? null,
                 'items' => $processedItems,
                 'total_price' => $totalPrice,
@@ -300,7 +312,17 @@ class OrderController extends Controller
                 foreach ($order->items as $item) {
                     $product = Product::where('id', $item['id'])->lockForUpdate()->first();
                     if ($product) {
-                        $product->availability = true;
+                        // Only restore availability if no other active (non-cancelled, non-delivered)
+                        // order still references this product. Otherwise, the product was either
+                        // manually disabled by an admin or consumed by other orders, and we must
+                        // not incorrectly re-enable it — that would cause overselling.
+                        $otherActive = \App\Models\Order::whereIn('status', ['confirmed', 'awaiting_verification', 'preparing'])
+                            ->where('id', '!=', $order->id)
+                            ->whereJsonContains('items', [['id' => $product->id]])
+                            ->exists();
+                        if (!$otherActive) {
+                            $product->availability = true;
+                        }
                         $product->save();
 
                         if (!empty($product->stems) && is_array($product->stems)) {

@@ -1,6 +1,7 @@
 import { StrictMode, useState, useEffect, lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Product, User } from './types';
+import { Product, User, Order } from './types';
+import { csrfToken } from './lib/utils';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { Features } from './components/Features';
@@ -19,6 +20,7 @@ const OrderConfirmedModal = lazy(() => import('./components/OrderConfirmedModal'
 function App() {
     // Dynamic catalog & order states
     const [products, setProducts] = useState<Product[]>([]);
+    const [isLoadingProducts, setIsLoadingProducts] = useState(true);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
     // Authentication states
@@ -27,11 +29,12 @@ function App() {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     // Order states
-    const [orders, setOrders] = useState<any[]>([]);
+    const [orders, setOrders] = useState<Order[]>([]);
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
     const [isSummaryOpen, setIsSummaryOpen] = useState(false);
     const [isConfirmedOpen, setIsConfirmedOpen] = useState(false);
-    const [activeOrder, setActiveOrder] = useState<any | null>(null);
+    const [activeOrder, setActiveOrder] = useState<Order | null>(null);
+    const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
 
     // Load catalog items from backend database
     const fetchProducts = async () => {
@@ -43,6 +46,8 @@ function App() {
             }
         } catch (error) {
             console.error('Failed to load products');
+        } finally {
+            setIsLoadingProducts(false);
         }
     };
 
@@ -70,13 +75,13 @@ function App() {
                 if (res.ok) {
                     const data = await res.json();
                     if (data) {
+                        setIsMaintenanceMode(!!data.maintenance_mode);
                         localStorage.setItem('store_settings_downpayment_pct', String(data.downpayment_pct ?? 30));
                         localStorage.setItem('store_settings_name', data.store_name || "Jovy's Flowershop");
                         localStorage.setItem('store_settings_phone', data.store_phone || "+63-2-555-1234");
                         localStorage.setItem('store_settings_address', data.store_address || "123 Rizal Avenue, Makati City, Metro Manila");
                         localStorage.setItem('store_settings_maintenance', String(!!data.maintenance_mode));
                         localStorage.setItem('store_settings_delivery', String(!!data.same_day_delivery));
-                        localStorage.setItem('store_settings_fee', String(data.delivery_fee ?? "150"));
                         localStorage.setItem('store_settings_qr_image', data.qr_image || "");
                     }
                 }
@@ -105,13 +110,12 @@ function App() {
     }, []);
 
     const handleOrderBouquet = (product: Product) => {
+        if (isMaintenanceMode && user?.role !== 'admin' && user?.role !== 'staff') {
+            toast.error('Store is currently undergoing scheduled maintenance. New orders & reservations are temporarily disabled.');
+            return;
+        }
         setSelectedProduct(product);
         setIsCheckoutOpen(true);
-    };
-
-    const csrfToken = () => {
-        const meta = document.querySelector('meta[name="csrf-token"]');
-        return meta ? meta.getAttribute('content') : '';
     };
 
     const handleLogout = async () => {
@@ -141,7 +145,7 @@ function App() {
         }
     };
 
-    const handleCheckoutSuccess = (order: any) => {
+    const handleCheckoutSuccess = (order: Order) => {
         setActiveOrder(order);
         setIsCheckoutOpen(false);
         setIsSummaryOpen(true);
@@ -160,6 +164,14 @@ function App() {
                 onLogout={handleLogout}
                 onProfileClick={() => setIsProfileOpen(true)}
             />
+            {isMaintenanceMode && (
+                <div className="bg-[#D97706] text-white px-4 py-3 text-center text-xs font-bold tracking-wide shadow-md flex items-center justify-center gap-2 select-none border-b border-[#D97706]/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>Store Notice: Under Maintenance — Browsing is open, but online orders & reservations are temporarily paused.</span>
+                </div>
+            )}
             <Hero />
             <Features />
             <ProductList 
@@ -167,6 +179,7 @@ function App() {
                 onOrderBouquet={handleOrderBouquet} 
                 isAuthenticated={!!user}
                 onAuthClick={() => setIsAuthOpen(true)}
+                isLoading={isLoadingProducts}
             />
             <Footer />
 

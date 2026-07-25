@@ -19,16 +19,18 @@ export function OrderSummaryDetails({ order, totalPrice }: OrderSummaryDetailsPr
                 </div>
                 <div className="flex justify-between border-b border-[#0A2A1B]/5 pb-2">
                     <span className="text-[#0A2A1B]/60">Preference</span>
-                    <span className="font-bold uppercase text-xs text-[#D97706]">{order.delivery_type || 'delivery'}</span>
+                    <span className="font-bold uppercase text-xs text-[#D97706]">{order.delivery_type || 'pickup'}</span>
                 </div>
                 <div className="flex justify-between border-b border-[#0A2A1B]/5 pb-2">
-                    <span className="text-[#0A2A1B]/60">Fulfillment Date</span>
+                    <span className="text-[#0A2A1B]/60">Pickup Date</span>
                     <span className="font-semibold text-[#0A2A1B]">{order.delivery_date}</span>
                 </div>
-                <div className="flex justify-between border-b border-[#0A2A1B]/5 pb-2">
-                    <span className="text-[#0A2A1B]/60">Wrapper Style</span>
-                    <span className="font-semibold text-[#0A2A1B]">{order.wrapper_type}</span>
-                </div>
+                {order.wrapper_type && (
+                    <div className="flex justify-between border-b border-[#0A2A1B]/5 pb-2">
+                        <span className="text-[#0A2A1B]/60">Wrapper Style</span>
+                        <span className="font-semibold text-[#0A2A1B]">{order.wrapper_type}</span>
+                    </div>
+                )}
                 {order.delivery_type !== 'pickup' && (
                     <div className="space-y-1">
                         <span className="text-[#0A2A1B]/60 block">Delivery Address</span>

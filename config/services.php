@@ -40,4 +40,9 @@ return [
         'from' => env('HTTPSMS_FROM_NUMBER'),
     ],
 
+    'textbee' => [
+        'key' => env('TEXTBEE_API_KEY'),
+        'device_id' => env('TEXTBEE_DEVICE_ID'),
+    ],
+
 ];

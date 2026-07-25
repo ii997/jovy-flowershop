@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
     'recipient_phone',
     'delivery_address',
     'delivery_date',
-    'wrapper_type',
     'gift_message',
     'items',
     'total_price',
@@ -47,7 +46,7 @@ class Order extends Model
             'delivery_date' => 'date:Y-m-d',
             'payment_details' => 'array',
             'payment_status' => 'string',
-            'total_price' => 'float',
+            'total_price' => 'decimal:2',
         ];
     }
 }

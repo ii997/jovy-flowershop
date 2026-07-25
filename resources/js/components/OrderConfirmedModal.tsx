@@ -189,7 +189,7 @@ export function OrderConfirmedModal({ isOpen, onClose, order }: OrderConfirmedMo
                         {/* Next Steps / Confirmation Message */}
                         <p className="text-sm text-[#0A2A1B]/80 leading-relaxed max-w-[34ch]">
                             {isReservation
-                                ? 'Your reservation details have been recorded. You can complete payment at our store upon pick-up/delivery.'
+                                ? 'Your reservation details have been recorded. You can complete payment at our store upon pick-up.'
                                 : 'Thank you for your purchase. We have received your receipt and will verify the transaction shortly to begin styling your bouquet.'}
                         </p>
 
@@ -204,12 +204,14 @@ export function OrderConfirmedModal({ isOpen, onClose, order }: OrderConfirmedMo
                                 <span className="font-semibold text-[#0A2A1B]">{order.recipient_phone}</span>
                             </div>
                             <div className="flex justify-between border-b border-[#0A2A1B]/5 pb-2">
-                                <span className="text-[#0A2A1B]/55 font-medium">Delivery Date</span>
+                                <span className="text-[#0A2A1B]/55 font-medium">Pickup Date</span>
                                 <span className="font-semibold text-[#0A2A1B]">{order.delivery_date}</span>
                             </div>
                             <div className="flex flex-col gap-1">
-                                <span className="text-[#0A2A1B]/55 font-medium">Delivery Address</span>
-                                <span className="font-semibold text-[#0A2A1B] leading-relaxed">{order.delivery_address}</span>
+                                <span className="text-[#0A2A1B]/55 font-medium">Order Type</span>
+                                <span className="font-semibold text-[#0A2A1B] leading-relaxed">
+                                    {order.delivery_type === 'delivery' ? order.delivery_address : 'Store Pickup'}
+                                </span>
                             </div>
                             <div className="flex justify-between border-t border-[#0A2A1B]/10 pt-3 text-sm">
                                 <span className="font-bold text-[#0A2A1B]">Total Amount</span>

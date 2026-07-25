@@ -12,12 +12,9 @@ interface CheckoutModalProps {
 
 export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: CheckoutModalProps) {
     const [orderType, setOrderType] = useState<'purchase' | 'reservation'>('purchase');
-    const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
-    const [address, setAddress] = useState('');
     const [date, setDate] = useState('');
-    const [wrapper, setWrapper] = useState('Classic Kraft Paper');
     const [giftMessage, setGiftMessage] = useState('');
     const [errors, setErrors] = useState<Record<string, string[]>>({});
     const [isLoading, setIsLoading] = useState(false);
@@ -44,18 +41,13 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
 
         const payload: Record<string, any> = {
             order_type: orderType,
-            delivery_type: deliveryType,
+            delivery_type: 'pickup',
             recipient_name: name,
             recipient_phone: phone,
             delivery_date: date,
-            wrapper_type: wrapper,
             gift_message: giftMessage,
             items: orderItems,
         };
-
-        if (deliveryType === 'delivery') {
-            payload.delivery_address = address;
-        }
 
         try {
             const response = await fetch('/api/orders', {
@@ -85,6 +77,10 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
 
     const transition = useAnimationTransition('elegant');
 
+    const storeName = localStorage.getItem('store_settings_name') || "Jovy's Flowershop";
+    const storeAddress = localStorage.getItem('store_settings_address') || "123 Rizal Avenue, Brgy. San Antonio, Makati City, Metro Manila";
+    const storePhone = localStorage.getItem('store_settings_phone') || "+63-2-555-1234";
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -108,7 +104,7 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
                         className="relative bg-white max-w-lg w-full mx-4 rounded-3xl shadow-2xl p-8 border border-[#0A2A1B]/10 z-10 flex flex-col space-y-5 max-h-[90vh] overflow-y-auto origin-center"
                     >
                 <div className="flex justify-between items-center select-none">
-                    <h3 className="text-xl font-bold text-[#0A2A1B] font-serif">Checkout Details</h3>
+                    <h3 className="text-xl font-bold text-[#0A2A1B] font-serif">Pickup Details</h3>
                     <button
                         onClick={onClose}
                         className="p-1 rounded-full hover:bg-[#0A2A1B]/5 text-[#0A2A1B]/60 hover:text-[#0A2A1B] cursor-pointer transition-all active:scale-90"
@@ -146,29 +142,14 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
                         </div>
                     </div>
 
-                    {/* Delivery Preference Toggle */}
-                    <div className="space-y-1 select-none">
-                        <label className="text-xs font-semibold text-[#0A2A1B] block">Delivery Preference</label>
-                        <div className="flex bg-[#F7F4EB] p-1 rounded-full border border-[#0A2A1B]/5 text-xs font-semibold">
-                            <button
-                                type="button"
-                                onClick={() => setDeliveryType('delivery')}
-                                className={`flex-1 py-2 rounded-full cursor-pointer transition-all text-center ${
-                                    deliveryType === 'delivery' ? 'bg-[#D97706] text-white' : 'text-[#0A2A1B]/60'
-                                }`}
-                            >
-                                <span className="inline-block mr-1.5">??</span> Delivery
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setDeliveryType('pickup')}
-                                className={`flex-1 py-2 rounded-full cursor-pointer transition-all text-center ${
-                                    deliveryType === 'pickup' ? 'bg-[#D97706] text-white' : 'text-[#0A2A1B]/60'
-                                }`}
-                            >
-                                <span className="inline-block mr-1.5">??</span> Pickup
-                            </button>
-                        </div>
+                    {/* Pickup Location Info Card */}
+                    <div className="bg-[#F7F4EB] p-3.5 rounded-2xl border border-[#0A2A1B]/5 select-none">
+                        <p className="text-xs text-[#0A2A1B]/70 leading-relaxed">
+                            <span className="font-semibold text-[#0A2A1B]">Pickup Location:</span><br />
+                            {storeName} • {storeAddress}<br />
+                            <span className="font-semibold text-[#0A2A1B]">Contact:</span> {storePhone}<br />
+                            <span className="font-medium">Store Hours:</span> Mon–Fri 8AM–7PM, Sat 9AM–6PM
+                        </p>
                     </div>
 
                     {/* Recipient Name */}
@@ -197,67 +178,17 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
                         {errors.recipient_phone && <p className="text-red-600 text-xs mt-1">{errors.recipient_phone[0]}</p>}
                     </div>
 
-                    {/* Delivery Address ? only shown for delivery orders */}
-                    {deliveryType === 'delivery' && (
-                        <div className="space-y-1">
-                            <label className="text-xs font-semibold text-[#0A2A1B] block">Delivery Address</label>
-                            <input
-                                type="text"
-                                value={address}
-                                onChange={(e) => setAddress(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-white border border-[#0A2A1B]/15 rounded-full text-sm focus:outline-none focus:border-[#D97706] text-[#0A2A1B] transition-colors"
-                                required
-                            />
-                            {errors.delivery_address && <p className="text-red-600 text-xs mt-1">{errors.delivery_address[0]}</p>}
-                        </div>
-                    )}
-
-                    {/* Pickup info banner */}
-                    {deliveryType === 'pickup' && (() => {
-                        const storeName = localStorage.getItem('store_settings_name') || "Jovy's Flowershop";
-                        const storeAddress = localStorage.getItem('store_settings_address') || "123 Rizal Avenue, Brgy. San Antonio, Makati City, Metro Manila";
-                        const storePhone = localStorage.getItem('store_settings_phone') || "+63-2-555-1234";
-                        return (
-                            <div className="bg-[#F7F4EB] p-3 rounded-2xl border border-[#0A2A1B]/5">
-                                <p className="text-xs text-[#0A2A1B]/70 leading-relaxed">
-                                    <span className="font-semibold text-[#0A2A1B]">Pickup Location:</span><br />
-                                    {storeName} • {storeAddress}<br />
-                                    <span className="font-semibold text-[#0A2A1B]">Contact:</span> {storePhone}<br />
-                                    <span className="font-medium">Store Hours:</span> Mon–Fri 8AM–7PM, Sat 9AM–6PM
-                                </p>
-                            </div>
-                        );
-                    })()}
-
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* Delivery/Pickup Date */}
-                        <div className="space-y-1">
-                            <label className="text-xs font-semibold text-[#0A2A1B] block">
-                                {deliveryType === 'delivery' ? 'Delivery Date' : 'Pickup Date'}
-                            </label>
-                            <input
-                                type="date"
-                                value={date}
-                                onChange={(e) => setDate(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-white border border-[#0A2A1B]/15 rounded-full text-sm focus:outline-none focus:border-[#D97706] text-[#0A2A1B] transition-colors"
-                                required
-                            />
-                            {errors.delivery_date && <p className="text-red-600 text-xs mt-1">{errors.delivery_date[0]}</p>}
-                        </div>
-
-                        {/* Wrapping Type Selector */}
-                        <div className="space-y-1">
-                            <label className="text-xs font-semibold text-[#0A2A1B] block">Arrangement Style</label>
-                            <select
-                                value={wrapper}
-                                onChange={(e) => setWrapper(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-white border border-[#0A2A1B]/15 rounded-full text-sm focus:outline-none focus:border-[#D97706] text-[#0A2A1B] transition-colors cursor-pointer"
-                            >
-                                <option value="Classic Kraft Paper">Classic Kraft Paper</option>
-                                <option value="Luxury Gift Box">Luxury Gift Box</option>
-                                <option value="Elegant Glass Vase">Elegant Glass Vase</option>
-                            </select>
-                        </div>
+                    {/* Pickup Date */}
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-[#0A2A1B] block">Pickup Date</label>
+                        <input
+                            type="date"
+                            value={date}
+                            onChange={(e) => setDate(e.target.value)}
+                            className="w-full px-4 py-2.5 bg-white border border-[#0A2A1B]/15 rounded-full text-sm focus:outline-none focus:border-[#D97706] text-[#0A2A1B] transition-colors"
+                            required
+                        />
+                        {errors.delivery_date && <p className="text-red-600 text-xs mt-1">{errors.delivery_date[0]}</p>}
                     </div>
 
                     {/* Gift Message */}
@@ -288,7 +219,7 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
                                         <span>₱{(cartTotal * downpaymentFraction).toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-xs text-[#0A2A1B]/50 font-medium">
-                                        <span>Remaining Balance (Pay on {deliveryType === 'pickup' ? 'pickup' : 'delivery'})</span>
+                                        <span>Remaining Balance (Pay on pickup)</span>
                                         <span>₱{(cartTotal * (1 - downpaymentFraction)).toFixed(2)}</span>
                                     </div>
                                 </>
@@ -304,8 +235,8 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
                         {isLoading
                             ? 'Processing Order...'
                             : orderType === 'purchase'
-                            ? `Complete ${deliveryType === 'pickup' ? 'Pickup' : 'Delivery'} Order`
-                            : `Place ${deliveryType === 'pickup' ? 'Pickup' : 'Delivery'} Reservation`}
+                            ? 'Complete Pickup Order'
+                            : 'Place Pickup Reservation'}
                     </button>
                 </form>
                     </motion.div>

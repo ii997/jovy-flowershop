@@ -31,8 +31,11 @@ export function OrderSummaryModal({ isOpen, onClose, order, onPaymentSuccess }: 
         isOcrLoading,
         ocrProgress,
         refNo,
+        setRefNo,
         paymentAmount,
+        setPaymentAmount,
         txnDate,
+        setTxnDate,
         validateAndSetFile,
     } = useReceiptOcr(order, isOpen);
 
@@ -240,9 +243,9 @@ export function OrderSummaryModal({ isOpen, onClose, order, onPaymentSuccess }: 
                                                         <input
                                                             type="text"
                                                             value={refNo}
-                                                            readOnly
-                                                            className="px-3 py-2 border border-[#0A2A1B]/15 bg-[#0A2A1B]/[0.03] text-[#0A2A1B] font-semibold rounded-xl focus:outline-none cursor-default"
-                                                            placeholder="Reference Number"
+                                                            onChange={(e) => setRefNo(e.target.value)}
+                                                            className="px-3 py-2 border border-[#0A2A1B]/20 bg-white text-[#0A2A1B] font-semibold rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706]/40"
+                                                            placeholder="Enter or verify Reference #"
                                                         />
                                                     </div>
                                                     <div className="flex flex-col gap-1">
@@ -250,13 +253,13 @@ export function OrderSummaryModal({ isOpen, onClose, order, onPaymentSuccess }: 
                                                         <input
                                                             type="text"
                                                             value={paymentAmount}
-                                                            readOnly
-                                                            className={`px-3 py-2 border-2 font-semibold rounded-xl focus:outline-none cursor-default transition-colors ${
+                                                            onChange={(e) => setPaymentAmount(e.target.value)}
+                                                            className={`px-3 py-2 border-2 font-semibold rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706]/40 transition-colors ${
                                                                 amountMismatch
                                                                     ? 'border-red-500 text-red-700 bg-red-50/50'
-                                                                    : 'border-[#0A2A1B]/15 text-[#0A2A1B] bg-[#0A2A1B]/[0.03]'
+                                                                    : 'border-[#0A2A1B]/20 text-[#0A2A1B] bg-white'
                                                             }`}
-                                                            placeholder="Amount"
+                                                            placeholder="Enter or verify Amount"
                                                         />
                                                         {amountMismatch && (
                                                             <div className="flex items-start gap-1.5 mt-1 px-1">
@@ -274,9 +277,9 @@ export function OrderSummaryModal({ isOpen, onClose, order, onPaymentSuccess }: 
                                                         <input
                                                             type="text"
                                                             value={txnDate}
-                                                            readOnly
-                                                            className="px-3 py-2 border border-[#0A2A1B]/15 bg-[#0A2A1B]/[0.03] text-[#0A2A1B] font-semibold rounded-xl focus:outline-none cursor-default"
-                                                            placeholder="Transaction Date"
+                                                            onChange={(e) => setTxnDate(e.target.value)}
+                                                            className="px-3 py-2 border border-[#0A2A1B]/20 bg-white text-[#0A2A1B] font-semibold rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706]/40"
+                                                            placeholder="Enter or verify Date"
                                                         />
                                                     </div>
                                                 </div>

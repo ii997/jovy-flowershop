@@ -1,18 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Product, User } from './types';
 import { AdminPanel } from './components/AdminPanel';
 import { ToastContainer } from './components/ui/Toast';
+import { csrfToken } from './lib/utils';
+
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            refetchOnWindowFocus: false,
+            retry: 1,
+        },
+    },
+});
 
 function AdminApp() {
     const [user, setUser] = useState<User | null>(null);
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-
-    const csrfToken = () => {
-        const meta = document.querySelector('meta[name="csrf-token"]');
-        return meta ? meta.getAttribute('content') : '';
-    };
+    const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
     // Load active session and products
     useEffect(() => {
@@ -23,13 +30,20 @@ function AdminApp() {
                     const currentUser = await response.json();
                     if (currentUser && currentUser.id && (currentUser.role === 'admin' || currentUser.role === 'staff')) {
                         setUser(currentUser);
-                        // Once authenticated, fetch products
-                        const prodRes = await fetch('/api/products');
-                        if (prodRes.ok) {
-                            const prodData = await prodRes.json();
-                            setProducts(prodData);
-                        }
                         setIsLoading(false);
+
+                        // Fetch products for inventory
+                        try {
+                            const prodRes = await fetch('/api/products');
+                            if (prodRes.ok) {
+                                const prodData = await prodRes.json();
+                                setProducts(prodData);
+                            }
+                        } catch (e) {
+                            console.error('Failed to load products in admin', e);
+                        } finally {
+                            setIsLoadingProducts(false);
+                        }
                     } else {
                         // Not an admin/staff, redirect to storefront
                         window.location.href = '/';
@@ -75,18 +89,16 @@ function AdminApp() {
     }
 
     return (
-        <>
-            <ToastContainer />
-            <AdminPanel
-                user={user}
-                products={products}
-                onUpdateProducts={(updated) => setProducts(updated)}
-                onBackToStore={() => {
-                    window.location.href = '/';
-                }}
-                onLogout={handleLogout}
-            />
-        </>
+        <AdminPanel
+            user={user}
+            products={products}
+            isLoadingProducts={isLoadingProducts}
+            onUpdateProducts={(updated) => setProducts(updated)}
+            onBackToStore={() => {
+                window.location.href = '/';
+            }}
+            onLogout={handleLogout}
+        />
     );
 }
 
@@ -95,7 +107,10 @@ if (container) {
     const root = createRoot(container);
     root.render(
         <React.StrictMode>
-            <AdminApp />
+            <QueryClientProvider client={queryClient}>
+                <ToastContainer />
+                <AdminApp />
+            </QueryClientProvider>
         </React.StrictMode>
     );
 }

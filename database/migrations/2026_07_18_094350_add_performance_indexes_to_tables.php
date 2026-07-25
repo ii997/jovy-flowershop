@@ -34,10 +34,6 @@ return new class extends Migration
             $table->unique('name', 'flowers_name_unique');
         });
 
-        // Newsletter: email is already unique via validation, add index
-        Schema::table('newsletter_subscriptions', function (Blueprint $table) {
-            $table->index('created_at');
-        });
     }
 
     /**
@@ -46,7 +42,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', fn(Blueprint $t) => $t->dropIndex(['role']));
-        Schema::table('products', fn(Blueprint $t) => $t->dropIndex(['category', 'availability'])); // only drops first
         Schema::table('products', function (Blueprint $t) {
             $t->dropIndex(['category']);
             $t->dropIndex(['availability']);
@@ -57,6 +52,5 @@ return new class extends Migration
             $t->dropIndex(['created_at']);
         });
         Schema::table('flowers', fn(Blueprint $t) => $t->dropUnique('flowers_name_unique'));
-        Schema::table('newsletter_subscriptions', fn(Blueprint $t) => $t->dropIndex(['created_at']));
     }
 };
