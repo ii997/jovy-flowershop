@@ -15,8 +15,10 @@ class SmsLog extends Model
         'message',
         'gateway',
         'status',
+        'attempts',
         'error_details',
         'notification_id',
+        'order_id',
     ];
 
     /**
@@ -25,5 +27,13 @@ class SmsLog extends Model
     public function notification(): BelongsTo
     {
         return $this->belongsTo(Notification::class);
+    }
+
+    /**
+     * Get the order associated with the SMS log.
+     */
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
     }
 }

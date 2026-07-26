@@ -24,16 +24,14 @@ class OrderTest extends TestCase
 
     public function test_order_total_price_is_recalculated_server_side(): void
     {
-        $user = User::where('email', 'customer@jovy.com')->first();
+        $user = User::where('email', 'carlos@customer.com')->first() ?: User::factory()->create();
         $product = Product::where('name', 'Crimson Romance')->first();
 
         $response = $this->actingAs($user)->postJson('/api/orders', [
             'order_type' => 'purchase',
-            'delivery_type' => 'delivery',
             'recipient_name' => 'Jane Doe',
             'recipient_phone' => '09123456789',
-            'delivery_address' => '123 Flower St.',
-            'delivery_date' => now()->addDays(2)->format('Y-m-d'),
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
             'wrapper_type' => 'Classic Kraft Paper',
             'gift_message' => 'Happy birthday!',
             'items' => [
@@ -52,16 +50,14 @@ class OrderTest extends TestCase
 
     public function test_order_items_use_server_price_not_client_price(): void
     {
-        $user = User::where('email', 'customer@jovy.com')->first();
+        $user = User::where('email', 'carlos@customer.com')->first() ?: User::factory()->create();
         $product = Product::where('name', 'Crimson Romance')->first();
 
         $response = $this->actingAs($user)->postJson('/api/orders', [
             'order_type' => 'purchase',
-            'delivery_type' => 'delivery',
             'recipient_name' => 'Jane Doe',
             'recipient_phone' => '09123456789',
-            'delivery_address' => '123 Flower St.',
-            'delivery_date' => now()->addDays(2)->format('Y-m-d'),
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
             'wrapper_type' => 'Classic Kraft Paper',
             'items' => [
                 ['id' => $product->id, 'quantity' => 1, 'price' => 0.01], // Client sends wrong price
@@ -78,7 +74,7 @@ class OrderTest extends TestCase
 
     public function test_order_sets_product_unavailable_when_quantity_reaches_zero(): void
     {
-        $user = User::where('email', 'customer@jovy.com')->first();
+        $user = User::where('email', 'carlos@customer.com')->first() ?: User::factory()->create();
         $product = Product::where('name', 'Sweet Spring')->first(); // quantity = 0, availability = false
 
         $this->assertFalse($product->availability);
@@ -93,7 +89,7 @@ class OrderTest extends TestCase
 
     public function test_customer_can_only_view_own_orders(): void
     {
-        $customer = User::where('email', 'customer@jovy.com')->first();
+        $customer = User::where('email', 'carlos@customer.com')->first() ?: User::factory()->create();
         $admin = User::where('email', 'admin@jovy.com')->first();
 
         // Create an order as admin
@@ -101,11 +97,9 @@ class OrderTest extends TestCase
         Order::create([
             'user_id' => $admin->id,
             'order_type' => 'purchase',
-            'delivery_type' => 'delivery',
             'recipient_name' => 'Admin Order',
             'recipient_phone' => '09123456789',
-            'delivery_address' => '456 Admin St.',
-            'delivery_date' => now()->addDays(1)->format('Y-m-d'),
+            'pickup_date' => now()->addDays(1)->format('Y-m-d'),
             'wrapper_type' => 'Classic Kraft Paper',
             'items' => [['id' => $product->id, 'name' => $product->name, 'price' => $product->price, 'quantity' => 1]],
             'total_price' => $product->price,
@@ -123,15 +117,13 @@ class OrderTest extends TestCase
 
     public function test_order_rejects_non_existent_product(): void
     {
-        $user = User::where('email', 'customer@jovy.com')->first();
+        $user = User::where('email', 'carlos@customer.com')->first() ?: User::factory()->create();
 
         $response = $this->actingAs($user)->postJson('/api/orders', [
             'order_type' => 'purchase',
-            'delivery_type' => 'delivery',
             'recipient_name' => 'Jane Doe',
             'recipient_phone' => '09123456789',
-            'delivery_address' => '123 Flower St.',
-            'delivery_date' => now()->addDays(2)->format('Y-m-d'),
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
             'wrapper_type' => 'Classic Kraft Paper',
             'items' => [
                 ['id' => 99999, 'quantity' => 1],

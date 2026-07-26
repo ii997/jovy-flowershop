@@ -17,8 +17,7 @@ return new class extends Migration
             $table->string('order_type');
             $table->string('recipient_name');
             $table->string('recipient_phone');
-            $table->string('delivery_address');
-            $table->date('delivery_date');
+            $table->date('pickup_date');
             $table->string('wrapper_type')->default('Kraft Paper');
             $table->text('gift_message')->nullable();
             $table->text('items');

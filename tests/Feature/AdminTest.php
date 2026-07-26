@@ -20,7 +20,7 @@ class AdminTest extends TestCase
 
     public function test_non_admin_cannot_access_admin_stats(): void
     {
-        $customer = User::where('email', 'customer@jovy.com')->first();
+        $customer = User::where('email', 'carlos@customer.com')->first() ?: User::factory()->create();
 
         $response = $this->actingAs($customer)->getJson('/api/admin/stats');
         $response->assertStatus(403);
@@ -76,11 +76,9 @@ class AdminTest extends TestCase
         $order = \App\Models\Order::create([
             'user_id' => $admin->id,
             'order_type' => 'purchase',
-            'delivery_type' => 'delivery',
             'recipient_name' => 'Test',
             'recipient_phone' => '09123456789',
-            'delivery_address' => '123 St',
-            'delivery_date' => now()->addDays(1)->format('Y-m-d'),
+            'pickup_date' => now()->addDays(1)->format('Y-m-d'),
             'wrapper_type' => 'Paper',
             'items' => [['id' => $product->id, 'name' => $product->name, 'price' => $product->price, 'quantity' => 1]],
             'total_price' => $product->price,

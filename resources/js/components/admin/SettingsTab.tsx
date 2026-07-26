@@ -22,10 +22,9 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
 
     // Store Settings States (persisted in localStorage)
     const [storeName, setStoreName] = useState("Jovy's Flowershop");
-    const [storePhone, setStorePhone] = useState("+63-2-555-1234");
-    const [storeAddress, setStoreAddress] = useState("123 Rizal Avenue, Makati City, Metro Manila");
+    const [storePhone, setStorePhone] = useState("+63-951-870-1625");
+    const [storeAddress, setStoreAddress] = useState("Barangay Pob. Kidapawan City");
     const [maintenanceMode, setMaintenanceMode] = useState(false);
-    const [sameDayDelivery, setSameDayDelivery] = useState(true);
     const [downpaymentPct, setDownpaymentPct] = useState(30);
     const [storeSuccess, setStoreSuccess] = useState('');
     const [qrImage, setQrImage] = useState('');
@@ -49,10 +48,9 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
                     const data = await res.json();
                     if (data) {
                         setStoreName(data.store_name || "Jovy's Flowershop");
-                        setStorePhone(data.store_phone || "+63-2-555-1234");
-                        setStoreAddress(data.store_address || "123 Rizal Avenue, Makati City, Metro Manila");
+                        setStorePhone(data.store_phone || "+63-951-870-1625");
+                        setStoreAddress(data.store_address || "Barangay Pob. Kidapawan City");
                         setMaintenanceMode(!!data.maintenance_mode);
-                        setSameDayDelivery(!!data.same_day_delivery);
                         setQrImage(data.qr_image || "");
                         setDownpaymentPct(data.downpayment_pct ?? 30);
                     }
@@ -124,7 +122,6 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
             store_phone: storePhone,
             store_address: storeAddress,
             maintenance_mode: maintenanceMode,
-            same_day_delivery: sameDayDelivery,
             qr_image: qrImage,
             downpayment_pct: downpaymentPct
         };
@@ -146,7 +143,6 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
                 localStorage.setItem('store_settings_phone', storePhone);
                 localStorage.setItem('store_settings_address', storeAddress);
                 localStorage.setItem('store_settings_maintenance', String(maintenanceMode));
-                localStorage.setItem('store_settings_delivery', String(sameDayDelivery));
                 localStorage.setItem('store_settings_qr_image', qrImage);
                 localStorage.setItem('store_settings_downpayment_pct', String(downpaymentPct));
 
@@ -286,7 +282,7 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
 
                             <div className="flex flex-col gap-2 md:col-span-2 pt-2 border-t border-[#0A2A1B]/5">
                                 <label className="text-[11px] uppercase font-bold tracking-wider text-[#0A2A1B]/60">InstaPay QR Code Image</label>
-                                
+
                                 {qrImage ? (
                                     <div className="flex items-center gap-4 p-3 bg-[#FAF9F6] border border-[#0A2A1B]/10 rounded-2xl">
                                         <img
@@ -316,11 +312,10 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
                                         onDragOver={(e) => { e.preventDefault(); setIsQrDragging(true); }}
                                         onDragLeave={() => setIsQrDragging(false)}
                                         onClick={() => qrFileInputRef.current?.click()}
-                                        className={`relative flex flex-col items-center justify-center gap-2 py-6 px-4 rounded-2xl border-2 border-dashed cursor-pointer transition-all duration-200 ${
-                                            isQrDragging
+                                        className={`relative flex flex-col items-center justify-center gap-2 py-6 px-4 rounded-2xl border-2 border-dashed cursor-pointer transition-all duration-200 ${isQrDragging
                                                 ? 'border-[#D97706] bg-[#D97706]/5 scale-[1.01]'
                                                 : 'border-[#0A2A1B]/15 bg-[#FAF9F6] hover:border-[#D97706]/50 hover:bg-[#D97706]/[0.02]'
-                                        } ${isQrUploading ? 'pointer-events-none opacity-60' : ''}`}
+                                            } ${isQrUploading ? 'pointer-events-none opacity-60' : ''}`}
                                     >
                                         {isQrUploading ? (
                                             <>
@@ -355,19 +350,6 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
 
                         {/* Toggle Switches */}
                         <div className="space-y-4 pt-2">
-                            <div className="flex items-center justify-between p-4 bg-gray-50/60 rounded-2xl border border-[#0A2A1B]/5 hover:border-[#0A2A1B]/10 transition-colors">
-                                <div className="space-y-0.5 pr-4">
-                                    <h4 className="text-xs font-bold text-[#0A2A1B]">Same-Day Delivery</h4>
-                                    <p className="text-[10px] text-[#0A2A1B]/50 font-medium">Allow customers to request expedited, same-day fulfillment at checkout.</p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setSameDayDelivery(!sameDayDelivery)}
-                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-hidden ${sameDayDelivery ? 'bg-[#0A2A1B]' : 'bg-gray-200'}`}
-                                >
-                                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${sameDayDelivery ? 'translate-x-5' : 'translate-x-0'}`} />
-                                </button>
-                            </div>
 
                             <div className="flex items-center justify-between p-4 bg-gray-50/60 rounded-2xl border border-[#0A2A1B]/5 hover:border-[#0A2A1B]/10 transition-colors">
                                 <div className="space-y-0.5 pr-4">
@@ -441,7 +423,7 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
 
                         <div className="space-y-4 pt-3 border-t border-[#0A2A1B]/5">
                             <h3 className="text-xs font-bold text-[#0A2A1B]/70 tracking-tight uppercase">Update Access Credentials</h3>
-                            
+
                             <div className="flex flex-col gap-1.5">
                                 <label className="text-[11px] uppercase font-bold tracking-wider text-[#0A2A1B]/60">Current Password</label>
                                 <input

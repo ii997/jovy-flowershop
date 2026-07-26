@@ -256,7 +256,7 @@ export function DashboardTab({ stats, isLoading = false }: DashboardTabProps) {
                                 <th className="py-3 px-4">Order ID</th>
                                 <th className="py-3 px-4">Recipient</th>
                                 <th className="py-3 px-4">Type</th>
-                                <th className="py-3 px-4">Delivery Date</th>
+                                <th className="py-3 px-4">Pickup Date</th>
                                 <th className="py-3 px-4 text-right">Total Price</th>
                             </tr>
                         </thead>
@@ -273,7 +273,7 @@ export function DashboardTab({ stats, isLoading = false }: DashboardTabProps) {
                                             {o.order_type === 'purchase' ? 'Purchase' : 'Reservation'}
                                         </span>
                                     </td>
-                                    <td className="py-3.5 px-4">{o.delivery_date}</td>
+                                    <td className="py-3.5 px-4">{o.pickup_date}</td>
                                     <td className="py-3.5 px-4 text-right font-semibold">₱{parseFloat(o.total_price).toFixed(2)}</td>
                                 </tr>
                             ))}

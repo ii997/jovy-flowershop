@@ -68,7 +68,7 @@ class DatabaseSeeder extends Seeder
             ],
             [
                 'name' => 'Golden Radiance',
-                'price' => 55.00,
+                'price' => 2150.00,
                 'category' => 'Cheerful Blooms',
                 'image' => '/images/sunflowers.png',
                 'description' => 'Bright and sunny golden sunflowers presented elegantly in a clear glass mason jar.',
@@ -82,7 +82,7 @@ class DatabaseSeeder extends Seeder
             ],
             [
                 'name' => 'Pure Harmony',
-                'price' => 150.00,
+                'price' => 1250.00,
                 'category' => 'Exotics',
                 'image' => '/images/wedding.png',
                 'description' => 'A lavish luxury wedding bouquet of premium white roses, delicate white peonies, and eucalyptus leaves.',
@@ -96,7 +96,7 @@ class DatabaseSeeder extends Seeder
             ],
             [
                 'name' => 'Serene Tribute',
-                'price' => 95.00,
+                'price' => 2050.00,
                 'category' => 'Bouquets',
                 'image' => '/images/funeral.png',
                 'description' => 'A respectful sympathy flower arrangement with premium white lilies, soft white roses, and greens in a basket.',
@@ -110,7 +110,7 @@ class DatabaseSeeder extends Seeder
             ],
             [
                 'name' => 'Autumn Whisper',
-                'price' => 75.00,
+                'price' => 1175.00,
                 'category' => 'Bouquets',
                 'image' => '/images/autumn.png',
                 'description' => 'An autumn harvest layout of deep orange dahlias, golden chrysanthemums, and berries in a rustic wooden crate.',
@@ -124,7 +124,7 @@ class DatabaseSeeder extends Seeder
             ],
             [
                 'name' => 'Sweet Spring',
-                'price' => 70.00,
+                'price' => 1270.00,
                 'category' => 'Seasonal Tulips',
                 'image' => '/images/tulips.png',
                 'description' => 'A bright spring arrangement of pink and purple tulips. Hand-tied and beautifully wrapped.',
@@ -138,7 +138,7 @@ class DatabaseSeeder extends Seeder
             ],
             [
                 'name' => 'Lavender Serenity',
-                'price' => 60.00,
+                'price' => 1260.00,
                 'category' => 'Bouquets',
                 'image' => '/images/sunflowers.png',
                 'description' => 'A calming arrangement of dried lavender bundles, white statice, and silver foliage in a linen-wrapped vase.',
@@ -152,7 +152,7 @@ class DatabaseSeeder extends Seeder
             ],
             [
                 'name' => 'Tropical Sunrise',
-                'price' => 110.00,
+                'price' => 2260.00,
                 'category' => 'Exotic Plants',
                 'image' => '/images/orchids.png',
                 'description' => 'Vibrant birds of paradise, proteas, and monstera leaves arranged in a modern ceramic block.',
@@ -166,7 +166,7 @@ class DatabaseSeeder extends Seeder
             ],
             [
                 'name' => 'Pink Whispers',
-                'price' => 85.00,
+                'price' => 1285.00,
                 'category' => 'Classic Roses',
                 'image' => '/images/roses.png',
                 'description' => 'Delicate blush pink roses paired with baby\'s breath and silver dusty miller in a vintage apothecary jar.',
@@ -180,7 +180,7 @@ class DatabaseSeeder extends Seeder
             ],
             [
                 'name' => 'Daisy Dreams',
-                'price' => 45.00,
+                'price' => 1145.00,
                 'category' => 'Cheerful Blooms',
                 'image' => '/images/sunflowers.png',
                 'description' => 'A playful mix of white and yellow daisies, blue cornflowers, and fresh greenery in a cheerful ceramic pot.',
@@ -202,26 +202,14 @@ class DatabaseSeeder extends Seeder
         $this->call(UserSeeder::class);
 
         // Seed customer users
-        User::create([
-            'name' => 'Jane Customer',
-            'email' => 'customer@jovy.com',
-            'password' => \Illuminate\Support\Facades\Hash::make('password'),
-            'role' => \App\Enums\UserRole::Customer,
-        ]);
 
         User::create([
             'name' => 'Carlos Gomez',
-            'email' => 'carlos@example.com',
+            'email' => 'carlos@customer.com',
             'password' => \Illuminate\Support\Facades\Hash::make('password'),
             'role' => \App\Enums\UserRole::Customer,
         ]);
-
-        User::create([
-            'name' => 'Lisa Chen',
-            'email' => 'lisa@example.com',
-            'password' => \Illuminate\Support\Facades\Hash::make('password'),
-            'role' => \App\Enums\UserRole::Customer,
-        ]);
+       
     }
 }
 

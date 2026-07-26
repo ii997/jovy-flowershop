@@ -1,26 +1,26 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <meta name="description" content="Bespoke, luxury floral arrangements handpicked and styled to order. Shop fresh roses, seasonal tulips, and exotic plants with same-day hand delivery.">
+        <meta name="description" content="Bespoke, luxury floral arrangements handpicked and styled to order. Shop fresh roses, seasonal tulips, and exotic plants for easy store pickup and pre-ordering.">
         
         {{-- Canonical URL --}}
         <link rel="canonical" href="{{ url()->current() }}">
 
         {{-- Open Graph / Social Meta Tags --}}
         <meta property="og:type" content="website">
-        <meta property="og:title" content="Jovy's Flowershop | Artisanal Floral Arrangements & Bouquets">
-        <meta property="og:description" content="Bespoke, luxury floral arrangements handpicked and styled to order. Shop fresh roses, seasonal tulips, and exotic plants with same-day hand delivery in Metro Manila.">
+        <meta property="og:title" content="Jovy's Flowershop">
+        <meta property="og:description" content="Bespoke, luxury floral arrangements handpicked and styled to order. Shop fresh roses, seasonal tulips, and exotic plants for easy store pickup and pre-ordering.">
         <meta property="og:url" content="{{ url()->current() }}">
         <meta property="og:site_name" content="Jovy's Flowershop">
         <meta property="og:locale" content="{{ str_replace('_', '-', app()->getLocale()) }}">
         <meta name="twitter:card" content="summary_large_image">
-        <meta name="twitter:title" content="Jovy's Flowershop | Artisanal Floral Arrangements & Bouquets">
-        <meta name="twitter:description" content="Bespoke, luxury floral arrangements handpicked and styled to order. Shop fresh roses, seasonal tulips, and exotic plants with same-day hand delivery in Metro Manila.">
+        <meta name="twitter:title" content="Jovy's Flowershop">
+        <meta name="twitter:description" content="Bespoke, luxury floral arrangements handpicked and styled to order. Shop fresh roses, seasonal tulips, and exotic plants for easy store pickup and pre-ordering.">
 
-        <title>Jovy's Flowershop | Artisanal Floral Arrangements & Bouquets</title>
+        <title>Jovy's Flowershop</title>
 
         @fonts
 

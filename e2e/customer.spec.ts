@@ -59,15 +59,14 @@ test.describe('Customer Flow', () => {
         await checkoutBtn.click();
 
         // Fill out Checkout Form
-        const checkoutModal = page.locator('div[role="dialog"]', { hasText: 'Checkout Details' });
+        const checkoutModal = page.locator('div[role="dialog"]', { hasText: 'Pickup Details' });
         await expect(checkoutModal).toBeVisible();
 
         // Resolve strict mode issues by using index selectors on input fields
         await checkoutModal.locator('input[type="text"]').first().fill('Jane Customer');
         await checkoutModal.locator('input[type="tel"]').fill('09123456789');
-        await checkoutModal.locator('input[type="text"]').nth(1).fill('123 Flower Lane, Garden City');
 
-        // Set delivery date to tomorrow using local timezone
+        // Set pickup date to tomorrow using local timezone
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         const year = tomorrow.getFullYear();
@@ -77,7 +76,7 @@ test.describe('Customer Flow', () => {
         await checkoutModal.locator('input[type="date"]').fill(dateString);
 
         // Submit checkout
-        await checkoutModal.getByRole('button', { name: 'Complete Purchase Order' }).click();
+        await checkoutModal.getByRole('button', { name: 'Complete Pickup Order' }).click();
 
         // Verify Order Confirmation displays
         const summaryModal = page.locator('div[role="dialog"]', { hasText: 'Order Confirmation' });

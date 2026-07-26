@@ -13,7 +13,7 @@ use libphonenumber\NumberParseException;
 class NotificationService
 {
     /**
-     * Send in-app and optionally SMS notifications to customers or staff/admin.
+     * Send in-app and optionally dispatch SMS notifications via queue.
      */
     public static function send(
         ?int $userId,
@@ -22,9 +22,10 @@ class NotificationService
         string $type,
         bool $isAdmin = false,
         bool $sendSms = false,
-        ?string $customPhone = null
+        ?string $customPhone = null,
+        ?int $orderId = null
     ): Notification {
-        // 1. Persist the notification in the database
+        // 1. Persist in-app notification in the database
         $notification = Notification::create([
             'user_id' => $userId,
             'title' => $title,
@@ -33,58 +34,77 @@ class NotificationService
             'is_admin' => $isAdmin,
         ]);
 
-        // 2. Dispatch SMS via httpSMS if requested
-        if ($sendSms && !empty($customPhone)) {
-            self::dispatchSms($customPhone, $message, $notification);
+        // 2. Dispatch SMS via SendStatusUpdateSMS job if requested
+        if ($sendSms && !empty($customPhone) && $orderId) {
+            \App\Jobs\SendStatusUpdateSMS::dispatch($orderId, $type, $customPhone)
+                ->onQueue(config('sms.queue', 'sms'));
         }
 
         return $notification;
     }
 
     /**
-     * Dispatch SMS message via primary gateway (httpSMS) with fallback to secondary gateway (TextBee).
+     * Directly send an SMS payload via configured default gateway with fallback to secondary gateway.
+     * Returns true on success, false on failure. Logs all attempts in database.
      */
-    protected static function dispatchSms(string $toPhone, string $content, Notification $originalNotification): void
-    {
+    public static function sendSmsDirect(
+        string $toPhone,
+        string $content,
+        ?int $orderId = null,
+        int $attempts = 1
+    ): bool {
         $formattedTo = self::formatPhoneNumber($toPhone);
+        $primaryDriver = config('sms.default', 'httpsms');
 
-        // 1. Attempt Primary Gateway (httpSMS)
-        if (self::sendViaHttpSms($formattedTo, $content)) {
+        $isTextBeePrimary = ($primaryDriver === 'textbee');
+        $primaryMethod = $isTextBeePrimary ? 'sendViaTextBee' : 'sendViaHttpSms';
+        $secondaryMethod = $isTextBeePrimary ? 'sendViaHttpSms' : 'sendViaTextBee';
+        $primaryGatewayName = $isTextBeePrimary ? 'textbee' : 'httpsms';
+        $secondaryGatewayName = $isTextBeePrimary ? 'httpsms' : 'textbee';
+
+        // 1. Attempt Primary Gateway
+        if (self::$primaryMethod($formattedTo, $content)) {
             SmsLog::create([
                 'phone_number' => $formattedTo,
                 'message' => $content,
-                'gateway' => 'httpsms',
+                'gateway' => $primaryGatewayName,
                 'status' => 'sent',
-                'notification_id' => $originalNotification->id,
+                'attempts' => $attempts,
+                'order_id' => $orderId,
             ]);
-            return;
+            Log::info("SMS successfully delivered to {$formattedTo} via {$primaryGatewayName} (Order #JFS-{$orderId}, attempt {$attempts}).");
+            return true;
         }
 
-        Log::warning("Primary SMS gateway (httpSMS) failed or not configured. Attempting fallback via TextBee for {$formattedTo}.");
+        Log::warning("Primary SMS gateway ({$primaryGatewayName}) failed. Attempting fallback via {$secondaryGatewayName} for {$formattedTo}.");
 
-        // 2. Attempt Fallback Gateway (TextBee)
-        if (self::sendViaTextBee($formattedTo, $content)) {
+        // 2. Attempt Fallback Gateway
+        if (self::$secondaryMethod($formattedTo, $content)) {
             SmsLog::create([
                 'phone_number' => $formattedTo,
                 'message' => $content,
-                'gateway' => 'textbee',
+                'gateway' => $secondaryGatewayName,
                 'status' => 'sent',
-                'notification_id' => $originalNotification->id,
+                'attempts' => $attempts,
+                'order_id' => $orderId,
             ]);
-            return;
+            Log::info("SMS successfully delivered to {$formattedTo} via {$secondaryGatewayName} fallback (Order #JFS-{$orderId}, attempt {$attempts}).");
+            return true;
         }
 
-        // 3. Log alert and database SMS log if both gateways failed
+        // 3. Log database SMS log if both gateways failed
         SmsLog::create([
             'phone_number' => $formattedTo,
             'message' => $content,
             'gateway' => 'none',
             'status' => 'failed',
+            'attempts' => $attempts,
             'error_details' => 'Both httpSMS and TextBee SMS gateways failed to deliver message.',
-            'notification_id' => $originalNotification->id,
+            'order_id' => $orderId,
         ]);
 
-        self::logSmsFailure($formattedTo, "Both httpSMS and TextBee SMS gateways failed to deliver message.", $originalNotification);
+        Log::error("All SMS gateways failed to deliver message to {$formattedTo} (Order #JFS-{$orderId}, attempt {$attempts}).");
+        return false;
     }
 
     /**
@@ -92,8 +112,8 @@ class NotificationService
      */
     protected static function sendViaHttpSms(string $formattedTo, string $content): bool
     {
-        $apiKey = config('services.httpsms.key');
-        $fromPhone = config('services.httpsms.from');
+        $apiKey = config('sms.gateways.httpsms.key') ?? config('services.httpsms.key');
+        $fromPhone = config('sms.gateways.httpsms.from') ?? config('services.httpsms.from');
 
         if (empty($fromPhone)) {
             $settingsPath = storage_path('app/settings.json');
@@ -106,15 +126,18 @@ class NotificationService
         $formattedFrom = $fromPhone ? self::formatPhoneNumber($fromPhone) : null;
 
         if (empty($apiKey) || empty($formattedFrom)) {
-            Log::warning("httpSMS Credentials missing. Cannot send SMS to {$formattedTo} via httpSMS.");
+            Log::warning("httpSMS credentials missing. Cannot send SMS via httpSMS.");
             return false;
         }
 
         try {
-            $response = Http::withHeaders([
+            $endpoint = config('sms.gateways.httpsms.endpoint', 'https://api.httpsms.com/v1/messages/send');
+            $request = Http::withHeaders([
                 'x-api-key' => $apiKey,
                 'Accept' => 'application/json',
-            ])->timeout(10)->post('https://api.httpsms.com/v1/messages/send', [
+            ])->timeout(10);
+
+            $response = $request->post($endpoint, [
                 'content' => $content,
                 'from' => $formattedFrom,
                 'to' => $formattedTo,
@@ -134,31 +157,32 @@ class NotificationService
     }
 
     /**
-     * Send SMS via TextBee REST API (https://textbee.dev/docs/sending-sms/sending-sms).
+     * Send SMS via TextBee REST API.
      */
     protected static function sendViaTextBee(string $formattedTo, string $content): bool
     {
-        $apiKey = config('services.textbee.key');
-        $deviceId = config('services.textbee.device_id');
+        $apiKey = config('sms.gateways.textbee.key') ?? config('services.textbee.key');
+        $deviceId = config('sms.gateways.textbee.device_id') ?? config('services.textbee.device_id');
 
         if (empty($apiKey) || empty($deviceId)) {
-            Log::warning("TextBee Credentials missing. Cannot send SMS to {$formattedTo} via TextBee.");
+            Log::warning("TextBee credentials missing. Cannot send SMS via TextBee.");
             return false;
         }
 
         try {
-            $url = "https://api.textbee.dev/api/v1/gateway/devices/{$deviceId}/send-sms";
-            $response = Http::withHeaders([
+            $endpoint = "https://api.textbee.dev/api/v1/gateway/devices/{$deviceId}/send-sms";
+            $request = Http::withHeaders([
                 'x-api-key' => $apiKey,
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
-            ])->timeout(10)->post($url, [
+            ])->timeout(10);
+
+            $response = $request->post($endpoint, [
                 'recipients' => [$formattedTo],
                 'message' => $content,
             ]);
 
             if ($response->successful()) {
-                Log::info("SMS successfully sent to {$formattedTo} via TextBee fallback.");
                 return true;
             }
 
@@ -172,27 +196,12 @@ class NotificationService
     }
 
     /**
-     * Log SMS failures as in-app notification alerts for the admin.
-     */
-    protected static function logSmsFailure(string $toPhone, string $errorDetails, Notification $originalNotification): void
-    {
-        Notification::create([
-            'user_id' => null,
-            'title' => '⚠️ SMS Gateway Alert',
-            'message' => "SMS update for Order #JFS-{$originalNotification->id} failed to deliver to {$toPhone}. Error: {$errorDetails}",
-            'type' => 'sms_failure',
-            'is_admin' => true,
-        ]);
-    }
-
-    /**
-     * Format a phone number to strict E.164 international format (+63...) for httpSMS.
+     * Format a phone number to strict E.164 international format (+63...) for SMS gateways.
      */
     public static function formatPhoneNumber(string $phone): string
     {
         try {
             $phoneUtil = PhoneNumberUtil::getInstance();
-            // Parse with 'PH' (Philippines) as the default region
             $parsedNumber = $phoneUtil->parse($phone, 'PH');
             if ($phoneUtil->isValidNumber($parsedNumber)) {
                 return $phoneUtil->format($parsedNumber, PhoneNumberFormat::E164);
@@ -201,24 +210,20 @@ class NotificationService
             Log::debug("libphonenumber failed to parse phone '{$phone}': " . $e->getMessage());
         }
 
-        // Remove all non-numeric characters except +
         $cleaned = preg_replace('/[^0-9+]/', '', $phone);
 
         if (str_starts_with($cleaned, '+')) {
             return $cleaned;
         }
 
-        // If it starts with 09 (Philippine mobile pattern: 09XXXXXXXXX)
         if (str_starts_with($cleaned, '09') && strlen($cleaned) === 11) {
             return '+63' . substr($cleaned, 1);
         }
 
-        // If it starts with 9 (Philippine mobile pattern: 9XXXXXXXXX)
         if (str_starts_with($cleaned, '9') && strlen($cleaned) === 10) {
             return '+63' . $cleaned;
         }
 
-        // Default fallback (just prefix + if missing)
         return '+' . ltrim($cleaned, '0');
     }
 }

@@ -43,13 +43,13 @@ export function Hero() {
                         variants={itemVariants}
                         className="font-serif text-4xl sm:text-6xl font-bold leading-[1.15] text-[#0A2A1B] pb-2"
                     >
-                        Blossoms made simple, <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D97706] to-[#0A2A1B] font-extrabold italic">delivered with love.</span>
+                        Blossoms made simple, <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D97706] to-[#0A2A1B] font-extrabold italic">crafted with love.</span>
                     </motion.h1>
                     <motion.p 
                         variants={itemVariants}
                         className="text-lg text-[#0A2A1B]/75 leading-relaxed max-w-[55ch]"
                     >
-                        Brings beauty and convenience together, offering fresh floral arrangements for every occasion with the ease of online ordering and reliable delivery.
+                        Brings beauty and convenience together, offering fresh floral arrangements for every occasion with the ease of online pre-ordering and store pickup.
                     </motion.p>
                     <motion.div 
                         variants={itemVariants}

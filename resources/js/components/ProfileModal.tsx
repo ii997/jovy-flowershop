@@ -323,14 +323,11 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateSuccess, orders, o
                                                 <div className="space-y-0.5">
                                                     <span className="text-[#0A2A1B]/50 block">Recipient</span>
                                                     <p className="font-semibold text-[#0A2A1B]">{order.recipient_name}</p>
-                                                    <p className="text-[#0A2A1B]/75">
-                                                        <span className="font-bold text-[#D97706] uppercase text-[9px] mr-1.5">{order.delivery_type || 'pickup'}</span>
-                                                        {order.delivery_address || 'Store Pickup'}
-                                                    </p>
+                                                    <p className="text-[#0A2A1B]/75">{order.recipient_phone}</p>
                                                 </div>
                                                 <div className="space-y-0.5">
-                                                    <span className="text-[#0A2A1B]/50 block">Delivery Details</span>
-                                                     <p className="font-semibold text-[#0A2A1B]">Pickup Date: {order.delivery_date}</p>
+                                                    <span className="text-[#0A2A1B]/50 block">Pickup Details</span>
+                                                     <p className="font-semibold text-[#0A2A1B]">Pickup Date: {order.pickup_date}</p>
                                                      {order.wrapper_type && <p className="text-[#0A2A1B]/75">Style: {order.wrapper_type}</p>}
                                                 </div>
                                             </div>

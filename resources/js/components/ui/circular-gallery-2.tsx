@@ -535,7 +535,7 @@ class AppClass {
     const defaultItems: GalleryItem[] = [
       { image: "/images/roses.png", text: "Fresh Stems" },
       { image: "/images/orchids.png", text: "Artisanal Styling" },
-      { image: "/images/tulips.png", text: "Same-day Delivery" },
+      { image: "/images/tulips.png", text: "Express Store Pickup" },
     ];
 
     const galleryItems = items && items.length > 0 ? items : defaultItems;
