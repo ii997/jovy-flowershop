@@ -8,11 +8,9 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 #[Fillable([
     'user_id',
     'order_type',
-    'delivery_type',
     'recipient_name',
     'recipient_phone',
-    'delivery_address',
-    'delivery_date',
+    'pickup_date',
     'gift_message',
     'items',
     'total_price',
@@ -38,12 +36,33 @@ class Order extends Model
         return $this->hasOne(OrderCancellation::class);
     }
 
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class, 'user_id', 'user_id');
+    }
+
+    public function smsLogs()
+    {
+        return $this->hasMany(SmsLog::class);
+    }
+
+    /**
+     * Dispatch SMS job when order status changes.
+     */
+    public function dispatchStatusSms(string $eventType, ?string $customPhone = null): void
+    {
+        \App\Jobs\SendStatusUpdateSMS::dispatch(
+            $this->id,
+            $eventType,
+            $customPhone ?? $this->recipient_phone
+        )->onQueue(config('sms.queue', 'sms'));
+    }
+
     protected function casts(): array
     {
         return [
             'items' => 'array',
-            'delivery_type' => 'string',
-            'delivery_date' => 'date:Y-m-d',
+            'pickup_date' => 'date:Y-m-d',
             'payment_details' => 'array',
             'payment_status' => 'string',
             'total_price' => 'decimal:2',

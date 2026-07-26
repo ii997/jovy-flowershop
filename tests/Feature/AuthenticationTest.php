@@ -96,7 +96,7 @@ class AuthenticationTest extends TestCase
 
     public function test_logout_clears_session(): void
     {
-        $user = User::where('email', 'customer@jovy.com')->first();
+        $user = User::where('email', 'carlos@customer.com')->first() ?: User::factory()->create();
         $this->actingAs($user);
 
         $response = $this->postJson('/api/logout');

@@ -34,9 +34,7 @@ export interface Order {
     id: number;
     recipient_name: string;
     recipient_phone: string;
-    delivery_address: string;
-    delivery_date: string;
-    delivery_type?: string;
+    pickup_date: string;
     wrapper_type?: string;
     order_type: string;
     total_price: number | string;

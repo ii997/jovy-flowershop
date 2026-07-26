@@ -15,10 +15,8 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         $users = [
-            ['name' => 'Rose Admin',   'email' => 'admin@jovy.com',   'password' => 'password', 'role' => UserRole::Admin],
-            ['name' => 'David Manager','email' => 'manager@jovy.com', 'password' => 'password', 'role' => UserRole::Admin],
-            ['name' => 'Jack Staff',   'email' => 'staff@jovy.com',   'password' => 'password', 'role' => UserRole::Staff],
-            ['name' => 'Maria Staff',  'email' => 'maria@jovy.com',   'password' => 'password', 'role' => UserRole::Staff],
+            ['name' => 'Jovelyn Velesrubio',   'email' => 'admin@jovy.com',   'password' => 'password', 'role' => UserRole::Admin],
+            ['name' => 'Rose Mary',  'email' => 'staff@jovy.com',   'password' => 'password', 'role' => UserRole::Staff],
         ];
 
         foreach ($users as $user) {

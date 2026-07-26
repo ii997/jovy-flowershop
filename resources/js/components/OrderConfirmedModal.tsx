@@ -205,13 +205,11 @@ export function OrderConfirmedModal({ isOpen, onClose, order }: OrderConfirmedMo
                             </div>
                             <div className="flex justify-between border-b border-[#0A2A1B]/5 pb-2">
                                 <span className="text-[#0A2A1B]/55 font-medium">Pickup Date</span>
-                                <span className="font-semibold text-[#0A2A1B]">{order.delivery_date}</span>
+                                <span className="font-semibold text-[#0A2A1B]">{order.pickup_date}</span>
                             </div>
-                            <div className="flex flex-col gap-1">
-                                <span className="text-[#0A2A1B]/55 font-medium">Order Type</span>
-                                <span className="font-semibold text-[#0A2A1B] leading-relaxed">
-                                    {order.delivery_type === 'delivery' ? order.delivery_address : 'Store Pickup'}
-                                </span>
+                            <div className="flex justify-between border-b border-[#0A2A1B]/5 pb-2">
+                                <span className="text-[#0A2A1B]/55 font-medium">Fulfillment</span>
+                                <span className="font-semibold text-[#0A2A1B]">Store Pickup</span>
                             </div>
                             <div className="flex justify-between border-t border-[#0A2A1B]/10 pt-3 text-sm">
                                 <span className="font-bold text-[#0A2A1B]">Total Amount</span>

@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->string('delivery_address', 500)->nullable()->change();
-        });
+        if (Schema::hasColumn('orders', 'delivery_address')) {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->dropColumn('delivery_address');
+            });
+        }
     }
 
     /**
@@ -21,9 +23,5 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            // Revert to non-nullable (make sure no null values exist before rolling back)
-            $table->string('delivery_address', 255)->nullable(false)->change();
-        });
     }
 };

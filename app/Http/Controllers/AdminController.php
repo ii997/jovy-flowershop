@@ -146,10 +146,11 @@ class AdminController extends Controller
             $order->user_id,
             $title,
             $message,
-            "order_status_" . $order->status,
+            $order->status,
             false,
             true,
-            $order->recipient_phone
+            $order->recipient_phone,
+            $order->id
         );
 
         return response()->json($order->load('paymentTransactions', 'cancellation'));
@@ -192,7 +193,8 @@ class AdminController extends Controller
                 'payment_verified',
                 false,
                 true,
-                $order->recipient_phone
+                $order->recipient_phone,
+                $order->id
             );
         } elseif ($order->payment_status === 'failed') {
             $notes = $validated['admin_notes'] ?? 'No reason provided';
@@ -219,7 +221,8 @@ class AdminController extends Controller
                 $type,
                 false,
                 true,
-                $order->recipient_phone
+                $order->recipient_phone,
+                $order->id
             );
         }
 
@@ -265,10 +268,11 @@ class AdminController extends Controller
             $order->user_id,
             'Order Cancelled by Shop',
             "Your order #JFS-{$order->id} has been cancelled by the shop. Reason: {$validated['reason']}.",
-            'order_cancelled_admin',
+            'cancelled',
             false,
             true,
-            $order->recipient_phone
+            $order->recipient_phone,
+            $order->id
         );
 
         return response()->json($order->load('paymentTransactions', 'cancellation'));
@@ -422,7 +426,6 @@ class AdminController extends Controller
                 'store_phone' => "+63-2-555-1234",
                 'store_address' => "123 Rizal Avenue, Makati City, Metro Manila",
                 'maintenance_mode' => false,
-                'same_day_delivery' => true,
                 'qr_image' => "",
                 'downpayment_pct' => 30
             ]);
@@ -438,7 +441,6 @@ class AdminController extends Controller
             'store_phone' => 'required|string|max:50',
             'store_address' => 'required|string|max:500',
             'maintenance_mode' => 'required|boolean',
-            'same_day_delivery' => 'required|boolean',
             'qr_image' => 'nullable|string|max:1000',
             'downpayment_pct' => 'required|integer|min:0|max:100',
         ]);

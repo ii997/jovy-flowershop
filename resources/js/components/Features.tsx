@@ -3,7 +3,7 @@ import { CircularGallery, GalleryItem } from './ui/circular-gallery-2';
 const galleryItems: GalleryItem[] = [
     { image: '/images/roses.png', text: 'Fresh Stems' },
     { image: '/images/orchids.png', text: 'Artisanal Styling' },
-    { image: '/images/tulips.png', text: 'Same-day Delivery' },
+    { image: '/images/tulips.png', text: 'Express Store Pickup' },
     { image: '/images/sunflowers.png', text: 'Bespoke Design' },
     { image: '/images/wedding.png', text: 'Luxury Packaging' },
     { image: '/images/autumn.png', text: 'Seasonal Blooms' },

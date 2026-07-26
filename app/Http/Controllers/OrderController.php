@@ -18,6 +18,13 @@ class OrderController extends Controller
      */
     public function store(Request $request)
     {
+        // Enforce authentication — guest checkout is not supported
+        if (!$request->user()) {
+            return response()->json([
+                'message' => 'Authentication required. Please log in to place an order.',
+            ], 401);
+        }
+
         // Enforce Maintenance Mode check
         $settingsPath = storage_path('app/settings.json');
         if (file_exists($settingsPath)) {
@@ -36,9 +43,7 @@ class OrderController extends Controller
             'order_type' => 'required|string|in:purchase,reservation',
             'recipient_name' => 'required|string|max:255',
             'recipient_phone' => 'required|string|max:20',
-            'delivery_type' => 'nullable|string|in:delivery,pickup',
-            'delivery_date' => 'required|date|after_or_equal:today',
-            'delivery_address' => 'nullable|string|max:500',
+            'pickup_date' => 'required|date|after_or_equal:today',
             'gift_message' => 'nullable|string',
             'items' => 'required|array',
             'items.*.id' => 'required|integer|exists:products,id',
@@ -76,11 +81,9 @@ class OrderController extends Controller
             $order = Order::create([
                 'user_id' => Auth::id(),
                 'order_type' => $validated['order_type'],
-                'delivery_type' => $validated['delivery_type'] ?? 'pickup',
                 'recipient_name' => $validated['recipient_name'],
                 'recipient_phone' => $validated['recipient_phone'],
-                'delivery_address' => $validated['delivery_address'] ?? null,
-                'delivery_date' => $validated['delivery_date'],
+                'pickup_date' => $validated['pickup_date'],
                 'gift_message' => $validated['gift_message'] ?? null,
                 'items' => $processedItems,
                 'total_price' => $totalPrice,
@@ -122,10 +125,11 @@ class OrderController extends Controller
             $order->user_id,
             'Order Submitted Successfully',
             "Your order #JFS-{$order->id} has been submitted. Status: Pending Payment.",
-            'order_submitted',
+            'confirmed',
             false,
             true,
-            $order->recipient_phone
+            $order->recipient_phone,
+            $order->id
         );
 
         // Notify Admin/Staff (In-App + SMS)
@@ -176,7 +180,12 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($id);
 
-        if ($order->user_id && $order->user_id !== $request->user()->id) {
+        $user = $request->user();
+        if (!$user) {
+            abort(401, 'Authentication required.');
+        }
+
+        if ($order->user_id !== $user->id) {
             abort(403, 'Unauthorized.');
         }
 
@@ -282,7 +291,12 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($id);
 
-        if ($order->user_id !== $request->user()->id) {
+        $user = $request->user();
+        if (!$user) {
+            abort(401, 'Authentication required.');
+        }
+
+        if ($order->user_id !== $user->id) {
             abort(403, 'Unauthorized.');
         }
 

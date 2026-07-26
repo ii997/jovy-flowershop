@@ -31,7 +31,7 @@ class OrderPaymentTest extends TestCase
 
         $this->admin = User::where('email', 'admin@jovy.com')->first();
         $this->staff = User::where('email', 'staff@jovy.com')->first();
-        $this->customer = User::where('email', 'customer@jovy.com')->first();
+        $this->customer = User::where('email', 'carlos@customer.com')->first() ?: User::factory()->create();
         $this->product = Product::where('name', 'Crimson Romance')->first();
 
         // Backup existing settings.json
@@ -59,11 +59,9 @@ class OrderPaymentTest extends TestCase
         $defaults = [
             'user_id' => $this->customer->id,
             'order_type' => 'purchase',
-            'delivery_type' => 'delivery',
             'recipient_name' => 'Test Recipient',
             'recipient_phone' => '09123456789',
-            'delivery_address' => '123 Flower St.',
-            'delivery_date' => now()->addDays(2)->format('Y-m-d'),
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
             'wrapper_type' => 'Classic Kraft Paper',
             'items' => [['id' => $this->product->id, 'name' => $this->product->name, 'price' => $this->product->price, 'quantity' => 1]],
             'total_price' => $this->product->price,
@@ -80,11 +78,9 @@ class OrderPaymentTest extends TestCase
     {
         $response = $this->actingAs($this->customer)->postJson('/api/orders', [
             'order_type' => 'purchase',
-            'delivery_type' => 'delivery',
             'recipient_name' => 'Jane Doe',
             'recipient_phone' => '09123456789',
-            'delivery_address' => '123 Flower St.',
-            'delivery_date' => now()->addDays(2)->format('Y-m-d'),
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
             'wrapper_type' => 'Classic Kraft Paper',
             'items' => [['id' => $this->product->id, 'quantity' => 1]],
         ]);
@@ -97,11 +93,9 @@ class OrderPaymentTest extends TestCase
     {
         $response = $this->actingAs($this->customer)->postJson('/api/orders', [
             'order_type' => 'reservation',
-            'delivery_type' => 'delivery',
             'recipient_name' => 'Jane Doe',
             'recipient_phone' => '09123456789',
-            'delivery_address' => '123 Flower St.',
-            'delivery_date' => now()->addDays(2)->format('Y-m-d'),
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
             'wrapper_type' => 'Classic Kraft Paper',
             'items' => [['id' => $this->product->id, 'quantity' => 1]],
         ]);
@@ -128,6 +122,24 @@ class OrderPaymentTest extends TestCase
 
         $response->assertStatus(200);
         $this->assertEquals('awaiting_verification', $response->json('payment_status'));
+    }
+
+    public function test_cannot_submit_payment_for_another_users_order(): void
+    {
+        Storage::fake('public');
+
+        $otherCustomer = User::factory()->create(['role' => UserRole::Customer]);
+        $order = $this->createOrder(); // owned by $this->customer
+
+        $file = UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg');
+        $response = $this->actingAs($otherCustomer)
+            ->postJson("/api/orders/{$order->id}/payment", [
+                'receipt' => $file,
+                'reference_no' => 'REF99999',
+                'amount' => $this->product->price,
+            ]);
+
+        $response->assertStatus(403);
     }
 
     public function test_submit_payment_creates_transaction(): void
@@ -560,7 +572,6 @@ class OrderPaymentTest extends TestCase
             'store_phone' => "+63-2-555-1234",
             'store_address' => "123 Rizal Avenue",
             'maintenance_mode' => false,
-            'same_day_delivery' => true,
             'qr_image' => "",
             'downpayment_pct' => 20
         ];

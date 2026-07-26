@@ -114,10 +114,10 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
         }
     };
 
-    const filteredOrders = orders
+    const filteredOrders = (orders || [])
         .filter(order => {
-            const matchesSearch = order.recipient_name.toLowerCase().includes(orderSearch.toLowerCase()) ||
-                (order.delivery_address && order.delivery_address.toLowerCase().includes(orderSearch.toLowerCase()));
+            const recipientName = order.recipient_name || '';
+            const matchesSearch = recipientName.toLowerCase().includes(orderSearch.toLowerCase());
             const matchesType = selectedOrderType === 'All' || order.order_type === selectedOrderType;
             const matchesStatus = selectedStatusFilter === 'All'
                 ? true
@@ -128,8 +128,8 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
             return matchesSearch && matchesType && matchesStatus && matchesPayment;
         })
         .sort((a, b) => {
-            let fieldA = orderSortBy === 'date' ? new Date(a.delivery_date).getTime() : parseFloat(a.total_price.toString());
-            let fieldB = orderSortBy === 'date' ? new Date(b.delivery_date).getTime() : parseFloat(b.total_price.toString());
+            let fieldA = orderSortBy === 'date' ? new Date(a.pickup_date || 0).getTime() : parseFloat((a.total_price || 0).toString());
+            let fieldB = orderSortBy === 'date' ? new Date(b.pickup_date || 0).getTime() : parseFloat((b.total_price || 0).toString());
             if (orderSortOrder === 'asc') return fieldA > fieldB ? 1 : -1;
             else return fieldA < fieldB ? 1 : -1;
         });
@@ -174,7 +174,7 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                 <p className="text-xs text-[#0A2A1B]/60">Manage all incoming custom orders, update fulfillment statuses, and verify payments</p>
             </div>
             <div className="flex flex-col md:flex-row gap-3 bg-white p-4 border border-[#0A2A1B]/5 rounded-2xl shadow-sm">
-                <input type="text" placeholder="Search recipient or address..." value={orderSearch} onChange={(e) => setOrderSearch(e.target.value)}
+                <input type="text" placeholder="Search recipient..." value={orderSearch} onChange={(e) => setOrderSearch(e.target.value)}
                     className="flex-1 px-4 py-2 border border-[#0A2A1B]/10 rounded-full text-xs text-[#0A2A1B] focus:outline-none focus:border-[#D97706]" />
                 <select value={selectedStatusFilter} onChange={(e) => setSelectedStatusFilter(e.target.value)}
                     className="px-4 py-2 border border-[#0A2A1B]/10 rounded-full text-xs font-semibold text-[#0A2A1B] focus:outline-none cursor-pointer">
@@ -182,7 +182,7 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                     <option value="All">All Statuses</option>
                     <option value="confirmed">Confirmed</option>
                     <option value="preparing">Preparing</option>
-                    <option value="delivered">Delivered</option>
+                    <option value="delivered">Completed / Ready</option>
                     <option value="cancelled">Cancelled</option>
                 </select>
                 <select value={selectedPaymentFilter} onChange={(e) => setSelectedPaymentFilter(e.target.value)}
@@ -202,8 +202,8 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                 </select>
                 <select value={`${orderSortBy}-${orderSortOrder}`} onChange={(e) => { const [by, order] = e.target.value.split('-') as [any, any]; setOrderSortBy(by); setOrderSortOrder(order); }}
                     className="px-4 py-2 border border-[#0A2A1B]/10 rounded-full text-xs font-semibold text-[#0A2A1B] focus:outline-none cursor-pointer">
-                    <option value="date-desc">Delivery: Sooner</option>
-                    <option value="date-asc">Delivery: Later</option>
+                    <option value="date-desc">Pickup: Sooner</option>
+                    <option value="date-asc">Pickup: Later</option>
                     <option value="price-desc">Total: Highest</option>
                     <option value="price-asc">Total: Lowest</option>
                 </select>
@@ -215,7 +215,7 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                             <th className="py-3 px-4">Order ID</th>
                             <th className="py-3 px-4">Recipient</th>
                             <th className="py-3 px-4">Phone</th>
-                            <th className="py-3 px-4">Delivery</th>
+                            <th className="py-3 px-4">Pickup Date</th>
                             <th className="py-3 px-4">Type</th>
                             <th className="py-3 px-4">Status</th>
                             <th className="py-3 px-4">Payment</th>
@@ -229,14 +229,10 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                                 <td className="py-4 px-4 font-bold">#JFS-{o.id}</td>
                                 <td className="py-4 px-4">
                                     <p className="font-semibold text-[#0A2A1B]">{o.recipient_name}</p>
-                                    <p className="text-[10px] text-[#0A2A1B]/60 mt-0.5">
-                                        <span className="font-bold text-[#D97706] uppercase text-[9px] mr-1.5">{o.delivery_type || 'pickup'}</span>
-                                        {o.delivery_address || 'Store Pickup'}
-                                    </p>
                                 </td>
                                 <td className="py-4 px-4">{o.recipient_phone}</td>
                                 <td className="py-4 px-4">
-                                    <p className="font-semibold text-[#0A2A1B]">{o.delivery_date}</p>
+                                    <p className="font-semibold text-[#0A2A1B]">{o.pickup_date}</p>
                                     {o.gift_message && <p className="italic text-[10px] text-[#0A2A1B]/50 mt-1 truncate max-w-[120px]">"{o.gift_message}"</p>}
                                 </td>
                                 <td className="py-4 px-4">
@@ -289,7 +285,7 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                                                         }}
                                                         className="px-2.5 py-1.5 bg-[#0A2A1B] hover:bg-[#D97706] disabled:bg-gray-200 text-white text-[10px] font-bold rounded-xl shadow-2xs hover:shadow-xs transition-all cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
                                                     >
-                                                        <span>🚚 Deliver</span>
+                                                        <span>✔ Complete / Ready</span>
                                                     </button>
                                                 )}
                                             </>
@@ -328,16 +324,10 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                                     <h4 className="text-[10px] font-bold text-[#0A2A1B]/50 uppercase tracking-wider border-b border-[#0A2A1B]/5 pb-2">Fulfillment Details</h4>
                                     <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Recipient</span><span className="font-bold">{selectedOrder.recipient_name}</span></div>
                                     <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Phone</span><span className="font-semibold">{selectedOrder.recipient_phone}</span></div>
-                                    <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Preference</span><span className="font-bold uppercase text-[10px] text-[#D97706]">{selectedOrder.delivery_type || 'pickup'}</span></div>
-                                    <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Pickup Date</span><span className="font-semibold">{selectedOrder.delivery_date}</span></div>
+                                    <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Fulfillment</span><span className="font-bold">Store Pickup</span></div>
+                                    <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Pickup Date</span><span className="font-semibold">{selectedOrder.pickup_date}</span></div>
                                     {selectedOrder.wrapper_type && (
                                         <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Wrap</span><span className="font-semibold">{selectedOrder.wrapper_type}</span></div>
-                                    )}
-                                    {selectedOrder.delivery_type !== 'pickup' && (
-                                        <div className="space-y-1">
-                                            <span className="text-[#0A2A1B]/60 block">Delivery Address</span>
-                                            <p className="font-medium text-[#0A2A1B]/85">{selectedOrder.delivery_address}</p>
-                                        </div>
                                     )}
                                     {selectedOrder.gift_message && (
                                         <div className="space-y-1 pt-2 border-t border-[#0A2A1B]/5">
@@ -495,7 +485,7 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                                                             }}
                                                             className="w-full py-2.5 bg-[#0A2A1B] hover:bg-[#D97706] disabled:bg-gray-100 text-white disabled:text-gray-400 text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
                                                         >
-                                                            <span>Complete Delivery</span>
+                                                            <span>Complete Order</span>
                                                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                                             </svg>

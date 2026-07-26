@@ -79,9 +79,7 @@ function App() {
                         localStorage.setItem('store_settings_downpayment_pct', String(data.downpayment_pct ?? 30));
                         localStorage.setItem('store_settings_name', data.store_name || "Jovy's Flowershop");
                         localStorage.setItem('store_settings_phone', data.store_phone || "+63-2-555-1234");
-                        localStorage.setItem('store_settings_address', data.store_address || "123 Rizal Avenue, Makati City, Metro Manila");
                         localStorage.setItem('store_settings_maintenance', String(!!data.maintenance_mode));
-                        localStorage.setItem('store_settings_delivery', String(!!data.same_day_delivery));
                         localStorage.setItem('store_settings_qr_image', data.qr_image || "");
                     }
                 }
