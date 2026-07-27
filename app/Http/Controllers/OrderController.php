@@ -313,12 +313,14 @@ class OrderController extends Controller
         ]);
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($order, $validated, $request) {
+            $isPaidOrVerifying = in_array($order->payment_status, ['verified', 'awaiting_verification']);
+
             \App\Models\OrderCancellation::create([
                 'order_id' => $order->id,
                 'cancelled_by' => $request->user()->id,
                 'reason' => $validated['reason'],
-                'refund_amount' => null,
-                'refund_method' => 'none',
+                'refund_amount' => $isPaidOrVerifying ? $order->total_price : null,
+                'refund_method' => $isPaidOrVerifying ? 'original_payment' : 'none',
             ]);
 
             // Restore products inventory and flower stems count
@@ -330,7 +332,7 @@ class OrderController extends Controller
                         // order still references this product. Otherwise, the product was either
                         // manually disabled by an admin or consumed by other orders, and we must
                         // not incorrectly re-enable it — that would cause overselling.
-                        $otherActive = \App\Models\Order::whereIn('status', ['confirmed', 'awaiting_verification', 'preparing'])
+                        $otherActive = \App\Models\Order::whereIn('status', ['confirmed', 'preparing', 'ready'])
                             ->where('id', '!=', $order->id)
                             ->whereJsonContains('items', [['id' => $product->id]])
                             ->exists();
@@ -345,7 +347,7 @@ class OrderController extends Controller
                                     ->lockForUpdate()
                                     ->first();
                                 if ($flower) {
-                                    $qtyToRestore = $countNeeded * $item['quantity'];
+                                    $qtyToRestore = $countNeeded * (int) ($item['quantity'] ?? 1);
                                     $flower->quantity += $qtyToRestore;
                                     $flower->save();
                                 }
@@ -356,17 +358,30 @@ class OrderController extends Controller
             }
 
             $order->status = 'cancelled';
+            if ($isPaidOrVerifying) {
+                $order->payment_status = 'refunded';
+            }
             $order->save();
         });
 
-        // Notify Admin/Staff (In-App only)
+        // Fetch store admin phone number for SMS alert
+        $storePhone = null;
+        $settingsPath = storage_path('app/settings.json');
+        if (file_exists($settingsPath)) {
+            $settings = json_decode(file_get_contents($settingsPath), true);
+            $storePhone = $settings['phone'] ?? null;
+        }
+
+        // Notify Admin/Staff (In-App + SMS)
         NotificationService::send(
             null,
             'Order Cancelled by Customer',
             "Order #JFS-{$order->id} was cancelled by {$order->recipient_name}. Reason: {$validated['reason']}.",
             'order_cancelled_customer',
             true,
-            false
+            !empty($storePhone),
+            $storePhone,
+            $order->id
         );
 
         return response()->json($order->load('paymentTransactions', 'cancellation'));

@@ -8,11 +8,24 @@ return [
     |--------------------------------------------------------------------------
     |
     | This option controls the default SMS gateway driver that will be used
-    | to deliver SMS messages. Supported drivers: "httpsms", "textbee"
+    | to deliver SMS messages. Supported drivers: "textbee", "httpsms", "log"
     |
     */
 
     'default' => env('SMS_DRIVER', 'textbee'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | SMS Test Mode
+    |--------------------------------------------------------------------------
+    |
+    | When enabled (e.g. "testing", "log", "enabled", true), SMS dispatch will
+    | bypass remote gateway HTTP calls and write message details directly to
+    | Laravel logs (storage/logs/laravel.log) and database sms_logs table.
+    |
+    */
+
+    'test_mode' => env('SMS_TEST_MODE', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -24,6 +37,14 @@ return [
     */
 
     'queue' => env('SMS_QUEUE', 'sms'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | SSL Verification Control
+    |--------------------------------------------------------------------------
+    */
+
+    'verify_ssl' => env('SMS_VERIFY_SSL', true),
 
     /*
     |--------------------------------------------------------------------------

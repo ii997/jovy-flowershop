@@ -106,5 +106,49 @@ class AuthController extends Controller
 
         return response()->json($user);
     }
+
+    /**
+     * Request account deletion (sets deletion_requested_at and logs out all sessions).
+     * Requires password re-verification for this sensitive action.
+     */
+    public function requestAccountDeletion(Request $request)
+    {
+        $validated = $request->validate([
+            'current_password' => 'required|string',
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['The provided password does not match your current password.'],
+            ]);
+        }
+
+        $user->requestDeletion();
+
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return response()->json([
+            'message' => 'Account marked for deletion. It will be permanently removed after 30 days.',
+            'deletion_requested_at' => $user->deletion_requested_at,
+        ]);
+    }
+
+    /**
+     * Cancel account deletion request.
+     */
+    public function cancelAccountDeletion(Request $request)
+    {
+        $user = $request->user();
+        $user->cancelDeletion();
+
+        return response()->json([
+            'message' => 'Account deletion request has been canceled.',
+            'user' => $user,
+        ]);
+    }
 }
 

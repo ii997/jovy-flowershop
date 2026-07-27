@@ -54,7 +54,25 @@ class NotificationService
         int $attempts = 1
     ): bool {
         $formattedTo = self::formatPhoneNumber($toPhone);
-        $primaryDriver = config('sms.default', 'httpsms');
+        $primaryDriver = config('sms.default', 'textbee');
+        $testMode = config('sms.test_mode', false);
+
+        $isTestMode = in_array(strtolower((string) $testMode), ['testing', 'log', 'enabled', 'true', '1'], true)
+            || $testMode === true
+            || $primaryDriver === 'log';
+
+        if ($isTestMode) {
+            SmsLog::create([
+                'phone_number' => $formattedTo,
+                'message' => $content,
+                'gateway' => 'log',
+                'status' => 'sent',
+                'attempts' => $attempts,
+                'order_id' => $orderId,
+            ]);
+            Log::info("[TEST SMS LOG] To: {$formattedTo} | Content: {$content} | Order: #JFS-{$orderId} (Attempt {$attempts})");
+            return true;
+        }
 
         $isTextBeePrimary = ($primaryDriver === 'textbee');
         $primaryMethod = $isTextBeePrimary ? 'sendViaTextBee' : 'sendViaHttpSms';
@@ -112,8 +130,8 @@ class NotificationService
      */
     protected static function sendViaHttpSms(string $formattedTo, string $content): bool
     {
-        $apiKey = config('sms.gateways.httpsms.key') ?? config('services.httpsms.key');
-        $fromPhone = config('sms.gateways.httpsms.from') ?? config('services.httpsms.from');
+        $apiKey = config('sms.gateways.httpsms.key') ?: config('services.httpsms.key');
+        $fromPhone = config('sms.gateways.httpsms.from') ?: config('services.httpsms.from');
 
         if (empty($fromPhone)) {
             $settingsPath = storage_path('app/settings.json');
@@ -136,6 +154,10 @@ class NotificationService
                 'x-api-key' => $apiKey,
                 'Accept' => 'application/json',
             ])->timeout(10);
+
+            if (!config('sms.verify_ssl', true) || app()->environment('local', 'testing')) {
+                $request->withoutVerifying();
+            }
 
             $response = $request->post($endpoint, [
                 'content' => $content,
@@ -161,8 +183,8 @@ class NotificationService
      */
     protected static function sendViaTextBee(string $formattedTo, string $content): bool
     {
-        $apiKey = config('sms.gateways.textbee.key') ?? config('services.textbee.key');
-        $deviceId = config('sms.gateways.textbee.device_id') ?? config('services.textbee.device_id');
+        $apiKey = config('sms.gateways.textbee.key') ?: config('services.textbee.key');
+        $deviceId = config('sms.gateways.textbee.device_id') ?: config('services.textbee.device_id');
 
         if (empty($apiKey) || empty($deviceId)) {
             Log::warning("TextBee credentials missing. Cannot send SMS via TextBee.");
@@ -176,6 +198,10 @@ class NotificationService
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
             ])->timeout(10);
+
+            if (!config('sms.verify_ssl', true) || app()->environment('local', 'testing')) {
+                $request->withoutVerifying();
+            }
 
             $response = $request->post($endpoint, [
                 'recipients' => [$formattedTo],

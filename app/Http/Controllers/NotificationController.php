@@ -51,6 +51,11 @@ class NotificationController extends Controller
 
         $notificationIds = $request->input('ids');
 
+        // Require explicit notification IDs — never allow unintended "mark all as read"
+        if (!is_array($notificationIds) || count($notificationIds) === 0) {
+            return response()->json(['message' => 'The ids field is required and must be a non-empty array.'], 422);
+        }
+
         $query = Notification::whereNull('read_at');
 
         if ($user->role === UserRole::Admin || $user->role === UserRole::Staff) {

@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { User } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAnimationTransition } from './animations';
 import { toast } from './ui/Toast';
+import { validateEmail, validateName, validatePassword, validatePasswordMatch } from '../lib/authValidation';
+import { LegalModal } from './LegalModal';
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -18,19 +20,41 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+
+    // Touched tracking for realtime feedback
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
     
     // Feedback states
     const [errors, setErrors] = useState<Record<string, string[]>>({});
     const [message, setMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
+    // Agreement & legal modal states
+    const [agreedToTerms, setAgreedToTerms] = useState(false);
+    const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'terms' | 'privacy' }>({
+        isOpen: false,
+        type: 'terms',
+    });
+
+    // Realtime validation evaluations
+    const emailValidation = useMemo(() => validateEmail(email), [email]);
+    const nameValidation = useMemo(() => validateName(name), [name]);
+    const passwordValidation = useMemo(() => validatePassword(password), [password]);
+    const confirmPasswordValidation = useMemo(() => validatePasswordMatch(password, confirmPassword), [password, confirmPassword]);
+
+    const markTouched = (field: string) => {
+        setTouched((prev) => ({ ...prev, [field]: true }));
+    };
+
     const clearState = () => {
         setName('');
         setEmail('');
         setPassword('');
         setConfirmPassword('');
+        setTouched({});
         setErrors({});
         setMessage('');
+        setAgreedToTerms(false);
     };
 
     const handleTabChange = (tab: 'login' | 'register' | 'forgot') => {
@@ -45,11 +69,28 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
 
     const handleLogin = async (e?: React.FormEvent, customCredentials?: { email: string; password: string }) => {
         if (e) e.preventDefault();
-        setIsLoading(true);
-        setErrors({});
 
         const loginEmail = customCredentials ? customCredentials.email : email;
         const loginPassword = customCredentials ? customCredentials.password : password;
+
+        if (!customCredentials) {
+            setTouched({ email: true, password: true });
+            if (!emailValidation.isValid) {
+                setErrors({ email: [emailValidation.message] });
+                return false;
+            }
+            if (!loginPassword) {
+                setErrors({ password: ['Password is required.'] });
+                return false;
+            }
+            if (!agreedToTerms) {
+                setErrors({ terms: ['You must agree to the Terms and Privacy Policy to continue.'] });
+                return false;
+            }
+        }
+
+        setIsLoading(true);
+        setErrors({});
 
         try {
             const response = await fetch('/api/login', {
@@ -91,15 +132,34 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
 
     const handleRegister = async (e?: React.FormEvent, customReg?: any) => {
         if (e) e.preventDefault();
+
+        if (!customReg) {
+            setTouched({ name: true, email: true, password: true, confirmPassword: true });
+            
+            if (!nameValidation.isValid) {
+                setErrors({ name: [nameValidation.message] });
+                return false;
+            }
+            if (!emailValidation.isValid) {
+                setErrors({ email: [emailValidation.message] });
+                return false;
+            }
+            if (!passwordValidation.isValid) {
+                setErrors({ password: ['Password must be at least 8 characters long.'] });
+                return false;
+            }
+            if (!confirmPasswordValidation.isValid) {
+                setErrors({ password: [confirmPasswordValidation.message] });
+                return false;
+            }
+            if (!agreedToTerms) {
+                setErrors({ terms: ['You must agree to the Terms and Privacy Policy to continue.'] });
+                return false;
+            }
+        }
+
         setIsLoading(true);
         setErrors({});
-
-        // Confirm password validation
-        if (!customReg && password !== confirmPassword) {
-            setErrors({ password: ['Passwords do not match.'] });
-            setIsLoading(false);
-            return false;
-        }
 
         const regData = customReg || { name, email, password };
 
@@ -135,9 +195,17 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
         }
     };
 
-const handleForgotPassword = (e: React.FormEvent) => {
+    const handleForgotPassword = (e: React.FormEvent) => {
         e.preventDefault();
+        setTouched({ email: true });
+
+        if (!emailValidation.isValid) {
+            setErrors({ email: [emailValidation.message] });
+            return;
+        }
+
         setIsLoading(true);
+        setErrors({});
         // Simulate password recovery email link
         setTimeout(() => {
             setMessage('A password reset link has been simulated and sent to your email.');
@@ -208,19 +276,47 @@ const handleForgotPassword = (e: React.FormEvent) => {
                     </div>
                 )}
 
-{/* Tab Forms */}
+                {/* Tab Forms */}
                 {activeTab === 'login' && (
                     <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-1">
-                            <label className="text-xs font-semibold text-[#0A2A1B] block">Email Address</label>
+                            <div className="flex justify-between items-center">
+                                <label className="text-xs font-semibold text-[#0A2A1B] block">Email Address</label>
+                                {touched.email && emailValidation.isValid && (
+                                    <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-1">
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Valid email
+                                    </span>
+                                )}
+                            </div>
                             <input
                                 type="email"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-white border border-[#0A2A1B]/15 rounded-full text-sm focus:outline-none focus:border-[#D97706] text-[#0A2A1B] transition-colors"
+                                onChange={(e) => {
+                                    setEmail(e.target.value);
+                                    markTouched('email');
+                                    if (errors.email) setErrors((prev) => ({ ...prev, email: [] }));
+                                }}
+                                onBlur={() => markTouched('email')}
+                                className={`w-full px-4 py-2.5 bg-white border rounded-full text-sm focus:outline-none text-[#0A2A1B] transition-colors ${
+                                    touched.email && !emailValidation.isValid
+                                        ? 'border-red-400 focus:border-red-500 bg-red-50/20'
+                                        : touched.email && emailValidation.isValid
+                                        ? 'border-emerald-500/50 focus:border-emerald-600'
+                                        : 'border-[#0A2A1B]/15 focus:border-[#D97706]'
+                                }`}
                                 required
                             />
-                            {errors.email && <p className="text-red-600 text-xs mt-1">{errors.email[0]}</p>}
+                            {touched.email && !emailValidation.isValid && (
+                                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                                    <span>⚠</span> {emailValidation.message}
+                                </p>
+                            )}
+                            {errors.email && errors.email.length > 0 && (
+                                <p className="text-red-600 text-xs mt-1">{errors.email[0]}</p>
+                            )}
                         </div>
 
                         <div className="space-y-1">
@@ -237,11 +333,52 @@ const handleForgotPassword = (e: React.FormEvent) => {
                             <input
                                 type="password"
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                onChange={(e) => {
+                                    setPassword(e.target.value);
+                                    markTouched('password');
+                                    if (errors.password) setErrors((prev) => ({ ...prev, password: [] }));
+                                }}
                                 className="w-full px-4 py-2.5 bg-white border border-[#0A2A1B]/15 rounded-full text-sm focus:outline-none focus:border-[#D97706] text-[#0A2A1B] transition-colors"
                                 required
                             />
                             {errors.password && <p className="text-red-600 text-xs mt-1">{errors.password[0]}</p>}
+                        </div>
+
+                        {/* Agreement & Terms Checkbox */}
+                        <div className="space-y-1">
+                            <label className="flex items-start gap-2 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={agreedToTerms}
+                                    onChange={(e) => {
+                                        setAgreedToTerms(e.target.checked);
+                                        if (errors.terms) setErrors((prev) => ({ ...prev, terms: [] }));
+                                    }}
+                                    className="mt-0.5 shrink-0 accent-[#0A2A1B]"
+                                />
+                                <span className="text-xs text-[#0A2A1B]/70 leading-relaxed">
+                                    I agree to the{' '}
+                                    <button
+                                        type="button"
+                                        onClick={() => setLegalModal({ isOpen: true, type: 'terms' })}
+                                        className="text-[#D97706] hover:underline font-semibold cursor-pointer"
+                                    >
+                                        Terms and Conditions
+                                    </button>
+                                    {' '}and{' '}
+                                    <button
+                                        type="button"
+                                        onClick={() => setLegalModal({ isOpen: true, type: 'privacy' })}
+                                        className="text-[#D97706] hover:underline font-semibold cursor-pointer"
+                                    >
+                                        Privacy Policy
+                                    </button>
+                                    .
+                                </span>
+                            </label>
+                            {errors.terms && (
+                                <p className="text-red-600 text-xs mt-1 ml-5">{errors.terms[0]}</p>
+                            )}
                         </div>
 
                         <button
@@ -256,53 +393,210 @@ const handleForgotPassword = (e: React.FormEvent) => {
 
                 {activeTab === 'register' && (
                     <form onSubmit={handleRegister} className="space-y-4">
+                        {/* Full Name */}
                         <div className="space-y-1">
-                            <label className="text-xs font-semibold text-[#0A2A1B] block">Full Name</label>
+                            <div className="flex justify-between items-center">
+                                <label className="text-xs font-semibold text-[#0A2A1B] block">Full Name</label>
+                                {touched.name && nameValidation.isValid && (
+                                    <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-1">
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Looks good
+                                    </span>
+                                )}
+                            </div>
                             <input
                                 type="text"
                                 value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-white border border-[#0A2A1B]/15 rounded-full text-sm focus:outline-none focus:border-[#D97706] text-[#0A2A1B] transition-colors"
+                                onChange={(e) => {
+                                    setName(e.target.value);
+                                    markTouched('name');
+                                    if (errors.name) setErrors((prev) => ({ ...prev, name: [] }));
+                                }}
+                                onBlur={() => markTouched('name')}
+                                placeholder="e.g. Maria Clara"
+                                className={`w-full px-4 py-2.5 bg-white border rounded-full text-sm focus:outline-none text-[#0A2A1B] transition-colors ${
+                                    touched.name && !nameValidation.isValid
+                                        ? 'border-red-400 focus:border-red-500 bg-red-50/20'
+                                        : touched.name && nameValidation.isValid
+                                        ? 'border-emerald-500/50 focus:border-emerald-600'
+                                        : 'border-[#0A2A1B]/15 focus:border-[#D97706]'
+                                }`}
                                 required
                             />
+                            {touched.name && !nameValidation.isValid && (
+                                <p className="text-red-500 text-xs mt-1">{nameValidation.message}</p>
+                            )}
                             {errors.name && <p className="text-red-600 text-xs mt-1">{errors.name[0]}</p>}
                         </div>
 
+                        {/* Email Address */}
                         <div className="space-y-1">
-                            <label className="text-xs font-semibold text-[#0A2A1B] block">Email Address</label>
+                            <div className="flex justify-between items-center">
+                                <label className="text-xs font-semibold text-[#0A2A1B] block">Email Address</label>
+                                {touched.email && emailValidation.isValid && (
+                                    <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-1">
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Valid email
+                                    </span>
+                                )}
+                            </div>
                             <input
                                 type="email"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-white border border-[#0A2A1B]/15 rounded-full text-sm focus:outline-none focus:border-[#D97706] text-[#0A2A1B] transition-colors"
+                                onChange={(e) => {
+                                    setEmail(e.target.value);
+                                    markTouched('email');
+                                    if (errors.email) setErrors((prev) => ({ ...prev, email: [] }));
+                                }}
+                                onBlur={() => markTouched('email')}
+                                placeholder="your@email.com"
+                                className={`w-full px-4 py-2.5 bg-white border rounded-full text-sm focus:outline-none text-[#0A2A1B] transition-colors ${
+                                    touched.email && !emailValidation.isValid
+                                        ? 'border-red-400 focus:border-red-500 bg-red-50/20'
+                                        : touched.email && emailValidation.isValid
+                                        ? 'border-emerald-500/50 focus:border-emerald-600'
+                                        : 'border-[#0A2A1B]/15 focus:border-[#D97706]'
+                                }`}
                                 required
                             />
+                            {touched.email && !emailValidation.isValid && (
+                                <p className="text-red-500 text-xs mt-1">{emailValidation.message}</p>
+                            )}
                             {errors.email && <p className="text-red-600 text-xs mt-1">{errors.email[0]}</p>}
                         </div>
 
+                        {/* Password */}
                         <div className="space-y-1">
                             <label className="text-xs font-semibold text-[#0A2A1B] block">Password</label>
                             <input
                                 type="password"
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-white border border-[#0A2A1B]/15 rounded-full text-sm focus:outline-none focus:border-[#D97706] text-[#0A2A1B] transition-colors"
+                                onChange={(e) => {
+                                    setPassword(e.target.value);
+                                    markTouched('password');
+                                    if (errors.password) setErrors((prev) => ({ ...prev, password: [] }));
+                                }}
+                                className={`w-full px-4 py-2.5 bg-white border rounded-full text-sm focus:outline-none text-[#0A2A1B] transition-colors ${
+                                    touched.password && !passwordValidation.isValid
+                                        ? 'border-amber-400 focus:border-amber-500'
+                                        : touched.password && passwordValidation.isValid
+                                        ? 'border-emerald-500/50 focus:border-emerald-600'
+                                        : 'border-[#0A2A1B]/15 focus:border-[#D97706]'
+                                }`}
                                 required
                             />
+                            
+                            {/* Realtime Password Strength Meter */}
+                            {password.length > 0 && (
+                                <div className="mt-2 space-y-1.5 p-2.5 bg-[#F7F4EB] rounded-xl border border-[#0A2A1B]/5">
+                                    <div className="flex justify-between items-center text-[11px] font-semibold text-[#0A2A1B]/80">
+                                        <span>Password Strength</span>
+                                        <span style={{ color: passwordValidation.color }}>{passwordValidation.label}</span>
+                                    </div>
+                                    <div className="flex gap-1 h-1.5 w-full">
+                                        {[1, 2, 3, 4].map((step) => (
+                                            <div
+                                                key={step}
+                                                className="flex-1 h-full rounded-full transition-all duration-300"
+                                                style={{
+                                                    backgroundColor: step <= passwordValidation.score ? passwordValidation.color : '#E5E7EB',
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                    {/* Criteria Checklist */}
+                                    <div className="grid grid-cols-2 gap-1 pt-1 text-[10px]">
+                                        <div className={`flex items-center gap-1 ${passwordValidation.criteria.minLength ? 'text-emerald-700 font-semibold' : 'text-gray-400'}`}>
+                                            <span>{passwordValidation.criteria.minLength ? '✓' : '•'}</span> At least 8 chars
+                                        </div>
+                                        <div className={`flex items-center gap-1 ${passwordValidation.criteria.hasUppercase ? 'text-emerald-700 font-semibold' : 'text-gray-400'}`}>
+                                            <span>{passwordValidation.criteria.hasUppercase ? '✓' : '•'}</span> Uppercase letter
+                                        </div>
+                                        <div className={`flex items-center gap-1 ${passwordValidation.criteria.hasLowercase ? 'text-emerald-700 font-semibold' : 'text-gray-400'}`}>
+                                            <span>{passwordValidation.criteria.hasLowercase ? '✓' : '•'}</span> Lowercase letter
+                                        </div>
+                                        <div className={`flex items-center gap-1 ${passwordValidation.criteria.hasNumberOrSpecial ? 'text-emerald-700 font-semibold' : 'text-gray-400'}`}>
+                                            <span>{passwordValidation.criteria.hasNumberOrSpecial ? '✓' : '•'}</span> Number / Special
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {errors.password && <p className="text-red-600 text-xs mt-1">{errors.password[0]}</p>}
                         </div>
 
+                        {/* Confirm Password */}
                         <div className="space-y-1">
-                            <label className="text-xs font-semibold text-[#0A2A1B] block">Confirm Password</label>
+                            <div className="flex justify-between items-center">
+                                <label className="text-xs font-semibold text-[#0A2A1B] block">Confirm Password</label>
+                                {touched.confirmPassword && confirmPassword.length > 0 && (
+                                    <span className={`text-[11px] font-semibold ${confirmPasswordValidation.isValid ? 'text-emerald-600' : 'text-red-500'}`}>
+                                        {confirmPasswordValidation.isValid ? '✓ Passwords match' : '✗ Passwords match'}
+                                    </span>
+                                )}
+                            </div>
                             <input
                                 type="password"
                                 value={confirmPassword}
                                 placeholder="Re-enter your password"
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-white border border-[#0A2A1B]/15 rounded-full text-sm focus:outline-none focus:border-[#D97706] text-[#0A2A1B] transition-colors"
+                                onChange={(e) => {
+                                    setConfirmPassword(e.target.value);
+                                    markTouched('confirmPassword');
+                                    if (errors.password) setErrors((prev) => ({ ...prev, password: [] }));
+                                }}
+                                className={`w-full px-4 py-2.5 bg-white border rounded-full text-sm focus:outline-none text-[#0A2A1B] transition-colors ${
+                                    touched.confirmPassword && !confirmPasswordValidation.isValid
+                                        ? 'border-red-400 focus:border-red-500 bg-red-50/20'
+                                        : touched.confirmPassword && confirmPasswordValidation.isValid
+                                        ? 'border-emerald-500/50 focus:border-emerald-600'
+                                        : 'border-[#0A2A1B]/15 focus:border-[#D97706]'
+                                }`}
                                 required
                             />
-                            {errors.password && <p className="text-red-600 text-xs mt-1">{errors.password[0]}</p>}
+                            {touched.confirmPassword && !confirmPasswordValidation.isValid && (
+                                <p className="text-red-500 text-xs mt-1">{confirmPasswordValidation.message}</p>
+                            )}
+                        </div>
+
+                        {/* Agreement & Terms Checkbox */}
+                        <div className="space-y-1">
+                            <label className="flex items-start gap-2 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={agreedToTerms}
+                                    onChange={(e) => {
+                                        setAgreedToTerms(e.target.checked);
+                                        if (errors.terms) setErrors((prev) => ({ ...prev, terms: [] }));
+                                    }}
+                                    className="mt-0.5 shrink-0 accent-[#0A2A1B]"
+                                />
+                                <span className="text-xs text-[#0A2A1B]/70 leading-relaxed">
+                                    I agree to the{' '}
+                                    <button
+                                        type="button"
+                                        onClick={() => setLegalModal({ isOpen: true, type: 'terms' })}
+                                        className="text-[#D97706] hover:underline font-semibold cursor-pointer"
+                                    >
+                                        Terms and Conditions
+                                    </button>
+                                    {' '}and{' '}
+                                    <button
+                                        type="button"
+                                        onClick={() => setLegalModal({ isOpen: true, type: 'privacy' })}
+                                        className="text-[#D97706] hover:underline font-semibold cursor-pointer"
+                                    >
+                                        Privacy Policy
+                                    </button>
+                                    .
+                                </span>
+                            </label>
+                            {errors.terms && (
+                                <p className="text-red-600 text-xs mt-1 ml-5">{errors.terms[0]}</p>
+                            )}
                         </div>
 
                         <button
@@ -329,14 +623,37 @@ const handleForgotPassword = (e: React.FormEvent) => {
 
                         <form onSubmit={handleForgotPassword} className="space-y-4">
                             <div className="space-y-1">
-                                <label className="text-xs font-semibold text-[#0A2A1B] block">Email Address</label>
+                                <div className="flex justify-between items-center">
+                                    <label className="text-xs font-semibold text-[#0A2A1B] block">Email Address</label>
+                                    {touched.email && emailValidation.isValid && (
+                                        <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-1">
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            Valid email
+                                        </span>
+                                    )}
+                                </div>
                                 <input
                                     type="email"
                                     value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full px-4 py-2.5 bg-white border border-[#0A2A1B]/15 rounded-full text-sm focus:outline-none focus:border-[#D97706] text-[#0A2A1B] transition-colors"
+                                    onChange={(e) => {
+                                        setEmail(e.target.value);
+                                        markTouched('email');
+                                    }}
+                                    onBlur={() => markTouched('email')}
+                                    className={`w-full px-4 py-2.5 bg-white border rounded-full text-sm focus:outline-none text-[#0A2A1B] transition-colors ${
+                                        touched.email && !emailValidation.isValid
+                                            ? 'border-red-400 focus:border-red-500 bg-red-50/20'
+                                            : touched.email && emailValidation.isValid
+                                            ? 'border-emerald-500/50 focus:border-emerald-600'
+                                            : 'border-[#0A2A1B]/15 focus:border-[#D97706]'
+                                    }`}
                                     required
                                 />
+                                {touched.email && !emailValidation.isValid && (
+                                    <p className="text-red-500 text-xs mt-1">{emailValidation.message}</p>
+                                )}
                             </div>
 
                             <button
@@ -357,6 +674,13 @@ const handleForgotPassword = (e: React.FormEvent) => {
                         </button>
                     </div>
                 )}
+
+                    {/* Embedded Legal Policy Modal */}
+                    <LegalModal
+                        isOpen={legalModal.isOpen}
+                        type={legalModal.type}
+                        onClose={() => setLegalModal({ isOpen: false, type: 'terms' })}
+                    />
                     </motion.div>
                 </div>
             )}

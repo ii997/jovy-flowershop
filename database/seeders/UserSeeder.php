@@ -17,6 +17,7 @@ class UserSeeder extends Seeder
         $users = [
             ['name' => 'Jovelyn Velesrubio',   'email' => 'admin@jovy.com',   'password' => 'password', 'role' => UserRole::Admin],
             ['name' => 'Rose Mary',  'email' => 'staff@jovy.com',   'password' => 'password', 'role' => UserRole::Staff],
+            ['name' => 'Kael Fronda',   'email' => 'customer@jovy.com',  'password' => 'password', 'role' => UserRole::Customer],
         ];
 
         foreach ($users as $user) {

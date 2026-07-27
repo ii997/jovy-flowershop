@@ -37,7 +37,7 @@ function AdminApp() {
                             const prodRes = await fetch('/api/products');
                             if (prodRes.ok) {
                                 const prodData = await prodRes.json();
-                                setProducts(prodData);
+                                setProducts(prodData.data ?? prodData);
                             }
                         } catch (e) {
                             console.error('Failed to load products in admin', e);

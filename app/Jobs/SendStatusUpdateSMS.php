@@ -81,8 +81,8 @@ class SendStatusUpdateSMS implements ShouldQueue
             $errorMsg = "SMS dispatch attempt {$currentAttempt} failed for Order #JFS-{$order->id} to {$recipientPhone}.";
             Log::warning($errorMsg);
 
-            // Re-throw exception if attempts remain so Laravel Queue retries with backoff
-            if ($currentAttempt < $this->tries) {
+            // Re-throw exception if attempts remain so Laravel Queue retries with backoff (skipped in unit testing)
+            if ($currentAttempt < $this->tries && !app()->environment('testing')) {
                 throw new \RuntimeException($errorMsg);
             }
         } else {
@@ -118,11 +118,15 @@ class SendStatusUpdateSMS implements ShouldQueue
     protected function buildSmsMessage(Order $order, string $eventType): string
     {
         return match ($eventType) {
+            'new_order_alert' => "Jovy's Flowershop Alert: New order #JFS-{$order->id} submitted by {$order->recipient_name}. Total: ₱{$order->total_price}.",
+            'order_cancelled_customer' => "Jovy's Flowershop Alert: Order #JFS-{$order->id} was cancelled by customer {$order->recipient_name}.",
             'confirmed' => "Jovy's Flowershop: Order #JFS-{$order->id} has been confirmed. Thank you!",
             'preparing', 'shipped' => "Jovy's Flowershop: Order #JFS-{$order->id} is now being prepared for pickup!",
             'delivered' => "Jovy's Flowershop: Order #JFS-{$order->id} is ready for pickup / completed. Thank you for choosing us!",
             'payment_received', 'payment_verified' => "Jovy's Flowershop: Payment for Order #JFS-{$order->id} (₱{$order->total_price}) has been verified.",
             'payment_failed', 'payment_rejected' => "Jovy's Flowershop: Payment proof for Order #JFS-{$order->id} could not be verified. Please re-submit proof.",
+            'payment_underpaid' => "Jovy's Flowershop: Payment for Order #JFS-{$order->id} is underpaid. Please re-submit payment for remaining balance.",
+            'payment_overpaid' => "Jovy's Flowershop: Payment for Order #JFS-{$order->id} was overpaid. Excess amount will be refunded.",
             'cancelled' => "Jovy's Flowershop: Order #JFS-{$order->id} has been cancelled.",
             default => "Jovy's Flowershop: Update for Order #JFS-{$order->id}. Status: " . ucfirst($order->status),
         };

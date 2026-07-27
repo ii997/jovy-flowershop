@@ -33,6 +33,7 @@ class NotificationTest extends TestCase
 
         config(['services.httpsms.key' => 'test-api-key']);
         config(['services.httpsms.from' => '+639171111111']);
+        config(['sms.test_mode' => false]);
 
         // Seed products and inventory
         $this->seed(\Database\Seeders\DatabaseSeeder::class);
@@ -201,9 +202,10 @@ class NotificationTest extends TestCase
         ]);
     }
 
-    public function test_sms_falls_back_to_textbee_when_httpsms_fails(): void
+    public function test_sms_falls_back_to_httpsms_when_textbee_fails(): void
     {
         config([
+            'sms.default' => 'textbee',
             'services.httpsms.key' => 'httpsms-key',
             'services.httpsms.from' => '+639171111111',
             'services.textbee.key' => 'textbee-api-key',
@@ -211,18 +213,18 @@ class NotificationTest extends TestCase
         ]);
 
         Http::fake([
-            'api.httpsms.com/*' => Http::response(['message' => 'Service Unavailable'], 503),
-            'api.textbee.dev/*' => Http::response(['success' => true], 200),
+            'api.textbee.dev/*' => Http::response(['message' => 'Service Unavailable'], 503),
+            'api.httpsms.com/*' => Http::response(['success' => true], 200),
         ]);
 
         $success = \App\Services\NotificationService::sendSmsDirect('+639170000000', 'Test Fallback');
 
         $this->assertTrue($success);
 
-        // Verify TextBee fallback was logged in sms_logs table
+        // Verify httpSMS fallback was logged in sms_logs table
         $this->assertDatabaseHas('sms_logs', [
             'phone_number' => '+639170000000',
-            'gateway' => 'textbee',
+            'gateway' => 'httpsms',
             'status' => 'sent',
         ]);
     }
@@ -233,5 +235,35 @@ class NotificationTest extends TestCase
         $this->assertEquals('+639171234567', \App\Services\NotificationService::formatPhoneNumber('9171234567'));
         $this->assertEquals('+639171234567', \App\Services\NotificationService::formatPhoneNumber('+639171234567'));
         $this->assertEquals('+639171234567', \App\Services\NotificationService::formatPhoneNumber(' 0917-123-4567 '));
+    }
+
+    public function test_sms_test_mode_logs_to_laravel_log_and_database(): void
+    {
+        config(['sms.test_mode' => 'testing']);
+
+        $customer = User::factory()->create(['role' => UserRole::Customer]);
+        $order = Order::create([
+            'user_id' => $customer->id,
+            'recipient_name' => 'Jane Doe',
+            'recipient_phone' => '09170000000',
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'total_price' => 500,
+            'downpayment_amount' => 150,
+            'status' => 'confirmed',
+            'order_type' => 'purchase',
+            'items' => [],
+        ]);
+
+        $success = \App\Services\NotificationService::sendSmsDirect('+639170000000', 'Test Mode Message', $order->id);
+
+        $this->assertTrue($success);
+
+        $this->assertDatabaseHas('sms_logs', [
+            'phone_number' => '+639170000000',
+            'message' => 'Test Mode Message',
+            'gateway' => 'log',
+            'status' => 'sent',
+            'order_id' => $order->id,
+        ]);
     }
 }

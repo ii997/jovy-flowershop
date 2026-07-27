@@ -91,14 +91,14 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
     };
 
     const handleCancelOrder = async (orderId: number) => {
-        if (!cancelReason || cancelReason.length < 5) {
+        if (!cancelReason || cancelReason.trim().length < 5) {
             toast.error('Please provide a reason for cancellation (minimum 5 characters).');
             return;
         }
         try {
             const updatedOrder = await cancelOrderMutation.mutateAsync({
                 orderId,
-                reason: cancelReason,
+                reason: cancelReason.trim(),
                 refund_amount: cancelRefundAmount ? parseFloat(cancelRefundAmount) : null,
                 refund_method: cancelRefundMethod,
             });
@@ -108,7 +108,7 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
             setCancelReason('');
             setCancelRefundAmount('');
             setCancelRefundMethod('none');
-            toast.success('Order cancelled successfully');
+            toast.success('Order cancelled and inventory restored');
         } catch (error: any) {
             toast.error(error.message || 'Failed to cancel order');
         }
@@ -326,9 +326,6 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                                     <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Phone</span><span className="font-semibold">{selectedOrder.recipient_phone}</span></div>
                                     <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Fulfillment</span><span className="font-bold">Store Pickup</span></div>
                                     <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Pickup Date</span><span className="font-semibold">{selectedOrder.pickup_date}</span></div>
-                                    {selectedOrder.wrapper_type && (
-                                        <div className="flex justify-between"><span className="text-[#0A2A1B]/60">Wrap</span><span className="font-semibold">{selectedOrder.wrapper_type}</span></div>
-                                    )}
                                     {selectedOrder.gift_message && (
                                         <div className="space-y-1 pt-2 border-t border-[#0A2A1B]/5">
                                             <span className="text-[#0A2A1B]/60 block font-semibold">Message card:</span>

@@ -3,14 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
     /**
-     * Display a listing of all products.
+     * Display a paginated listing of all products.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Product::all());
+        $perPage = (int) $request->input('per_page', 50);
+        $perPage = max(1, min(200, $perPage));
+        return response()->json(Product::paginate($perPage));
     }
 }

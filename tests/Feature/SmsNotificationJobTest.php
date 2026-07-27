@@ -15,6 +15,12 @@ class SmsNotificationJobTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['sms.test_mode' => false]);
+    }
+
     public function test_order_status_change_dispatches_sms_job_on_sms_queue()
     {
         Queue::fake();
@@ -158,5 +164,44 @@ class SmsNotificationJobTest extends TestCase
             'gateway' => 'textbee',
             'status' => 'sent',
         ]);
+    }
+
+    public function test_customer_cancellation_dispatches_sms_job_to_admin()
+    {
+        Queue::fake();
+
+        $settingsPath = storage_path('app/settings.json');
+        if (!file_exists(dirname($settingsPath))) {
+            mkdir(dirname($settingsPath), 0755, true);
+        }
+        file_put_contents($settingsPath, json_encode(['phone' => '+639179998888']));
+
+        $user = \App\Models\User::factory()->create();
+
+        $order = Order::create([
+            'user_id' => $user->id,
+            'order_type' => 'purchase',
+            'recipient_name' => 'Jane Smith',
+            'recipient_phone' => '09171234567',
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'items' => [],
+            'total_price' => 1200.00,
+            'status' => 'confirmed',
+            'payment_status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($user)->postJson("/api/orders/{$order->id}/cancel", [
+            'reason' => 'Need to cancel this order due to schedule conflict.',
+        ]);
+
+        $response->assertStatus(200);
+
+        Queue::assertPushedOn('sms', SendStatusUpdateSMS::class, function ($job) use ($order) {
+            return $job->orderId === $order->id && $job->eventType === 'order_cancelled_customer' && $job->phone === '+639179998888';
+        });
+
+        if (file_exists($settingsPath)) {
+            unlink($settingsPath);
+        }
     }
 }
