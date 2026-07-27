@@ -11,9 +11,9 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// Catalog & settings routes
-Route::get('/api/products', [ProductController::class, 'index']);
-Route::get('/api/settings', [AdminController::class, 'getSettings']);
+// Catalog & settings routes (throttled to prevent scraping)
+Route::get('/api/products', [ProductController::class, 'index'])->middleware('throttle:60,1');
+Route::get('/api/settings', [AdminController::class, 'getSettings'])->middleware('throttle:60,1');
 
 // Authentication routes (strict rate limits to prevent brute-force)
 Route::post('/api/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
@@ -21,6 +21,8 @@ Route::post('/api/login', [AuthController::class, 'login'])->middleware('throttl
 Route::post('/api/logout', [AuthController::class, 'logout'])->middleware('throttle:10,1');
 Route::get('/api/user', [AuthController::class, 'user'])->middleware('auth');
 Route::post('/api/profile', [AuthController::class, 'update'])->middleware('auth')->middleware('throttle:10,1');
+Route::post('/api/account/delete', [AuthController::class, 'requestAccountDeletion'])->middleware('auth')->middleware('throttle:10,1');
+Route::post('/api/account/cancel-deletion', [AuthController::class, 'cancelAccountDeletion'])->middleware('auth')->middleware('throttle:10,1');
 
 // Customer orders routes
 Route::post('/api/orders', [OrderController::class, 'store'])->middleware('auth')->middleware('throttle:10,1');

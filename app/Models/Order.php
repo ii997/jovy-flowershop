@@ -46,18 +46,6 @@ class Order extends Model
         return $this->hasMany(SmsLog::class);
     }
 
-    /**
-     * Dispatch SMS job when order status changes.
-     */
-    public function dispatchStatusSms(string $eventType, ?string $customPhone = null): void
-    {
-        \App\Jobs\SendStatusUpdateSMS::dispatch(
-            $this->id,
-            $eventType,
-            $customPhone ?? $this->recipient_phone
-        )->onQueue(config('sms.queue', 'sms'));
-    }
-
     protected function casts(): array
     {
         return [

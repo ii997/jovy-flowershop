@@ -23,9 +23,10 @@ export async function fetchAdminFlowers(): Promise<Flower[]> {
 }
 
 export async function fetchAdminProducts(): Promise<Product[]> {
-    const res = await fetch('/api/products');
+    const res = await fetch('/api/products?per_page=200');
     if (!res.ok) throw new Error('Failed to load products');
-    return res.json();
+    const data = await res.json();
+    return data.data ?? data;
 }
 
 // React Query Hooks

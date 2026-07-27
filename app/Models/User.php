@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'deletion_requested_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -28,6 +28,26 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => \App\Enums\UserRole::class,
+            'deletion_requested_at' => 'datetime',
         ];
+    }
+
+    public function isPendingDeletion(): bool
+    {
+        return $this->deletion_requested_at !== null;
+    }
+
+    public function requestDeletion(): void
+    {
+        $this->update([
+            'deletion_requested_at' => now(),
+        ]);
+    }
+
+    public function cancelDeletion(): void
+    {
+        $this->update([
+            'deletion_requested_at' => null,
+        ]);
     }
 }

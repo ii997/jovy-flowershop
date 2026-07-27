@@ -18,7 +18,7 @@ class AdminController extends Controller
     {
         $grossSales = Order::sum('total_price');
         $totalOrders = Order::count();
-        $activeListings = Product::count();
+        $activeListings = Product::where('availability', true)->count();
         $recentOrders = Order::orderBy('created_at', 'desc')->take(5)->get();
 
         // Revenue tracking uses payment_status (decoupled from fulfillment)
@@ -29,6 +29,25 @@ class AdminController extends Controller
         $productCounts = [];
         $occasionsBreakdown = [];
         $seasonsBreakdown = [];
+
+        // Collect unique product IDs to batch-load product data
+        $allProductIds = [];
+        foreach ($ordersItems as $items) {
+            if (is_array($items)) {
+                foreach ($items as $item) {
+                    $prodId = $item['id'] ?? null;
+                    if ($prodId) {
+                        $allProductIds[$prodId] = $prodId;
+                    }
+                }
+            }
+        }
+
+        // Pre-load Product models to get real occasions/seasons (not stored in items JSON)
+        $productDataMap = collect();
+        if (!empty($allProductIds)) {
+            $productDataMap = Product::whereIn('id', $allProductIds)->get()->keyBy('id');
+        }
 
         foreach ($ordersItems as $items) {
             if (is_array($items)) {
@@ -45,13 +64,14 @@ class AdminController extends Controller
                         $productCounts[$prodId]['count'] += $qty;
                     }
 
-                    // Occasions and seasons breakdowns
-                    $occasions = $item['product']['occasions'] ?? [];
-                    $seasons = $item['product']['seasons'] ?? [];
-                    foreach ((array) $occasions as $occ) {
+                    // Occasions and seasons breakdowns from actual Product models
+                    $product = $productDataMap->get($prodId);
+                    $occasions = $product ? ($product->occasions ?? []) : [];
+                    $seasons = $product ? ($product->seasons ?? []) : [];
+                    foreach ($occasions as $occ) {
                         $occasionsBreakdown[$occ] = ($occasionsBreakdown[$occ] ?? 0) + $qty;
                     }
-                    foreach ((array) $seasons as $sea) {
+                    foreach ($seasons as $sea) {
                         $seasonsBreakdown[$sea] = ($seasonsBreakdown[$sea] ?? 0) + $qty;
                     }
                 }
@@ -256,8 +276,38 @@ class AdminController extends Controller
                 'refund_method' => $validated['refund_method'] ?? 'none',
             ]);
 
+            // Restore products inventory and flower stems count
+            if ($order->items && is_array($order->items)) {
+                foreach ($order->items as $item) {
+                    $product = Product::where('id', $item['id'])->lockForUpdate()->first();
+                    if ($product) {
+                        $otherActive = Order::whereIn('status', ['confirmed', 'preparing', 'ready'])
+                            ->where('id', '!=', $order->id)
+                            ->whereJsonContains('items', [['id' => $product->id]])
+                            ->exists();
+                        if (!$otherActive) {
+                            $product->availability = true;
+                        }
+                        $product->save();
+
+                        if (!empty($product->stems) && is_array($product->stems)) {
+                            foreach ($product->stems as $flowerName => $countNeeded) {
+                                $flower = \App\Models\Flower::where('name', $flowerName)
+                                    ->lockForUpdate()
+                                    ->first();
+                                if ($flower) {
+                                    $qtyToRestore = $countNeeded * (int) ($item['quantity'] ?? 1);
+                                    $flower->quantity += $qtyToRestore;
+                                    $flower->save();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             $order->status = 'cancelled';
-            if (($validated['refund_amount'] ?? 0) > 0) {
+            if (($validated['refund_amount'] ?? 0) > 0 || $order->payment_status === 'verified') {
                 $order->payment_status = 'refunded';
             }
             $order->save();
@@ -423,8 +473,8 @@ class AdminController extends Controller
         if (!file_exists($path)) {
             return response()->json([
                 'store_name' => "Jovy's Flowershop",
-                'store_phone' => "+63-2-555-1234",
-                'store_address' => "123 Rizal Avenue, Makati City, Metro Manila",
+                'store_phone' => "+639097850776",
+                'store_address' => "Brgy. Poblacion, Kidapawan City, Cotabato",
                 'maintenance_mode' => false,
                 'qr_image' => "",
                 'downpayment_pct' => 30

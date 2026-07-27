@@ -42,7 +42,7 @@ function App() {
             const response = await fetch('/api/products');
             if (response.ok) {
                 const data = await response.json();
-                setProducts(data);
+                setProducts(data.data ?? data);
             }
         } catch (error) {
             console.error('Failed to load products');
@@ -78,7 +78,7 @@ function App() {
                         setIsMaintenanceMode(!!data.maintenance_mode);
                         localStorage.setItem('store_settings_downpayment_pct', String(data.downpayment_pct ?? 30));
                         localStorage.setItem('store_settings_name', data.store_name || "Jovy's Flowershop");
-                        localStorage.setItem('store_settings_phone', data.store_phone || "+63-2-555-1234");
+                        localStorage.setItem('store_settings_phone', data.store_phone || "+639097850776");
                         localStorage.setItem('store_settings_maintenance', String(!!data.maintenance_mode));
                         localStorage.setItem('store_settings_qr_image', data.qr_image || "");
                     }
@@ -88,7 +88,7 @@ function App() {
             }
         };
         fetchSettings();
-        
+
         const checkSession = async () => {
             try {
                 const response = await fetch('/api/user');
@@ -172,9 +172,9 @@ function App() {
             )}
             <Hero />
             <Features />
-            <ProductList 
-                products={products} 
-                onOrderBouquet={handleOrderBouquet} 
+            <ProductList
+                products={products}
+                onOrderBouquet={handleOrderBouquet}
                 isAuthenticated={!!user}
                 onAuthClick={() => setIsAuthOpen(true)}
                 isLoading={isLoadingProducts}
@@ -204,6 +204,7 @@ function App() {
                         fetchOrders(user);
                         fetchProducts();
                     }}
+                    onLogout={handleLogout}
                 />
 
                 <CheckoutModal

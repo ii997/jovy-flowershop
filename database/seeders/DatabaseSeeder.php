@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(FlowerSeeder::class);
+        $this->call(UserSeeder::class);
 
         // Prevent duplicate seeding
         if (Product::count() > 0) {
@@ -198,17 +199,7 @@ class DatabaseSeeder extends Seeder
             Product::create($prod);
         }
 
-        // Seed admin & staff users via dedicated seeder
-        $this->call(UserSeeder::class);
-
-        // Seed customer users
-
-        User::create([
-            'name' => 'Carlos Gomez',
-            'email' => 'carlos@customer.com',
-            'password' => \Illuminate\Support\Facades\Hash::make('password'),
-            'role' => \App\Enums\UserRole::Customer,
-        ]);
+    
        
     }
 }

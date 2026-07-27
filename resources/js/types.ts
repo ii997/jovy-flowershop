@@ -3,6 +3,7 @@ export interface User {
     name: string;
     email: string;
     role: 'customer' | 'staff' | 'admin';
+    deletion_requested_at?: string | null;
 }
 
 export interface Product {
@@ -35,7 +36,6 @@ export interface Order {
     recipient_name: string;
     recipient_phone: string;
     pickup_date: string;
-    wrapper_type?: string;
     order_type: string;
     total_price: number | string;
     gift_message?: string;

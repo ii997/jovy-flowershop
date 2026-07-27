@@ -35,13 +35,13 @@
           "name": "Jovy's Flowershop",
           "image": "https://jovyflowershop.com/images/roses.png",
           "priceRange": "$$",
-          "telephone": "+63-2-555-1234",
+          "telephone": "+639518701625",
           "address": {
             "@@type": "PostalAddress",
-            "streetAddress": "123 Rizal Avenue, Brgy. San Antonio",
-            "addressLocality": "Makati City",
-            "addressRegion": "Metro Manila",
-            "postalCode": "1203",
+            "streetAddress": "Brgy. Poblacion",
+            "addressLocality": "Kidapawan City",
+            "addressRegion": "Cotabato",
+            "postalCode": "9400",
             "addressCountry": "PH"
           },
           "openingHoursSpecification": [

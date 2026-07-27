@@ -23,7 +23,7 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
     const [storeSettings, setStoreSettings] = useState({
         name: localStorage.getItem('store_settings_name') || "Jovy's Flowershop",
         address: localStorage.getItem('store_settings_address') || "Barangay Pob. Kidapawan City",
-        phone: localStorage.getItem('store_settings_phone') || "+63-951-870-1625",
+        phone: localStorage.getItem('store_settings_phone') || "+639097850776",
         downpaymentPct: parseInt(localStorage.getItem('store_settings_downpayment_pct') || '30', 10),
     });
 
@@ -38,7 +38,7 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
                     if (data) {
                         const updatedName = data.store_name || "Jovy's Flowershop";
                         const updatedAddress = data.store_address || "Barangay Pob. Kidapawan City";
-                        const updatedPhone = data.store_phone || "+63-951-870-1625";
+                        const updatedPhone = data.store_phone || "+639097850776";
                         const updatedPct = data.downpayment_pct ?? 30;
 
                         setStoreSettings({

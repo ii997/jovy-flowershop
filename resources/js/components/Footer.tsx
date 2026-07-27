@@ -1,4 +1,12 @@
+import { useState } from 'react';
+import { LegalModal } from './LegalModal';
+
 export function Footer() {
+    const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'terms' | 'privacy' }>({
+        isOpen: false,
+        type: 'terms',
+    });
+
     return (
         <footer id="footer" className="bg-[#0A2A1B] text-white/70 py-16 px-6 text-sm">
             <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -34,10 +42,25 @@ export function Footer() {
             <div className="max-w-6xl mx-auto border-t border-white/10 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between text-xs gap-4 text-white/40">
                 <p>&copy; {new Date().getFullYear()} Jovy's Flowershop. All rights reserved.</p>
                 <div className="flex gap-6">
-                    <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
-                    <a href="/terms" className="hover:text-white transition-colors">Terms of Service</a>
+                    <button
+                        onClick={() => setLegalModal({ isOpen: true, type: 'privacy' })}
+                        className="hover:text-white transition-colors cursor-pointer"
+                    >
+                        Privacy Policy
+                    </button>
+                    <button
+                        onClick={() => setLegalModal({ isOpen: true, type: 'terms' })}
+                        className="hover:text-white transition-colors cursor-pointer"
+                    >
+                        Terms of Service
+                    </button>
                 </div>
             </div>
+            <LegalModal
+                isOpen={legalModal.isOpen}
+                type={legalModal.type}
+                onClose={() => setLegalModal({ isOpen: false, type: 'terms' })}
+            />
         </footer>
     );
 }

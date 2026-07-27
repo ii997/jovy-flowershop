@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User } from '../../types';
 import { toast } from '../ui/Toast';
 import { SettingsTabSkeleton } from '../ui/Skeleton';
+import { validateName, validatePassword } from '../../lib/authValidation';
 
 interface SettingsTabProps {
     user: User | null;
@@ -20,9 +21,13 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
     const [profileSuccess, setProfileSuccess] = useState('');
     const [isProfileSaving, setIsProfileSaving] = useState(false);
 
+    // Realtime validation for Admin profile
+    const nameValidation = useMemo(() => validateName(name), [name]);
+    const passwordValidation = useMemo(() => validatePassword(newPassword), [newPassword]);
+
     // Store Settings States (persisted in localStorage)
     const [storeName, setStoreName] = useState("Jovy's Flowershop");
-    const [storePhone, setStorePhone] = useState("+63-951-870-1625");
+    const [storePhone, setStorePhone] = useState("+639097850776");
     const [storeAddress, setStoreAddress] = useState("Barangay Pob. Kidapawan City");
     const [maintenanceMode, setMaintenanceMode] = useState(false);
     const [downpaymentPct, setDownpaymentPct] = useState(30);
@@ -48,8 +53,8 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
                     const data = await res.json();
                     if (data) {
                         setStoreName(data.store_name || "Jovy's Flowershop");
-                        setStorePhone(data.store_phone || "+63-951-870-1625");
-                        setStoreAddress(data.store_address || "Barangay Pob. Kidapawan City");
+                        setStorePhone(data.store_phone || "+639097850776");
+                        setStoreAddress(data.store_address || "Brgy. Pob. Kidapawan City, Cotabato");
                         setMaintenanceMode(!!data.maintenance_mode);
                         setQrImage(data.qr_image || "");
                         setDownpaymentPct(data.downpayment_pct ?? 30);
@@ -76,9 +81,20 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
 
     const handleProfileUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsProfileSaving(true);
         setProfileErrors({});
         setProfileSuccess('');
+
+        if (!nameValidation.isValid) {
+            setProfileErrors({ name: [nameValidation.message] });
+            return;
+        }
+
+        if (newPassword && !passwordValidation.isValid) {
+            setProfileErrors({ new_password: ['New password must be at least 8 characters long.'] });
+            return;
+        }
+
+        setIsProfileSaving(true);
 
         const payload: any = { name };
         if (newPassword) {
@@ -313,8 +329,8 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
                                         onDragLeave={() => setIsQrDragging(false)}
                                         onClick={() => qrFileInputRef.current?.click()}
                                         className={`relative flex flex-col items-center justify-center gap-2 py-6 px-4 rounded-2xl border-2 border-dashed cursor-pointer transition-all duration-200 ${isQrDragging
-                                                ? 'border-[#D97706] bg-[#D97706]/5 scale-[1.01]'
-                                                : 'border-[#0A2A1B]/15 bg-[#FAF9F6] hover:border-[#D97706]/50 hover:bg-[#D97706]/[0.02]'
+                                            ? 'border-[#D97706] bg-[#D97706]/5 scale-[1.01]'
+                                            : 'border-[#0A2A1B]/15 bg-[#FAF9F6] hover:border-[#D97706]/50 hover:bg-[#D97706]/[0.02]'
                                             } ${isQrUploading ? 'pointer-events-none opacity-60' : ''}`}
                                     >
                                         {isQrUploading ? (
@@ -398,14 +414,29 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
                         )}
 
                         <div className="flex flex-col gap-1.5">
-                            <label className="text-[11px] uppercase font-bold tracking-wider text-[#0A2A1B]/60">Full Name</label>
+                            <div className="flex justify-between items-center">
+                                <label className="text-[11px] uppercase font-bold tracking-wider text-[#0A2A1B]/60">Full Name</label>
+                                {name.length > 0 && nameValidation.isValid && (
+                                    <span className="text-[10px] font-semibold text-emerald-600">✓ Valid name</span>
+                                )}
+                            </div>
                             <input
                                 type="text"
                                 value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="px-4 py-2.5 rounded-xl border border-[#0A2A1B]/15 bg-gray-50/50 focus:bg-white text-xs font-semibold text-[#0A2A1B] outline-hidden focus:border-[#D97706] transition-colors"
+                                onChange={(e) => {
+                                    setName(e.target.value);
+                                    if (profileErrors.name) setProfileErrors((prev) => ({ ...prev, name: [] }));
+                                }}
+                                className={`px-4 py-2.5 rounded-xl border bg-gray-50/50 focus:bg-white text-xs font-semibold text-[#0A2A1B] outline-hidden transition-colors ${
+                                    name.length > 0 && !nameValidation.isValid
+                                        ? 'border-red-400 focus:border-red-500'
+                                        : 'border-[#0A2A1B]/15 focus:border-[#D97706]'
+                                }`}
                                 required
                             />
+                            {name.length > 0 && !nameValidation.isValid && (
+                                <p className="text-red-500 text-[10px] font-bold mt-1">{nameValidation.message}</p>
+                            )}
                             {profileErrors.name && (
                                 <p className="text-red-500 text-[10px] font-bold mt-1">{profileErrors.name[0]}</p>
                             )}
@@ -444,10 +475,46 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
                                 <input
                                     type="password"
                                     value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
-                                    placeholder="Minimum 6 characters"
+                                    onChange={(e) => {
+                                        setNewPassword(e.target.value);
+                                        if (profileErrors.new_password) setProfileErrors((prev) => ({ ...prev, new_password: [] }));
+                                    }}
+                                    placeholder="Minimum 8 characters"
                                     className="px-4 py-2.5 rounded-xl border border-[#0A2A1B]/15 bg-gray-50/50 focus:bg-white text-xs font-semibold text-[#0A2A1B] outline-hidden focus:border-[#D97706] transition-colors"
                                 />
+                                {newPassword.length > 0 && (
+                                    <div className="mt-2 space-y-1.5 p-2.5 bg-[#F7F4EB] rounded-xl border border-[#0A2A1B]/5">
+                                        <div className="flex justify-between items-center text-[10px] font-semibold text-[#0A2A1B]/80">
+                                            <span>Password Strength</span>
+                                            <span style={{ color: passwordValidation.color }}>{passwordValidation.label}</span>
+                                        </div>
+                                        <div className="flex gap-1 h-1.5 w-full">
+                                            {[1, 2, 3, 4].map((step) => (
+                                                <div
+                                                    key={step}
+                                                    className="flex-1 h-full rounded-full transition-all duration-300"
+                                                    style={{
+                                                        backgroundColor: step <= passwordValidation.score ? passwordValidation.color : '#E5E7EB',
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-1 pt-1 text-[9px]">
+                                            <div className={`flex items-center gap-1 ${passwordValidation.criteria.minLength ? 'text-emerald-700 font-semibold' : 'text-gray-400'}`}>
+                                                <span>{passwordValidation.criteria.minLength ? '✓' : '•'}</span> At least 8 chars
+                                            </div>
+                                            <div className={`flex items-center gap-1 ${passwordValidation.criteria.hasUppercase ? 'text-emerald-700 font-semibold' : 'text-gray-400'}`}>
+                                                <span>{passwordValidation.criteria.hasUppercase ? '✓' : '•'}</span> Uppercase letter
+                                            </div>
+                                            <div className={`flex items-center gap-1 ${passwordValidation.criteria.hasLowercase ? 'text-emerald-700 font-semibold' : 'text-gray-400'}`}>
+                                                <span>{passwordValidation.criteria.hasLowercase ? '✓' : '•'}</span> Lowercase letter
+                                            </div>
+                                            <div className={`flex items-center gap-1 ${passwordValidation.criteria.hasNumberOrSpecial ? 'text-emerald-700 font-semibold' : 'text-gray-400'}`}>
+                                                <span>{passwordValidation.criteria.hasNumberOrSpecial ? '✓' : '•'}</span> Number / Special
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                                 {profileErrors.new_password && (
                                     <p className="text-red-500 text-[10px] font-bold mt-1">{profileErrors.new_password[0]}</p>
                                 )}
