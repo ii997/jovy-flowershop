@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Product, Flower } from '../types';
 import { ImagePicker } from './admin/ImagePicker';
 import { toast } from './ui/Toast';
+import { X } from 'reicon-react';
 
 interface ProductEditModalProps {
     isOpen: boolean;
@@ -15,7 +16,7 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
     const [category, setCategory] = useState('');
-    const [dimensions, setDimensions] = useState('');
+    const [size, setSize] = useState('');
     const [description, setDescription] = useState('');
     const [occasions, setOccasions] = useState('');
     const [seasons, setSeasons] = useState('');
@@ -35,7 +36,7 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
             setName(product.name);
             setPrice(product.price.toString());
             setCategory(product.category);
-            setDimensions(product.dimensions);
+            setSize(product.size);
             setDescription(product.description);
             setOccasions(product.occasions.join(', '));
             setSeasons(product.seasons.join(', '));
@@ -131,7 +132,7 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
             category,
             image,
             description,
-            dimensions,
+            size,
             occasions: occasions.split(',').map(s => s.trim()).filter(Boolean),
             seasons: seasons.split(',').map(s => s.trim()).filter(Boolean),
             stems: stemsRecord,
@@ -189,9 +190,7 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
                         className="p-1 rounded-full hover:bg-[#0A2A1B]/5 text-[#0A2A1B]/60 hover:text-[#0A2A1B] cursor-pointer transition-all active:scale-90"
                         aria-label="Close edit modal"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <X className="h-6 w-6" strokeWidth={1.5} />
                     </button>
                 </div>
 
@@ -245,12 +244,12 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
                         <label className="text-xs font-semibold text-[#0A2A1B] block">Size</label>
                         <div className="flex gap-2">
                             {['S', 'M', 'L', 'XL'].map(s => {
-                                const currentSize = dimensions.replace('Size ', '');
+                                const currentSize = size.replace('Size ', '');
                                 return (
                                     <button
                                         key={s}
                                         type="button"
-                                        onClick={() => setDimensions(`Size ${s}`)}
+                                        onClick={() => setSize(`Size ${s}`)}
                                         className={`w-14 h-10 rounded-xl text-sm font-bold border-2 transition-all cursor-pointer active:scale-95 ${
                                             currentSize === s
                                                 ? 'bg-[#0A2A1B] text-white border-[#0A2A1B] shadow-sm'
@@ -262,7 +261,7 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
                                 );
                             })}
                         </div>
-                        {errors.dimensions && <p className="text-red-600 text-xs mt-1">{errors.dimensions[0]}</p>}
+                        {errors.size && <p className="text-red-600 text-xs mt-1">{errors.size[0]}</p>}
                     </div>
 
                     {/* Dynamic Flower Stems Builder */}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Product } from '../types';
 import { motion } from 'motion/react';
 import { useAnimationTransition } from './animations';
+import { ChevronLeft, ChevronRight, Star, Leaf } from 'reicon-react';
 
 interface ProductCardProps {
     product: Product;
@@ -74,9 +75,7 @@ export function ProductCard({ product, onOrderBouquet }: ProductCardProps) {
                             className="p-1.5 rounded-full bg-white/90 hover:bg-white text-[#0A2A1B] shadow-md transition-all active:scale-90 cursor-pointer"
                             aria-label="Previous Image"
                         >
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                                <path d="M15 18l-6-6 6-6" />
-                            </svg>
+                            <ChevronLeft className="h-4 w-4" strokeWidth={2} />
                         </button>
                         <div className="flex gap-1 bg-black/30 px-2 py-1 rounded-full backdrop-blur-sm">
                             {product.gallery.map((_, idx) => (
@@ -93,9 +92,7 @@ export function ProductCard({ product, onOrderBouquet }: ProductCardProps) {
                             className="p-1.5 rounded-full bg-white/90 hover:bg-white text-[#0A2A1B] shadow-md transition-all active:scale-90 cursor-pointer"
                             aria-label="Next Image"
                         >
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                                <path d="M9 18l6-6-6-6" />
-                            </svg>
+                            <ChevronRight className="h-4 w-4" strokeWidth={2} />
                         </button>
                     </div>
                 )}
@@ -107,24 +104,19 @@ export function ProductCard({ product, onOrderBouquet }: ProductCardProps) {
                     <div className="flex items-center justify-between">
                         <h3 className="font-semibold text-base text-[#0A2A1B]">{product.name}</h3>
                         <div className="flex items-center text-xs text-[#D97706] gap-0.5 select-none">
-                            <svg className="h-3 w-3 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 17.8 5.8 21.1 7 14.2 2 9.3l6.9-1L12 2z" />
-                            </svg>
+                            <Star className="h-3 w-3" weight="Filled" />
                             <span className="font-semibold text-[#0A2A1B]">{product.rating}</span>
                         </div>
                     </div>
                     
                     <p className="text-xs text-[#0A2A1B]/75 line-clamp-2 leading-relaxed">{product.description}</p>
 
-                    {/* Dimensions & Stats */}
+                    {/* Size & Stats */}
                     <div className="flex flex-col gap-1.5 text-[10px] text-[#0A2A1B]/50 font-medium pt-1">
-                        <span>Dimensions: {product.dimensions}</span>
+                        <span>Size: {product.size}</span>
                         {product.stems && Object.keys(product.stems).length > 0 && (
                             <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 mt-0.5">
-                                <svg className="h-3 w-3 text-[#D97706]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                                    <path d="M12 4C12 4 8 7 8 10C8 12.5 10 14 12 14C14 14 16 12.5 16 10C16 7 12 4 12 4Z" />
-                                    <path d="M12 14C12 14 9 16 9 18.5C9 20.5 10.5 22 12 22C13.5 22 15 20.5 15 18.5C15 16 12 14 12 14Z" />
-                                </svg>
+                                <Leaf className="h-3 w-3 text-[#D97706]" strokeWidth={1.5} />
                                 {Object.entries(product.stems).map(([flower, count], idx) => (
                                     <span key={idx} className="text-[#0A2A1B]/65">
                                         {count}x {flower}

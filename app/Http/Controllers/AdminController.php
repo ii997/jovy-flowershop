@@ -217,7 +217,7 @@ class AdminController extends Controller
                 $order->id
             );
         } elseif ($order->payment_status === 'failed') {
-            $notes = $validated['admin_notes'] ?? 'No reason provided';
+            $notes = strip_tags($validated['admin_notes'] ?? 'No reason provided');
             $lowerNotes = strtolower($notes);
             
             $title = '❌ Payment Proof Rejected';
@@ -317,7 +317,7 @@ class AdminController extends Controller
         NotificationService::send(
             $order->user_id,
             'Order Cancelled by Shop',
-            "Your order #JFS-{$order->id} has been cancelled by the shop. Reason: {$validated['reason']}.",
+            "Your order #JFS-{$order->id} has been cancelled by the shop. Reason: " . strip_tags($validated['reason']) . ".",
             'cancelled',
             false,
             true,
@@ -354,7 +354,7 @@ class AdminController extends Controller
             'category' => 'required|string|max:255',
             'image' => 'nullable|string|max:255',
             'description' => 'required|string',
-            'dimensions' => 'required|string|max:100',
+            'size' => 'required|string|max:100',
             'occasions' => 'required|array',
             'seasons' => 'required|array',
             'stems' => 'nullable|array',
@@ -364,7 +364,7 @@ class AdminController extends Controller
         $product->price = $validated['price'];
         $product->category = $validated['category'];
         $product->description = $validated['description'];
-        $product->dimensions = $validated['dimensions'];
+        $product->size = $validated['size'];
         $product->occasions = $validated['occasions'];
         $product->seasons = $validated['seasons'];
         if (!empty($validated['image'])) $product->image = $validated['image'];
@@ -381,7 +381,7 @@ class AdminController extends Controller
             'category' => 'required|string|max:255',
             'image' => 'required|string|max:255',
             'description' => 'required|string',
-            'dimensions' => 'required|string|max:100',
+            'size' => 'required|string|max:100',
             'occasions' => 'required|array',
             'seasons' => 'required|array',
             'stems' => 'nullable|array',
@@ -408,7 +408,7 @@ class AdminController extends Controller
                 'description' => $validated['description'],
                 'occasions' => $validated['occasions'],
                 'seasons' => $validated['seasons'],
-                'dimensions' => $validated['dimensions'],
+                'size' => $validated['size'],
                 'gallery' => [$validated['image']],
                 'price' => (float) $validated['price'],
                 'rating' => 5.00,
