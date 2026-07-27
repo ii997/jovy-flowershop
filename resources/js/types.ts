@@ -16,7 +16,7 @@ export interface Product {
     rating: number;
     occasions: string[];
     seasons: string[];
-    dimensions: string;
+    size: string;
     availability: boolean;
     quantity: number;
     gallery: string[];

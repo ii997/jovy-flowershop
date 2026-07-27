@@ -58,8 +58,8 @@ export function InventoryTab({
             header: 'Category',
             cell: info => info.getValue(),
         }),
-        columnHelper.accessor('dimensions', {
-            header: 'Dimensions',
+        columnHelper.accessor('size', {
+            header: 'Size',
             cell: info => <span className="text-[#0A2A1B]/60 font-medium">{info.getValue()}</span>,
         }),
         columnHelper.display({

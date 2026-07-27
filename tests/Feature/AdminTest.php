@@ -18,6 +18,28 @@ class AdminTest extends TestCase
         $this->seed(DatabaseSeeder::class);
     }
 
+    public function test_admin_can_create_product_with_size_field(): void
+    {
+        $admin = User::where('email', 'admin@jovy.com')->first();
+
+        $response = $this->actingAs($admin)->postJson('/api/admin/products', [
+            'name' => 'Size Test Bouquet',
+            'price' => 75.00,
+            'category' => 'Test',
+            'image' => '/images/test.png',
+            'description' => 'Testing size field',
+            'size' => '30cm x 20cm',
+            'occasions' => ['Birthday'],
+            'seasons' => ['All Year'],
+        ]);
+
+        $response->assertStatus(200);
+
+        $product = \App\Models\Product::where('name', 'Size Test Bouquet')->first();
+        $this->assertNotNull($product);
+        $this->assertEquals('30cm x 20cm', $product->size);
+    }
+
     public function test_non_admin_cannot_access_admin_stats(): void
     {
         $customer = User::where('email', 'carlos@customer.com')->first() ?: User::factory()->create();
@@ -36,7 +58,7 @@ class AdminTest extends TestCase
             'category' => 'Test',
             'image' => '/images/test.png',
             'description' => 'Test description',
-            'dimensions' => '30cm x 20cm',
+            'size' => '30cm x 20cm',
             'occasions' => ['Birthday'],
             'seasons' => ['All Year'],
         ]);
