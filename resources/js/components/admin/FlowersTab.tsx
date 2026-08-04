@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Flower } from '../../types';
 import { Pagination } from '../Pagination';
 import { FlowersTabSkeleton } from '../ui/Skeleton';
+import { toast } from '../ui/Toast';
 import { useAddFlower, useUpdateFlower } from '../../lib/adminQueries';
 import {
     useReactTable,
@@ -28,6 +29,7 @@ export function FlowersTab({ flowers, onFlowersChange, isAdmin, isLoading = fals
     const [editPrices, setEditPrices] = useState<Record<number, string>>({});
     const [editQtys, setEditQtys] = useState<Record<number, string>>({});
     const [rowError, setRowError] = useState('');
+    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 8 });
 
     const addFlowerMutation = useAddFlower();
     const updateFlowerMutation = useUpdateFlower();
@@ -42,7 +44,9 @@ export function FlowersTab({ flowers, onFlowersChange, isAdmin, isLoading = fals
         const price = parseFloat(newPrice);
         const qty = parseInt(newQty);
         if (!newName.trim() || isNaN(price) || price < 0 || isNaN(qty) || qty < 0) {
-            setAddError('Please fill in all fields with valid values.');
+            const errorMsg = 'Please fill in all fields with valid values.';
+            setAddError(errorMsg);
+            toast.error(errorMsg);
             return;
         }
 
@@ -52,15 +56,23 @@ export function FlowersTab({ flowers, onFlowersChange, isAdmin, isLoading = fals
             setNewName('');
             setNewPrice('');
             setNewQty('');
+            toast.success(`Flower "${created.name}" added successfully!`);
         } catch (err: any) {
-            setAddError(err.message || 'Failed to add flower.');
+            const errorMsg = err?.message || 'Failed to add flower.';
+            setAddError(errorMsg);
+            toast.error(errorMsg);
         }
     };
 
     const handleSaveFlower = async (flower: Flower) => {
         const price = parseFloat(editPrices[flower.id]?.toString() ?? flower.price.toString());
         const qty = parseInt(editQtys[flower.id]?.toString() ?? flower.quantity.toString());
-        if (isNaN(price) || price < 0 || isNaN(qty) || qty < 0) return;
+        if (isNaN(price) || price < 0 || isNaN(qty) || qty < 0) {
+            const errorMsg = 'Please enter a valid price and quantity.';
+            showRowError(errorMsg);
+            toast.error(errorMsg);
+            return;
+        }
 
         try {
             const updated: Flower = await updateFlowerMutation.mutateAsync({
@@ -69,8 +81,11 @@ export function FlowersTab({ flowers, onFlowersChange, isAdmin, isLoading = fals
                 quantity: qty,
             });
             onFlowersChange?.(flowers.map(f => f.id === updated.id ? updated : f));
-        } catch {
-            showRowError('Failed to save flower. Please try again.');
+            toast.success(`Updated "${updated.name}" inventory successfully!`);
+        } catch (err: any) {
+            const errorMsg = err?.message || 'Failed to save flower. Please try again.';
+            showRowError(errorMsg);
+            toast.error(errorMsg);
         }
     };
 
@@ -81,10 +96,23 @@ export function FlowersTab({ flowers, onFlowersChange, isAdmin, isLoading = fals
                 available: !flower.available,
             });
             onFlowersChange?.(flowers.map(f => f.id === updated.id ? updated : f));
-        } catch {
-            showRowError('Failed to toggle availability. Please try again.');
+            toast.success(`"${updated.name}" is now ${updated.available ? 'In Stock' : 'Out of Stock'}.`);
+        } catch (err: any) {
+            const errorMsg = err?.message || 'Failed to toggle availability. Please try again.';
+            showRowError(errorMsg);
+            toast.error(errorMsg);
         }
     };
+
+    /** Table meta shape — provides fresh callback/state references to stable column cells */
+    interface FlowersTabMeta {
+        isAdmin: boolean;
+        editPrices: Record<number, string>;
+        editQtys: Record<number, string>;
+        handleSaveFlower: (flower: Flower) => void;
+        handleToggleAvailability: (flower: Flower) => void;
+        isSaving: boolean;
+    }
 
     const columns = useMemo(() => [
         columnHelper.accessor('name', {
@@ -96,7 +124,8 @@ export function FlowersTab({ flowers, onFlowersChange, isAdmin, isLoading = fals
             header: 'Unit Price',
             cell: info => {
                 const f = info.row.original;
-                const currentPrice = editPrices[f.id] !== undefined ? editPrices[f.id] : f.price.toString();
+                const meta = info.table.options.meta as FlowersTabMeta;
+                const currentPrice = meta.editPrices[f.id] !== undefined ? meta.editPrices[f.id] : f.price.toString();
                 return (
                     <div className="flex items-center gap-1.5">
                         <span className="text-[#0A2A1B]/60 font-medium">₱</span>
@@ -104,7 +133,7 @@ export function FlowersTab({ flowers, onFlowersChange, isAdmin, isLoading = fals
                             type="text"
                             value={currentPrice}
                             onChange={e => setEditPrices(prev => ({ ...prev, [f.id]: e.target.value }))}
-                            disabled={!isAdmin}
+                            disabled={!meta.isAdmin}
                             className="w-16 px-1.5 py-1 bg-white border border-[#0A2A1B]/15 rounded-lg text-xs text-[#0A2A1B] focus:outline-none focus:border-[#D97706] disabled:opacity-75"
                         />
                     </div>
@@ -116,13 +145,14 @@ export function FlowersTab({ flowers, onFlowersChange, isAdmin, isLoading = fals
             header: 'Quantity',
             cell: info => {
                 const f = info.row.original;
-                const currentQty = editQtys[f.id] !== undefined ? editQtys[f.id] : f.quantity.toString();
+                const meta = info.table.options.meta as FlowersTabMeta;
+                const currentQty = meta.editQtys[f.id] !== undefined ? meta.editQtys[f.id] : f.quantity.toString();
                 return (
                     <input
                         type="text"
                         value={currentQty}
                         onChange={e => setEditQtys(prev => ({ ...prev, [f.id]: e.target.value }))}
-                        disabled={!isAdmin}
+                        disabled={!meta.isAdmin}
                         className="w-16 px-1.5 py-1 bg-white border border-[#0A2A1B]/15 rounded-lg text-xs text-[#0A2A1B] focus:outline-none focus:border-[#D97706] disabled:opacity-75"
                     />
                 );
@@ -133,14 +163,14 @@ export function FlowersTab({ flowers, onFlowersChange, isAdmin, isLoading = fals
             header: () => <div className="text-center">Availability</div>,
             cell: info => {
                 const f = info.row.original;
-                const isSaving = updateFlowerMutation.isPending;
+                const meta = info.table.options.meta as FlowersTabMeta;
                 return (
                     <div className="flex items-center justify-center gap-2">
                         <button
-                            onClick={() => handleToggleAvailability(f)}
-                            disabled={!isAdmin}
+                            onClick={() => meta.handleToggleAvailability(f)}
+                            disabled={!meta.isAdmin}
                             className={`px-3 py-1 text-[10px] font-bold rounded-full transition-all ${
-                                isAdmin ? 'cursor-pointer active:scale-95' : 'cursor-not-allowed'
+                                meta.isAdmin ? 'cursor-pointer active:scale-95' : 'cursor-not-allowed'
                             } ${f.available
                                 ? 'bg-green-100 border border-green-200 text-green-700'
                                 : 'bg-red-100 border border-red-200 text-red-700'
@@ -148,10 +178,10 @@ export function FlowersTab({ flowers, onFlowersChange, isAdmin, isLoading = fals
                         >
                             {f.available ? 'In Stock' : 'Out of Stock'}
                         </button>
-                        {isAdmin && (
+                        {meta.isAdmin && (
                             <button
-                                onClick={() => handleSaveFlower(f)}
-                                disabled={isSaving}
+                                onClick={() => meta.handleSaveFlower(f)}
+                                disabled={meta.isSaving}
                                 className="px-2.5 py-1 bg-[#0A2A1B] hover:bg-[#D97706] disabled:bg-gray-300 text-white text-[10px] font-bold rounded-lg transition-colors cursor-pointer active:scale-95"
                             >
                                 Save
@@ -161,18 +191,26 @@ export function FlowersTab({ flowers, onFlowersChange, isAdmin, isLoading = fals
                 );
             },
         }),
-    ], [isAdmin, editPrices, editQtys, updateFlowerMutation.isPending]);
+    ], []);  // stable — deps provided via table meta, read at render time
 
     const table = useReactTable({
         data: flowers,
         columns,
+        state: {
+            pagination,
+        },
+        onPaginationChange: setPagination,
+        autoResetPageIndex: false,
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
-        initialState: {
-            pagination: {
-                pageSize: 8,
-            },
-        },
+        meta: {
+            isAdmin,
+            editPrices,
+            editQtys,
+            handleSaveFlower,
+            handleToggleAvailability,
+            isSaving: updateFlowerMutation.isPending,
+        } satisfies FlowersTabMeta,
     });
 
     if (isLoading) {
@@ -181,11 +219,6 @@ export function FlowersTab({ flowers, onFlowersChange, isAdmin, isLoading = fals
 
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="font-serif text-2xl font-bold text-[#0A2A1B]">Flowers Inventory</h2>
-                <p className="text-xs text-[#0A2A1B]/60">Manage individual flower types and stock levels</p>
-            </div>
-
             {/* Add Flower Form */}
             {isAdmin && (
                 <div className="bg-white border border-[#0A2A1B]/5 rounded-2xl p-4 shadow-sm">

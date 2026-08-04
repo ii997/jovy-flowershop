@@ -3,6 +3,7 @@ import { Product, User } from '../types';
 import { ProductEditModal } from './ProductEditModal';
 import { ProductCreateModal } from './ProductCreateModal';
 import { toast } from './ui/Toast';
+import { Menu, ChevronDown } from 'reicon-react';
 import { NotificationBell } from './NotificationBell';
 import { motion, AnimatePresence } from 'motion/react';
 import { AdminSidebar } from './admin/AdminSidebar';
@@ -110,9 +111,7 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
                         className="p-2 text-[#0A2A1B] hover:bg-[#0A2A1B]/5 rounded-xl cursor-pointer transition-colors"
                         aria-label="Open menu"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
+                        <Menu className="h-6 w-6" />
                     </button>
                 </div>
             </div>
@@ -163,9 +162,7 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
                                 <div className="w-8 h-8 rounded-full bg-[#0A2A1B] text-white flex items-center justify-center font-bold text-xs">
                                     {user?.name.charAt(0).toUpperCase()}
                                 </div>
-                                <svg className={`h-3.5 w-3.5 text-[#0A2A1B]/50 mr-1 transition-transform duration-200 ${isUserDropdownOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M6 9l6 6 6-6" />
-                                </svg>
+                                <ChevronDown className={`h-3.5 w-3.5 text-[#0A2A1B]/50 mr-1 transition-transform duration-200 ${isUserDropdownOpen ? 'rotate-180' : ''}`} strokeWidth={2.5} />
                             </button>
 
                             <AnimatePresence>

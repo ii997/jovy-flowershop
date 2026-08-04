@@ -36,3 +36,7 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+graphify-out/
+e2e
+.claude/

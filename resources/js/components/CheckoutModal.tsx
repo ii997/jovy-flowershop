@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAnimationTransition } from './animations';
+import { X } from 'reicon-react';
 
 interface CheckoutModalProps {
     isOpen: boolean;
@@ -148,9 +149,7 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
                                 className="p-1 rounded-full hover:bg-[#0A2A1B]/5 text-[#0A2A1B]/60 hover:text-[#0A2A1B] cursor-pointer transition-all active:scale-90"
                                 aria-label="Close checkout"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
+                                <X className="h-6 w-6" strokeWidth={1.5} />
                             </button>
                         </div>
 

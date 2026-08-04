@@ -15,6 +15,11 @@ class EnvKitTrustProxies extends ServiceProvider
 {
     public function boot(): void
     {
+        // Only trust local proxy IPs in non-production environments
+        if (app()->environment('production')) {
+            return;
+        }
+
         Request::setTrustedProxies(
             ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'],
             Request::HEADER_X_FORWARDED_FOR

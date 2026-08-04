@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { Check, Image as ImageIcon } from 'reicon-react';
 
 const PRESET_IMAGES = [
     { src: '/images/roses.png', label: 'Red Roses' },
@@ -141,16 +142,7 @@ export function ImagePicker({ value, onChange }: ImagePickerProps) {
                             />
                             {value === img.src && (
                                 <div className="absolute inset-0 bg-[#D97706]/20 flex items-center justify-center">
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="h-4 w-4 text-white drop-shadow"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                        strokeWidth={3}
-                                    >
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                    </svg>
+                                    <Check className="h-4 w-4 text-white drop-shadow" strokeWidth={3} />
                                 </div>
                             )}
                         </button>
@@ -181,20 +173,7 @@ export function ImagePicker({ value, onChange }: ImagePickerProps) {
                         </>
                     ) : (
                         <>
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-6 w-6 text-[#0A2A1B]/30"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={1.5}
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                />
-                            </svg>
+                            <ImageIcon className="h-6 w-6 text-[#0A2A1B]/30" strokeWidth={1.5} />
                             <span className="text-xs text-[#0A2A1B]/50 font-medium">
                                 Drop image here or <span className="text-[#D97706] font-semibold">browse</span>
                             </span>

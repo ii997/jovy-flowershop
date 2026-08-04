@@ -3,6 +3,7 @@ import { User } from '../../types';
 import { toast } from '../ui/Toast';
 import { SettingsTabSkeleton } from '../ui/Skeleton';
 import { validateName, validatePassword } from '../../lib/authValidation';
+import { Image } from 'reicon-react';
 
 interface SettingsTabProps {
     user: User | null;
@@ -227,11 +228,6 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
 
     return (
         <div className="max-w-6xl mx-auto space-y-8 select-none">
-            {/* Header Title */}
-            <div>
-                <h1 className="font-serif text-3xl font-extrabold text-[#0A2A1B] tracking-tight">System Settings</h1>
-                <p className="text-xs text-[#0A2A1B]/60 mt-1.5 font-medium">Manage store operations, layout configuration, and administrator credentials.</p>
-            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Store Operations Panel */}
@@ -340,9 +336,7 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
                                             </>
                                         ) : (
                                             <>
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-[#0A2A1B]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                </svg>
+                                                <Image className="h-6 w-6 text-[#0A2A1B]/30" strokeWidth={1.5} />
                                                 <span className="text-xs text-[#0A2A1B]/55 font-semibold text-center">
                                                     Drag & drop QR image or <span className="text-[#D97706]">browse</span>
                                                 </span>

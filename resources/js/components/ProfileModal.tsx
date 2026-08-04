@@ -3,6 +3,7 @@ import { User } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAnimationTransition } from './animations';
 import { validateName, validatePassword } from '../lib/authValidation';
+import { X, AlertTriangle, ShoppingBag } from 'reicon-react';
 import { toast } from './ui/Toast';
 
 interface ProfileModalProps {
@@ -253,9 +254,7 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateSuccess, orders, o
                         className="p-1 rounded-full hover:bg-[#0A2A1B]/5 text-[#0A2A1B]/60 hover:text-[#0A2A1B] cursor-pointer transition-all active:scale-90"
                         aria-label="Close modal"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <X className="h-6 w-6" strokeWidth={1.5} />
                     </button>
                 </div>
 
@@ -288,9 +287,7 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateSuccess, orders, o
                             {user.deletion_requested_at && (
                                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-2 select-none">
                                     <div className="flex items-center gap-2 text-amber-900 text-xs font-bold uppercase tracking-wider">
-                                        <svg className="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                        </svg>
+                                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                                         <span>Account Scheduled for Deletion</span>
                                     </div>
                                     <p className="text-xs text-amber-800 leading-relaxed">
@@ -500,11 +497,7 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateSuccess, orders, o
                             <span className="text-xs font-bold text-[#0A2A1B]/40 uppercase tracking-wider block select-none">Your Orders & Reservations</span>
                             {orders.length === 0 ? (
                                 <div className="text-center py-16 bg-[#FAF9F6] rounded-2xl border border-[#0A2A1B]/5 space-y-2 select-none">
-                                    <svg className="h-8 w-8 mx-auto text-[#0A2A1B]/20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" aria-hidden="true">
-                                        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
-                                        <path d="M3 6h18" />
-                                        <path d="M16 10a4 4 0 01-8 0" />
-                                    </svg>
+                                    <ShoppingBag className="h-8 w-8 mx-auto text-[#0A2A1B]/20" />
                                     <h4 className="font-semibold text-sm text-[#0A2A1B]">No orders found</h4>
                                     <p className="text-xs text-[#0A2A1B]/55">Your purchases and bookings will appear here once processed.</p>
                                 </div>

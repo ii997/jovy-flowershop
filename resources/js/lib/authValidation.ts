@@ -1,6 +1,7 @@
 /**
  * Realtime Authentication Validation Utilities & RegEx Patterns
  */
+import { useState, useEffect } from 'react';
 
 export const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 export const NAME_REGEX = /^[a-zA-Z\s'-]{2,50}$/;
@@ -89,6 +90,21 @@ export function validatePassword(password: string): PasswordValidationResult {
         criteria,
         isValid,
     };
+}
+
+/**
+ * React hook: debounce a value by `delay` ms
+ * The returned value only updates after the source value has stopped changing for `delay` ms.
+ */
+export function useDebounce<T>(value: T, delay: number = 300): T {
+    const [debounced, setDebounced] = useState(value);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setDebounced(value), delay);
+        return () => clearTimeout(timer);
+    }, [value, delay]);
+
+    return debounced;
 }
 
 /**

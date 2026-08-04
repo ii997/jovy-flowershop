@@ -17,7 +17,7 @@ Route::get('/api/settings', [AdminController::class, 'getSettings'])->middleware
 
 // Authentication routes (strict rate limits to prevent brute-force)
 Route::post('/api/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
-Route::post('/api/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/api/login', [AuthController::class, 'login'])->name('login')->middleware('throttle:5,1');
 Route::post('/api/logout', [AuthController::class, 'logout'])->middleware('throttle:10,1');
 Route::get('/api/user', [AuthController::class, 'user'])->middleware('auth');
 Route::post('/api/profile', [AuthController::class, 'update'])->middleware('auth')->middleware('throttle:10,1');
@@ -35,7 +35,7 @@ Route::get('/api/notifications', [NotificationController::class, 'index'])->midd
 Route::post('/api/notifications/read', [NotificationController::class, 'markRead'])->middleware('auth');
 
 // Secure Admin API routes group (secured via Gate middleware)
-Route::prefix('/api/admin')->middleware(['auth', 'throttle:60,1'])->group(function () {
+Route::prefix('/api/admin')->middleware(['auth', 'admin.session.timeout', 'throttle:60,1'])->group(function () {
     // Admin-only endpoints
     Route::middleware(['can:admin'])->group(function () {
         Route::get('/stats', [AdminController::class, 'stats']);
@@ -63,5 +63,5 @@ Route::prefix('/api/admin')->middleware(['auth', 'throttle:60,1'])->group(functi
 
 // Secure Admin Dashboard web routes group
 Route::get('/admin/{any?}', [AdminController::class, 'dashboard'])
-    ->middleware('auth')
+    ->middleware(['auth', 'admin.session.timeout'])
     ->where('any', '.*');

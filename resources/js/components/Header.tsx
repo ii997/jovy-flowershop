@@ -3,6 +3,7 @@ import { User } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAnimationTransition } from './animations';
 import { NotificationBell } from './NotificationBell';
+import { ArrowRight, User as UserIcon, ChevronDown } from 'reicon-react';
 
 interface HeaderProps {
     user: User | null;
@@ -52,9 +53,7 @@ export function Header({
                             className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-[#D97706]/10 hover:bg-[#D97706]/20 border border-[#D97706]/20 rounded-full text-[10px] sm:text-xs font-bold text-[#D97706] transition-all cursor-pointer active:scale-95 select-none"
                         >
                             <span>Dashboard</span>
-                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                            </svg>
+                            <ArrowRight className="h-3 w-3" />
                         </button>
                     )}
 
@@ -66,13 +65,9 @@ export function Header({
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                 className="flex items-center gap-1.5 px-4 py-2 hover:bg-[#0A2A1B]/5 rounded-full text-xs font-semibold text-[#0A2A1B] transition-all cursor-pointer border border-[#0A2A1B]/10"
                             >
-                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                                    <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-8 8-8s8 4 8 8" />
-                                </svg>
+                                <UserIcon className="h-4 w-4" />
                                 <span>{user.name.split(' ')[0]}</span>
-                                <svg className="h-3 w-3 text-[#0A2A1B]/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                                    <path d="M6 9l6 6 6-6" />
-                                </svg>
+                                <ChevronDown className="h-3 w-3 text-[#0A2A1B]/40" />
                             </button>
 
                             {/* Dropdown Menu */}

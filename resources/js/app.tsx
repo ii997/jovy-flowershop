@@ -8,6 +8,7 @@ import { Features } from './components/Features';
 import { ProductList } from './components/ProductList';
 import { Footer } from './components/Footer';
 import { ToastContainer, toast } from './components/ui/Toast';
+import { AlertTriangle } from 'reicon-react';
 
 // Lazy-loaded — only fetched when first needed.
 // React.lazy() requires a default export, so we map the named export.
@@ -164,9 +165,7 @@ function App() {
             />
             {isMaintenanceMode && (
                 <div className="bg-[#D97706] text-white px-4 py-3 text-center text-xs font-bold tracking-wide shadow-md flex items-center justify-center gap-2 select-none border-b border-[#D97706]/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
+                    <AlertTriangle className="h-4 w-4 shrink-0 animate-bounce" />
                     <span>Store Notice: Under Maintenance — Browsing is open, but online orders & reservations are temporarily paused.</span>
                 </div>
             )}

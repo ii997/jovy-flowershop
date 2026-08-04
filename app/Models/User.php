@@ -29,6 +29,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'role' => \App\Enums\UserRole::class,
             'deletion_requested_at' => 'datetime',
+            'last_admin_activity' => 'datetime',
         ];
     }
 

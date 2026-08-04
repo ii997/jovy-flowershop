@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Order } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAnimationTransition } from './animations';
+import { X, Image, InfoCircle, Check } from 'reicon-react';
 import { useReceiptOcr } from '../lib/hooks/useReceiptOcr';
 import { OrderSummaryDetails } from './OrderSummaryDetails';
 import { InstaPayQr } from './InstaPayQr';
@@ -158,9 +159,7 @@ export function OrderSummaryModal({ isOpen, onClose, order, onPaymentSuccess }: 
                                 className="p-1.5 rounded-full hover:bg-[#0A2A1B]/5 text-[#0A2A1B]/60 hover:text-[#0A2A1B] cursor-pointer transition-all active:scale-90"
                                 aria-label="Close summary"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
+                                <X className="h-6 w-6" strokeWidth={1.5} />
                             </button>
                         </div>
 
@@ -184,9 +183,7 @@ export function OrderSummaryModal({ isOpen, onClose, order, onPaymentSuccess }: 
 
                                 {uploadSuccess ? (
                                     <div className="bg-green-50 border border-green-200 text-green-800 p-5 rounded-2xl text-center space-y-2">
-                                        <svg className="h-6 w-6 mx-auto text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                                            <path d="M20 6L9 17l-5-5" />
-                                        </svg>
+                                        <Check className="h-6 w-6 mx-auto text-green-600" strokeWidth={2} />
                                         <h4 className="font-bold text-sm">Receipt Submitted!</h4>
                                         <p className="text-xs text-green-700">Thank you. We will verify your payment receipt shortly and process your floral arrangement.</p>
                                     </div>
@@ -206,9 +203,7 @@ export function OrderSummaryModal({ isOpen, onClose, order, onPaymentSuccess }: 
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-[#0A2A1B]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                    </svg>
+                                                    <Image className="h-7 w-7 text-[#0A2A1B]/30" strokeWidth={1.5} />
                                                     <span className="text-xs text-center text-[#0A2A1B]/55 font-semibold">Drag & drop receipt screenshot or <span className="text-[#D97706]">browse</span></span>
                                                     <span className="text-[10px] text-[#0A2A1B]/35">JPG, PNG · Max 3 MB</span>
                                                 </>
@@ -263,9 +258,7 @@ export function OrderSummaryModal({ isOpen, onClose, order, onPaymentSuccess }: 
                                                         />
                                                         {amountMismatch && (
                                                             <div className="flex items-start gap-1.5 mt-1 px-1">
-                                                                <svg className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                </svg>
+                                                                <InfoCircle className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" strokeWidth={2} />
                                                                 <span className="text-[10px] text-red-600 font-semibold leading-tight">
                                                                     Amount mismatch — receipt shows ₱{parsedPaymentAmount.toFixed(2)} but expected payment is ₱{expectedPaymentAmount.toFixed(2)}
                                                                 </span>

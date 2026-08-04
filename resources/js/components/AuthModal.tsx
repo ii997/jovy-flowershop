@@ -3,8 +3,9 @@ import { User } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAnimationTransition } from './animations';
 import { toast } from './ui/Toast';
-import { validateEmail, validateName, validatePassword, validatePasswordMatch } from '../lib/authValidation';
+import { validateEmail, validateName, validatePassword, validatePasswordMatch, useDebounce } from '../lib/authValidation';
 import { LegalModal } from './LegalModal';
+import { X, Check } from 'reicon-react';
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -21,6 +22,12 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
+    // Debounced field values — validation only runs after the user pauses typing
+    const debouncedEmail = useDebounce(email, 300);
+    const debouncedName = useDebounce(name, 300);
+    const debouncedPassword = useDebounce(password, 300);
+    const debouncedConfirmPassword = useDebounce(confirmPassword, 300);
+
     // Touched tracking for realtime feedback
     const [touched, setTouched] = useState<Record<string, boolean>>({});
     
@@ -36,11 +43,11 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
         type: 'terms',
     });
 
-    // Realtime validation evaluations
-    const emailValidation = useMemo(() => validateEmail(email), [email]);
-    const nameValidation = useMemo(() => validateName(name), [name]);
-    const passwordValidation = useMemo(() => validatePassword(password), [password]);
-    const confirmPasswordValidation = useMemo(() => validatePasswordMatch(password, confirmPassword), [password, confirmPassword]);
+    // Validation evaluations (debounced — only recompute after the user pauses typing)
+    const emailValidation = useMemo(() => validateEmail(debouncedEmail), [debouncedEmail]);
+    const nameValidation = useMemo(() => validateName(debouncedName), [debouncedName]);
+    const passwordValidation = useMemo(() => validatePassword(debouncedPassword), [debouncedPassword]);
+    const confirmPasswordValidation = useMemo(() => validatePasswordMatch(debouncedPassword, debouncedConfirmPassword), [debouncedPassword, debouncedConfirmPassword]);
 
     const markTouched = (field: string) => {
         setTouched((prev) => ({ ...prev, [field]: true }));
@@ -75,16 +82,15 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
 
         if (!customCredentials) {
             setTouched({ email: true, password: true });
-            if (!emailValidation.isValid) {
-                setErrors({ email: [emailValidation.message] });
+            // Validate raw field values synchronously (not debounced), so a fast
+            // typist who clicks submit immediately gets the correct validation result.
+            const emailResult = validateEmail(loginEmail);
+            if (!emailResult.isValid) {
+                setErrors({ email: [emailResult.message] });
                 return false;
             }
             if (!loginPassword) {
                 setErrors({ password: ['Password is required.'] });
-                return false;
-            }
-            if (!agreedToTerms) {
-                setErrors({ terms: ['You must agree to the Terms and Privacy Policy to continue.'] });
                 return false;
             }
         }
@@ -135,21 +141,25 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
 
         if (!customReg) {
             setTouched({ name: true, email: true, password: true, confirmPassword: true });
-            
-            if (!nameValidation.isValid) {
-                setErrors({ name: [nameValidation.message] });
+
+            // Validate raw field values synchronously (not debounced)
+            const nameResult = validateName(name);
+            if (!nameResult.isValid) {
+                setErrors({ name: [nameResult.message] });
                 return false;
             }
-            if (!emailValidation.isValid) {
-                setErrors({ email: [emailValidation.message] });
+            const emailResult = validateEmail(email);
+            if (!emailResult.isValid) {
+                setErrors({ email: [emailResult.message] });
                 return false;
             }
-            if (!passwordValidation.isValid) {
+            if (!validatePassword(password).isValid) {
                 setErrors({ password: ['Password must be at least 8 characters long.'] });
                 return false;
             }
-            if (!confirmPasswordValidation.isValid) {
-                setErrors({ password: [confirmPasswordValidation.message] });
+            const confirmResult = validatePasswordMatch(password, confirmPassword);
+            if (!confirmResult.isValid) {
+                setErrors({ password: [confirmResult.message] });
                 return false;
             }
             if (!agreedToTerms) {
@@ -248,9 +258,7 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
                         className="p-1 rounded-full hover:bg-[#0A2A1B]/5 text-[#0A2A1B]/60 hover:text-[#0A2A1B] cursor-pointer transition-all active:scale-90"
                         aria-label="Close modal"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <X className="h-6 w-6" strokeWidth={1.5} />
                     </button>
                 </div>
 
@@ -284,9 +292,7 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
                                 <label className="text-xs font-semibold text-[#0A2A1B] block">Email Address</label>
                                 {touched.email && emailValidation.isValid && (
                                     <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-1">
-                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                        </svg>
+                                        <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
                                         Valid email
                                     </span>
                                 )}
@@ -344,43 +350,6 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
                             {errors.password && <p className="text-red-600 text-xs mt-1">{errors.password[0]}</p>}
                         </div>
 
-                        {/* Agreement & Terms Checkbox */}
-                        <div className="space-y-1">
-                            <label className="flex items-start gap-2 cursor-pointer select-none">
-                                <input
-                                    type="checkbox"
-                                    checked={agreedToTerms}
-                                    onChange={(e) => {
-                                        setAgreedToTerms(e.target.checked);
-                                        if (errors.terms) setErrors((prev) => ({ ...prev, terms: [] }));
-                                    }}
-                                    className="mt-0.5 shrink-0 accent-[#0A2A1B]"
-                                />
-                                <span className="text-xs text-[#0A2A1B]/70 leading-relaxed">
-                                    I agree to the{' '}
-                                    <button
-                                        type="button"
-                                        onClick={() => setLegalModal({ isOpen: true, type: 'terms' })}
-                                        className="text-[#D97706] hover:underline font-semibold cursor-pointer"
-                                    >
-                                        Terms and Conditions
-                                    </button>
-                                    {' '}and{' '}
-                                    <button
-                                        type="button"
-                                        onClick={() => setLegalModal({ isOpen: true, type: 'privacy' })}
-                                        className="text-[#D97706] hover:underline font-semibold cursor-pointer"
-                                    >
-                                        Privacy Policy
-                                    </button>
-                                    .
-                                </span>
-                            </label>
-                            {errors.terms && (
-                                <p className="text-red-600 text-xs mt-1 ml-5">{errors.terms[0]}</p>
-                            )}
-                        </div>
-
                         <button
                             type="submit"
                             disabled={isLoading}
@@ -399,9 +368,7 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
                                 <label className="text-xs font-semibold text-[#0A2A1B] block">Full Name</label>
                                 {touched.name && nameValidation.isValid && (
                                     <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-1">
-                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                        </svg>
+                                        <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
                                         Looks good
                                     </span>
                                 )}
@@ -437,9 +404,7 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
                                 <label className="text-xs font-semibold text-[#0A2A1B] block">Email Address</label>
                                 {touched.email && emailValidation.isValid && (
                                     <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-1">
-                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                        </svg>
+                                        <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
                                         Valid email
                                     </span>
                                 )}
@@ -627,9 +592,7 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
                                     <label className="text-xs font-semibold text-[#0A2A1B] block">Email Address</label>
                                     {touched.email && emailValidation.isValid && (
                                         <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-1">
-                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                            </svg>
+                                            <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
                                             Valid email
                                         </span>
                                     )}

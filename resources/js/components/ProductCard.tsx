@@ -75,7 +75,7 @@ export function ProductCard({ product, onOrderBouquet }: ProductCardProps) {
                             className="p-1.5 rounded-full bg-white/90 hover:bg-white text-[#0A2A1B] shadow-md transition-all active:scale-90 cursor-pointer"
                             aria-label="Previous Image"
                         >
-                            <ChevronLeft className="h-4 w-4" strokeWidth={2} />
+                            <ChevronLeft className="h-4 w-4" strokeWidth={2} aria-hidden={true} />
                         </button>
                         <div className="flex gap-1 bg-black/30 px-2 py-1 rounded-full backdrop-blur-sm">
                             {product.gallery.map((_, idx) => (
@@ -92,7 +92,7 @@ export function ProductCard({ product, onOrderBouquet }: ProductCardProps) {
                             className="p-1.5 rounded-full bg-white/90 hover:bg-white text-[#0A2A1B] shadow-md transition-all active:scale-90 cursor-pointer"
                             aria-label="Next Image"
                         >
-                            <ChevronRight className="h-4 w-4" strokeWidth={2} />
+                            <ChevronRight className="h-4 w-4" strokeWidth={2} aria-hidden={true} />
                         </button>
                     </div>
                 )}
@@ -104,7 +104,7 @@ export function ProductCard({ product, onOrderBouquet }: ProductCardProps) {
                     <div className="flex items-center justify-between">
                         <h3 className="font-semibold text-base text-[#0A2A1B]">{product.name}</h3>
                         <div className="flex items-center text-xs text-[#D97706] gap-0.5 select-none">
-                            <Star className="h-3 w-3" weight="Filled" />
+                            <Star className="h-3 w-3" weight="Filled" aria-hidden={true} />
                             <span className="font-semibold text-[#0A2A1B]">{product.rating}</span>
                         </div>
                     </div>
@@ -116,7 +116,7 @@ export function ProductCard({ product, onOrderBouquet }: ProductCardProps) {
                         <span>Size: {product.size}</span>
                         {product.stems && Object.keys(product.stems).length > 0 && (
                             <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 mt-0.5">
-                                <Leaf className="h-3 w-3 text-[#D97706]" strokeWidth={1.5} />
+                                <Leaf className="h-3 w-3 text-[#D97706]" strokeWidth={1.5} aria-hidden={true} />
                                 {Object.entries(product.stems).map(([flower, count], idx) => (
                                     <span key={idx} className="text-[#0A2A1B]/65">
                                         {count}x {flower}

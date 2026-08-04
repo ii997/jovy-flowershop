@@ -197,7 +197,7 @@ class AdminController extends Controller
             if ($latestTx) {
                 $latestTx->verified_by = $request->user()->id;
                 $latestTx->verified_at = now();
-                $latestTx->admin_notes = $validated['admin_notes'] ?? null;
+                $latestTx->admin_notes = isset($validated['admin_notes']) ? strip_tags($validated['admin_notes']) : null;
                 $latestTx->save();
             }
         }
@@ -271,7 +271,7 @@ class AdminController extends Controller
             OrderCancellation::create([
                 'order_id' => $order->id,
                 'cancelled_by' => $request->user()->id,
-                'reason' => $validated['reason'],
+                'reason' => strip_tags($validated['reason']),
                 'refund_amount' => $validated['refund_amount'] ?? null,
                 'refund_method' => $validated['refund_method'] ?? 'none',
             ]);

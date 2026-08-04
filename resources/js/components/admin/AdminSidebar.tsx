@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User } from '../../types';
+import { Grid, Package, BookOpen, Leaf, X as XIcon, ArrowLeftCircle, Logout, ChevronLeft } from 'reicon-react';
 
 interface AdminSidebarProps {
     user: User | null;
@@ -50,9 +51,7 @@ export function AdminSidebar({
             label: 'Dashboard',
             isAdminOnly: true,
             icon: (active: boolean) => (
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-colors ${active ? 'text-[#D97706]' : 'text-[#0A2A1B]/40'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
+                <Grid className={`h-5 w-5 transition-colors ${active ? 'text-[#D97706]' : 'text-[#0A2A1B]/40'}`} />
             )
         },
         {
@@ -61,9 +60,7 @@ export function AdminSidebar({
             isAdminOnly: false,
             badge: pendingOrdersCount,
             icon: (active: boolean) => (
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-colors ${active ? 'text-[#D97706]' : 'text-[#0A2A1B]/40'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
+                <Package className={`h-5 w-5 transition-colors ${active ? 'text-[#D97706]' : 'text-[#0A2A1B]/40'}`} />
             )
         },
         {
@@ -72,9 +69,7 @@ export function AdminSidebar({
             isAdminOnly: false,
             badge: lowStockCount,
             icon: (active: boolean) => (
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-colors ${active ? 'text-[#D97706]' : 'text-[#0A2A1B]/40'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
+                <BookOpen className={`h-5 w-5 transition-colors ${active ? 'text-[#D97706]' : 'text-[#0A2A1B]/40'}`} />
             )
         },
         {
@@ -82,13 +77,7 @@ export function AdminSidebar({
             label: 'Flowers',
             isAdminOnly: false,
             icon: (active: boolean) => (
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-colors ${active ? 'text-[#D97706]' : 'text-[#0A2A1B]/40'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <circle cx="12" cy="12" r="3" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 2a3 3 0 00-3 3c0 2 3 5 3 5s3-3 3-5a3 3 0 00-3-3z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 22a3 3 0 003-3c0-2-3-5-3-5s-3 3-3 5a3 3 0 003 3z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2 12a3 3 0 003 3c2 0 5-3 5-3s-3-3-5-3a3 3 0 00-3 3z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M22 12a3 3 0 00-3-3c-2 0-5 3-5 3s3 3 5 3a3 3 0 00-3-3z" />
-                </svg>
+                <Leaf className={`h-5 w-5 transition-colors ${active ? 'text-[#D97706]' : 'text-[#0A2A1B]/40'}`} strokeWidth={2} />
             )
         }
     ];
@@ -115,9 +104,7 @@ export function AdminSidebar({
                         className="absolute top-5 right-5 p-1.5 md:hidden text-[#0A2A1B]/60 hover:text-[#0A2A1B] hover:bg-[#0A2A1B]/5 rounded-xl cursor-pointer transition-colors"
                         aria-label="Close menu"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <XIcon className="h-5 w-5" />
                     </button>
                 )}
 
@@ -200,9 +187,7 @@ export function AdminSidebar({
                                 className={`w-full flex items-center rounded-xl cursor-pointer hover:bg-gray-50 text-left transition-colors ${isCollapsed ? 'md:justify-center md:px-0 md:py-3' : 'px-4 py-2.5 gap-3.5'
                                     }`}
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#0A2A1B]/40 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" />
-                                </svg>
+                                <ArrowLeftCircle className="h-5 w-5 text-[#0A2A1B]/40 shrink-0" />
                                 <span className={`transition-all duration-300 truncate ${isCollapsed ? 'md:w-0 md:opacity-0 md:overflow-hidden' : 'opacity-100'}`}>
                                     Back to Store
                                 </span>
@@ -223,9 +208,7 @@ export function AdminSidebar({
                                 className={`w-full flex items-center rounded-xl cursor-pointer hover:bg-red-50 text-red-600 text-left transition-colors ${isCollapsed ? 'md:justify-center md:px-0 md:py-3' : 'px-4 py-2.5 gap-3.5'
                                     }`}
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                </svg>
+                                <Logout className="h-5 w-5 text-red-500 shrink-0" />
                                 <span className={`transition-all duration-300 truncate ${isCollapsed ? 'md:w-0 md:opacity-0 md:overflow-hidden' : 'opacity-100'}`}>
                                     Logout
                                 </span>
@@ -244,16 +227,9 @@ export function AdminSidebar({
                             onClick={() => setIsCollapsed(!isCollapsed)}
                             className="w-full md:flex hidden items-center rounded-xl cursor-pointer hover:bg-gray-50 text-[#0A2A1B]/55 hover:text-[#0A2A1B] transition-colors mt-2 border border-[#0A2A1B]/5 px-4 py-2.5 gap-3.5 md:justify-start"
                         >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
+                            <ChevronLeft
                                 className={`h-5 w-5 text-[#0A2A1B]/40 transition-transform duration-300 shrink-0 ${isCollapsed ? 'rotate-180' : ''}`}
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                            >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                            </svg>
+                            />
                             <span className={`transition-all duration-300 truncate text-xs ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'opacity-100'}`}>
                                 Collapse Sidebar
                             </span>

@@ -37,16 +37,20 @@ class SecurityHeaders
             }
         }
 
-        // Content Security Policy supporting Nonces, Web Workers, Tesseract OCR CDNs & Vite dev server
+        // Content Security Policy supporting strict-dynamic, nonces, Tesseract.js workers, and Vite dev server
+        // - 'strict-dynamic' propagates trust from nonced scripts to dynamically loaded ones (Vite HMR, lazy imports)
+        // - 'unsafe-eval' retained for Tesseract.js v7 WASM compilation in Web Workers
+        // - 'unsafe-inline' in style-src retained for React 19 + Tailwind v4 dynamic inline styles
+        // - script-src 'unsafe-inline' intentionally removed — @vite() adds nonces to all tags
         $csp = "default-src 'self'; " .
-               "script-src 'self' 'nonce-{$nonce}' 'unsafe-inline' 'unsafe-eval' blob: https: https://cdn.jsdelivr.net https://unpkg.com; " .
-               "worker-src 'self' blob: data: https: https://cdn.jsdelivr.net https://unpkg.com; " .
+               "script-src 'nonce-{$nonce}' 'strict-dynamic' 'self' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://unpkg.com; " .
+               "worker-src 'self' blob: data: https://cdn.jsdelivr.net; " .
                "object-src 'none'; " .
                "base-uri 'self'; " .
                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
                "font-src 'self' https://fonts.gstatic.com" . ($viteUrl ? " {$viteUrl}" : "") . "; " .
-               "img-src 'self' data: blob: https: " . ($viteUrl ?: "") . "; " .
-               "connect-src 'self' blob: data: https: https://cdn.jsdelivr.net https://unpkg.com https://tessdata.projectnaptha.com " . ($viteUrl ? "{$viteUrl} {$viteWsUrl}" : "") . "; " .
+               "img-src 'self' data: blob: https:" . ($viteUrl ? " {$viteUrl}" : "") . "; " .
+               "connect-src 'self' blob: data: https://tessdata.projectnaptha.com https://cdn.jsdelivr.net" . ($viteUrl ? " {$viteUrl} {$viteWsUrl}" : "") . "; " .
                "form-action 'self'; " .
                "frame-ancestors 'none';";
 

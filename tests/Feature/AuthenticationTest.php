@@ -25,7 +25,7 @@ class AuthenticationTest extends TestCase
         $response = $this->postJson('/api/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
-            'password' => 'password123',
+            'password' => 'TestPass123',
         ]);
 
         $response->assertStatus(200);
@@ -43,7 +43,7 @@ class AuthenticationTest extends TestCase
         $response = $this->postJson('/api/register', [
             'name' => 'Hacker User',
             'email' => 'hacker@example.com',
-            'password' => 'password123',
+            'password' => 'TestPass123',
             'role' => 'admin',
         ]);
 
@@ -61,7 +61,7 @@ class AuthenticationTest extends TestCase
         $this->postJson('/api/register', [
             'name' => 'Fake Admin',
             'email' => 'fakeadmin@example.com',
-            'password' => 'password123',
+            'password' => 'TestPass123',
             'role' => 'admin',
         ]);
 
@@ -102,5 +102,11 @@ class AuthenticationTest extends TestCase
         $response = $this->postJson('/api/logout');
         $response->assertStatus(200);
         $this->assertGuest();
+    }
+
+    public function test_unauthenticated_web_request_redirects_to_home(): void
+    {
+        $response = $this->get('/admin');
+        $response->assertRedirect('/');
     }
 }

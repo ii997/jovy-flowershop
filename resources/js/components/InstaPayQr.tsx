@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAnimationTransition } from './animations';
+import { X } from 'reicon-react';
 
 interface InstaPayQrProps {
     totalPrice: number;
@@ -114,9 +115,7 @@ export function InstaPayQr({ totalPrice, customQrImage }: InstaPayQrProps) {
                                 className="absolute top-4 right-4 p-1 rounded-full hover:bg-[#0A2A1B]/5 text-[#0A2A1B]/60 hover:text-[#0A2A1B] cursor-pointer transition-all active:scale-90"
                                 aria-label="Close zoom"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
+                                <X className="h-5 w-5" />
                             </button>
 
                             <div className="text-center space-y-1">

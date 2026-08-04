@@ -136,7 +136,7 @@ class OrderController extends Controller
         NotificationService::send(
             null,
             'New Order Submitted',
-            "New order #JFS-{$order->id} submitted by {$order->recipient_name}. Amount: ₱{$order->total_price}.",
+            "New order #JFS-{$order->id} submitted by " . strip_tags($order->recipient_name) . ". Amount: ₱{$order->total_price}.",
             'new_order_alert',
             true,
             !empty($storePhone),
@@ -376,7 +376,7 @@ class OrderController extends Controller
         NotificationService::send(
             null,
             'Order Cancelled by Customer',
-            "Order #JFS-{$order->id} was cancelled by {$order->recipient_name}. Reason: {$validated['reason']}.",
+            "Order #JFS-{$order->id} was cancelled by " . strip_tags($order->recipient_name) . ". Reason: " . strip_tags($validated['reason']) . ".",
             'order_cancelled_customer',
             true,
             !empty($storePhone),

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Order, PaymentTransaction } from '../../types';
 import { Pagination } from '../Pagination';
 import { toast } from '../ui/Toast';
+import { X as XIcon, Search, FileText, XCircle, Check, ArrowRight, Lock } from 'reicon-react';
 import { OrdersTabSkeleton } from '../ui/Skeleton';
 import {
     useUpdateOrderStatus,
@@ -169,10 +170,6 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
     };
     return (
         <div className="space-y-6 select-none">
-            <div>
-                <h2 className="font-serif text-2xl font-bold text-[#0A2A1B]">Orders Queue</h2>
-                <p className="text-xs text-[#0A2A1B]/60">Manage all incoming custom orders, update fulfillment statuses, and verify payments</p>
-            </div>
             <div className="flex flex-col md:flex-row gap-3 bg-white p-4 border border-[#0A2A1B]/5 rounded-2xl shadow-sm">
                 <input type="text" placeholder="Search recipient..." value={orderSearch} onChange={(e) => setOrderSearch(e.target.value)}
                     className="flex-1 px-4 py-2 border border-[#0A2A1B]/10 rounded-full text-xs text-[#0A2A1B] focus:outline-none focus:border-[#D97706]" />
@@ -311,9 +308,7 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                                 <p className="text-xs text-[#0A2A1B]/60">Order Reference ID: #JFS-{selectedOrder.id}</p>
                             </div>
                             <button onClick={closeModal} className="p-1.5 rounded-full hover:bg-[#0A2A1B]/5 text-[#0A2A1B]/60 hover:text-[#0A2A1B] cursor-pointer transition-all active:scale-95">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
+                                <XIcon className="h-6 w-6" strokeWidth={1.5} />
                             </button>
                         </div>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -398,9 +393,7 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                                         
                                         {selectedOrder.status === 'cancelled' ? (
                                             <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-semibold">
-                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
+                                                <XCircle className="h-4 w-4" />
                                                 <span>This order has been cancelled.</span>
                                             </div>
                                         ) : (
@@ -463,9 +456,7 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                                                             className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-100 text-white disabled:text-gray-400 text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
                                                         >
                                                             <span>Start Preparing Order</span>
-                                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                                                            </svg>
+                                                            <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
                                                         </button>
                                                     )}
 
@@ -483,17 +474,13 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                                                             className="w-full py-2.5 bg-[#0A2A1B] hover:bg-[#D97706] disabled:bg-gray-100 text-white disabled:text-gray-400 text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
                                                         >
                                                             <span>Complete Order</span>
-                                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                                            </svg>
+                                                            <Check className="h-4 w-4" strokeWidth={2.5} />
                                                         </button>
                                                     )}
 
                                                     {selectedOrder.status === 'delivered' && (
                                                         <div className="flex items-center justify-center gap-1.5 p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-xs font-bold">
-                                                            <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                                            </svg>
+                                                            <Check className="h-4 w-4 text-green-600" strokeWidth={3} />
                                                             <span>Order Successfully Delivered</span>
                                                         </div>
                                                     )}
@@ -516,9 +503,7 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                                         {selectedOrder.order_type === 'reservation' ? (
                                             !selectedOrder.payment_receipt ? (
                                                 <div className="text-center py-10 bg-white rounded-xl border border-dashed border-[#0A2A1B]/15 space-y-2">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto text-[#0A2A1B]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                                    </svg>
+                                                    <Lock className="h-8 w-8 mx-auto text-[#0A2A1B]/30" strokeWidth={1.5} />
                                                     <h5 className="font-semibold text-[#0A2A1B]/60 text-xs">No Downpayment Proof Submitted</h5>
                                                     <p className="text-[10px] text-[#0A2A1B]/45 max-w-[200px] mx-auto">The customer has not uploaded their {localStorage.getItem('store_settings_downpayment_pct') || '30'}% downpayment receipt screenshot yet.</p>
                                                 </div>
@@ -560,9 +545,7 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                                                     >
                                                         <img src={selectedOrder.payment_receipt} alt="Receipt uploaded by customer" className="max-h-56 object-contain rounded-xl transition-transform group-hover:scale-[1.02]" />
                                                         <div className="absolute inset-0 bg-[#0A2A1B]/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-all gap-1.5 rounded-2xl">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
-                                                            </svg>
+                                                            <Search className="h-4 w-4" strokeWidth={2.5} />
                                                             <span>Click to Expand</span>
                                                         </div>
                                                     </div>
@@ -602,18 +585,14 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                                                     >
                                                         <img src={selectedOrder.payment_receipt} alt="Receipt uploaded by customer" className="max-h-56 object-contain rounded-xl transition-transform group-hover:scale-[1.02]" />
                                                         <div className="absolute inset-0 bg-[#0A2A1B]/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-all gap-1.5 rounded-2xl">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
-                                                            </svg>
+                                                            <Search className="h-4 w-4" strokeWidth={2.5} />
                                                             <span>Click to Expand</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <div className="text-center py-10 bg-white rounded-xl border border-dashed border-[#0A2A1B]/15 space-y-2">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto text-[#0A2A1B]/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                    </svg>
+                                                    <FileText className="h-8 w-8 mx-auto text-[#0A2A1B]/20" strokeWidth={1.5} />
                                                     <h5 className="font-semibold text-[#0A2A1B]/60 text-xs">No Payment Proof Submitted</h5>
                                                     <p className="text-[10px] text-[#0A2A1B]/45 max-w-[200px] mx-auto">The customer has not uploaded their InstaPay transaction screenshot yet.</p>
                                                 </div>
