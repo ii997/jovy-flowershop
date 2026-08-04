@@ -39,7 +39,6 @@ Route::prefix('/api/admin')->middleware(['auth', 'admin.session.timeout', 'throt
     // Admin-only endpoints
     Route::middleware(['can:admin'])->group(function () {
         Route::get('/stats', [AdminController::class, 'stats']);
-        Route::post('/products/{id}/price', [AdminController::class, 'updateProductPrice']);
         Route::post('/products/{id}/update', [AdminController::class, 'updateProductDetails']);
         Route::post('/products', [AdminController::class, 'storeProduct']);
         Route::post('/flowers', [AdminController::class, 'storeFlower']);

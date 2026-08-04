@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use App\Services\NotificationService;
+use App\Support\ProductPricing;
 
 class AdminController extends Controller
 {
@@ -328,16 +329,6 @@ class AdminController extends Controller
         return response()->json($order->load('paymentTransactions', 'cancellation'));
     }
 
-    public function updateProductPrice(Request $request, $id)
-    {
-        $validated = $request->validate(['price' => 'required|numeric|min:0']);
-        $product = Product::findOrFail($id);
-        $product->price = $validated['price'];
-        $product->save();
-        return response()->json($product);
-    }
-
-
     public function toggleProductAvailability($id)
     {
         $product = Product::findOrFail($id);
@@ -350,25 +341,24 @@ class AdminController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'price' => 'required|numeric|min:0',
             'category' => 'required|string|max:255',
             'image' => 'nullable|string|max:255',
             'description' => 'required|string',
             'size' => 'required|string|max:100',
             'occasions' => 'required|array',
             'seasons' => 'required|array',
-            'stems' => 'nullable|array',
+            'stems' => 'required|array|min:1',
         ]);
         $product = Product::findOrFail($id);
         $product->name = $validated['name'];
-        $product->price = $validated['price'];
+        $product->price = ProductPricing::computePrice($validated['stems']);
         $product->category = $validated['category'];
         $product->description = $validated['description'];
         $product->size = $validated['size'];
         $product->occasions = $validated['occasions'];
         $product->seasons = $validated['seasons'];
         if (!empty($validated['image'])) $product->image = $validated['image'];
-        if (array_key_exists('stems', $validated)) $product->stems = $validated['stems'];
+        $product->stems = $validated['stems'];
         $product->save();
         return response()->json($product);
     }
@@ -377,14 +367,13 @@ class AdminController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'price' => 'required|numeric|min:0',
             'category' => 'required|string|max:255',
             'image' => 'required|string|max:255',
             'description' => 'required|string',
             'size' => 'required|string|max:100',
             'occasions' => 'required|array',
             'seasons' => 'required|array',
-            'stems' => 'nullable|array',
+            'stems' => 'required|array|min:1',
         ]);
 
         $product = DB::transaction(function () use ($validated) {
@@ -410,7 +399,7 @@ class AdminController extends Controller
                 'seasons' => $validated['seasons'],
                 'size' => $validated['size'],
                 'gallery' => [$validated['image']],
-                'price' => (float) $validated['price'],
+                'price' => ProductPricing::computePrice($validated['stems']),
                 'rating' => 5.00,
                 'availability' => true,
                 'quantity' => 0,
@@ -455,7 +444,39 @@ class AdminController extends Controller
             'available' => 'boolean',
         ]);
         $flower = Flower::findOrFail($id);
+        $oldName = $flower->name;
+        $oldPrice = (float) $flower->price;
         $flower->update($validated);
+
+        $priceChanged = (float) $flower->price !== $oldPrice;
+        $nameChanged = $flower->name !== $oldName;
+
+        // Bouquet prices are derived from flower unit prices, so any change to a
+        // flower's price (or name — which is the stems map key) must re-price every
+        // product that references it. Otherwise stored prices go stale.
+        if ($priceChanged || $nameChanged) {
+            foreach (Product::all() as $product) {
+                $stems = $product->stems;
+                if (!is_array($stems)) {
+                    continue;
+                }
+
+                $touched = false;
+                if ($nameChanged && array_key_exists($oldName, $stems)) {
+                    $stems[$flower->name] = $stems[$oldName];
+                    unset($stems[$oldName]);
+                    $touched = true;
+                }
+                if ($touched || array_key_exists($flower->name, $stems)) {
+                    if ($touched) {
+                        $product->stems = $stems;
+                    }
+                    $product->price = ProductPricing::computePrice($product->stems);
+                    $product->save();
+                }
+            }
+        }
+
         return response()->json($flower);
     }
 

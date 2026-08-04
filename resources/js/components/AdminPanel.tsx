@@ -16,7 +16,6 @@ import {
     useAdminStats,
     useAdminOrders,
     useAdminFlowers,
-    useUpdateProductPrice,
     useToggleAvailability,
 } from '../lib/adminQueries';
 
@@ -52,38 +51,11 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
     const { data: flowers = [], isLoading: isLoadingFlowers } = useAdminFlowers();
 
     // TanStack Mutations
-    const updatePriceMutation = useUpdateProductPrice();
     const toggleAvailabilityMutation = useToggleAvailability();
 
-    const [prices, setPrices] = useState<Record<number, string>>({});
     const [selectedProductForEdit, setSelectedProductForEdit] = useState<Product | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
-    useEffect(() => {
-        setPrices(products.reduce((acc, p) => ({ ...acc, [p.id]: p.price.toString() }), {}));
-    }, [products]);
-
-    const handlePriceChange = (productId: number, val: string) => {
-        setPrices(prev => ({ ...prev, [productId]: val }));
-    };
-
-    // Handle price update via TanStack Mutation
-    const handleSavePrice = async (productId: number) => {
-        const numeric = parseFloat(prices[productId]);
-        if (isNaN(numeric) || numeric < 0) {
-            toast.error('Please enter a valid price.');
-            return;
-        }
-
-        try {
-            const updatedProduct = await updatePriceMutation.mutateAsync({ productId, price: numeric });
-            onUpdateProducts(products.map(p => p.id === productId ? updatedProduct : p));
-            toast.success('Price updated successfully.');
-        } catch {
-            toast.error('Failed to update price.');
-        }
-    };
 
     // Handle availability toggle via TanStack Mutation
     const handleToggleAvailability = async (productId: number) => {
@@ -217,9 +189,6 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
                         <InventoryTab
                             user={user}
                             products={products}
-                            prices={prices}
-                            onPriceChange={handlePriceChange}
-                            onSavePrice={handleSavePrice}
                             onToggleAvailability={handleToggleAvailability}
                             onEditProduct={(p) => {
                                 setSelectedProductForEdit(p);

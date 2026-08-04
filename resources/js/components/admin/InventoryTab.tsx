@@ -13,9 +13,6 @@ import {
 interface InventoryTabProps {
     user: User | null;
     products: Product[];
-    prices: Record<number, string>;
-    onPriceChange: (productId: number, val: string) => void;
-    onSavePrice: (productId: number) => void;
     onToggleAvailability: (productId: number) => void;
     onEditProduct: (product: Product) => void;
     onOpenCreateModal: () => void;
@@ -27,9 +24,6 @@ const columnHelper = createColumnHelper<Product>();
 export function InventoryTab({
     user,
     products,
-    prices,
-    onPriceChange,
-    onSavePrice,
     onToggleAvailability,
     onEditProduct,
     onOpenCreateModal,
@@ -41,9 +35,6 @@ export function InventoryTab({
     /** Table meta shape — provides fresh callback/state references to stable column cells */
     interface InventoryTabMeta {
         isAdmin: boolean;
-        prices: Record<number, string>;
-        onPriceChange: (id: number, val: string) => void;
-        onSavePrice: (id: number) => void;
         onToggleAvailability: (id: number) => void;
         onEditProduct: (p: Product) => void;
     }
@@ -73,33 +64,11 @@ export function InventoryTab({
             header: 'Size',
             cell: info => <span className="text-[#0A2A1B]/60 font-medium">{info.getValue()}</span>,
         }),
-        columnHelper.display({
-            id: 'priceOverride',
-            header: 'Price Override',
-            cell: info => {
-                const p = info.row.original;
-                const meta = info.table.options.meta as InventoryTabMeta;
-                return (
-                    <div className="flex items-center gap-2">
-                        <span className="font-semibold text-[#0A2A1B]/60">₱</span>
-                        <input
-                            type="text"
-                            value={meta.prices[p.id] !== undefined ? meta.prices[p.id] : p.price.toString()}
-                            onChange={(e) => meta.onPriceChange(p.id, e.target.value)}
-                            disabled={!meta.isAdmin}
-                            className="w-16 px-2 py-1 bg-white border border-[#0A2A1B]/15 rounded-lg text-xs text-[#0A2A1B] focus:outline-none focus:border-[#D97706] disabled:opacity-75 disabled:cursor-not-allowed"
-                        />
-                        {meta.isAdmin && (
-                            <button
-                                onClick={() => meta.onSavePrice(p.id)}
-                                className="px-2.5 py-1 bg-[#0A2A1B] hover:bg-[#D97706] text-white text-[10px] font-bold rounded-lg transition-colors cursor-pointer active:scale-95"
-                            >
-                                Save
-                            </button>
-                        )}
-                    </div>
-                );
-            },
+        columnHelper.accessor('price', {
+            header: 'Price',
+            cell: info => (
+                <span className="font-semibold text-[#0A2A1B]">₱{info.getValue().toFixed(2)}</span>
+            ),
         }),
         columnHelper.accessor('availability', {
             header: () => <div className="text-center">Stock Status</div>,
@@ -160,9 +129,6 @@ export function InventoryTab({
         getPaginationRowModel: getPaginationRowModel(),
         meta: {
             isAdmin,
-            prices,
-            onPriceChange,
-            onSavePrice,
             onToggleAvailability,
             onEditProduct,
         } satisfies InventoryTabMeta,

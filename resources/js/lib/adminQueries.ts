@@ -62,30 +62,6 @@ export function useAdminProducts() {
     });
 }
 
-// Mutations
-export function useUpdateProductPrice() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async ({ productId, price }: { productId: number; price: number }) => {
-            const res = await fetch(`/api/admin/products/${productId}/price`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken() || '',
-                },
-                body: JSON.stringify({ price }),
-            });
-            if (!res.ok) throw new Error('Failed to update price');
-            return res.json();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
-            queryClient.invalidateQueries({ queryKey: ['adminStats'] });
-        },
-    });
-}
-
 export function useToggleAvailability() {
     const queryClient = useQueryClient();
     return useMutation({

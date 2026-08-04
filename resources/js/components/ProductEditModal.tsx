@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Product, Flower } from '../types';
+import { computeBouquetPrice } from '../lib/pricing';
 import { ImagePicker } from './admin/ImagePicker';
 import { toast } from './ui/Toast';
 import { X } from 'reicon-react';
@@ -14,7 +15,6 @@ interface ProductEditModalProps {
 
 export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSuccess }: ProductEditModalProps) {
     const [name, setName] = useState('');
-    const [price, setPrice] = useState('');
     const [category, setCategory] = useState('');
     const [size, setSize] = useState('');
     const [description, setDescription] = useState('');
@@ -34,7 +34,6 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
     useEffect(() => {
         if (product) {
             setName(product.name);
-            setPrice(product.price.toString());
             setCategory(product.category);
             setSize(product.size);
             setDescription(product.description);
@@ -113,13 +112,6 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
         setIsLoading(true);
         setErrors({});
 
-        const numericPrice = parseFloat(price);
-        if (isNaN(numericPrice) || numericPrice < 0) {
-            setErrors({ price: ['Please enter a valid positive price.'] });
-            setIsLoading(false);
-            return;
-        }
-
         // Convert stemsList to Record objects
         const stemsRecord = stemsList.reduce<Record<string, number>>((acc, item) => {
             acc[item.flower] = item.count;
@@ -128,7 +120,6 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
 
         const payload = {
             name,
-            price: numericPrice,
             category,
             image,
             description,
@@ -169,6 +160,8 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
         f.name.toLowerCase().includes(newFlower.toLowerCase()) &&
         f.available
     );
+
+    const derivedPrice = computeBouquetPrice(stemsList, flowers);
 
     return (
         <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center" role="dialog" aria-modal="true">
@@ -212,17 +205,13 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        {/* Price */}
+                        {/* Price — derived from stems, read-only */}
                         <div className="space-y-1">
                             <label className="text-xs font-semibold text-[#0A2A1B] block">Price (₱ PHP)</label>
-                            <input
-                                type="text"
-                                value={price}
-                                onChange={(e) => setPrice(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-white border border-[#0A2A1B]/15 rounded-full text-sm focus:outline-none focus:border-[#D97706] text-[#0A2A1B] transition-colors"
-                                required
-                            />
-                            {errors.price && <p className="text-red-600 text-xs mt-1">{errors.price[0]}</p>}
+                            <div className="w-full px-4 py-2.5 bg-[#F7F4EB] border border-[#0A2A1B]/10 rounded-full text-sm font-bold text-[#0A2A1B]">
+                                ₱{derivedPrice.toFixed(2)}
+                                <span className="ml-1.5 text-[10px] font-medium text-[#0A2A1B]/50">auto from stems</span>
+                            </div>
                         </div>
 
                         {/* Category */}
