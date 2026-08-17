@@ -1,0 +1,38 @@
+{
+  "scan_root": "R:\\git-repo\\jovy-flowershop",
+  "run_dir": "R:\\git-repo\\jovy-flowershop\\CLAUDE-SECURITY-20260805-000000",
+  "flow": "changes",
+  "agent": "claude-security:claude-security",
+  "mode": "changes",
+  "scope": [
+    "app/Http/Controllers/AdminController.php",
+    "app/Support/ProductPricing.php",
+    "app/Models/Flower.php",
+    "app/Models/Product.php",
+    "routes/web.php",
+    "resources/js/lib/pricing.ts",
+    "resources/js/lib/adminQueries.ts",
+    "resources/js/components/ProductCreateModal.tsx",
+    "resources/js/components/ProductEditModal.tsx",
+    "resources/js/components/admin/InventoryTab.tsx",
+    "resources/js/components/admin/FlowersTab.tsx",
+    "resources/js/components/admin/InventoryTab.tsx",
+    "resources/js/components/AdminPanel.tsx",
+    "resources/js/types.ts",
+    "database/seeders/DatabaseSeeder.php",
+    "database/seeders/FlowerSeeder.php",
+    "tests/Feature/AdminTest.php"
+  ],
+  "effort": "medium",
+  "model": null,
+  "revision": {
+    "versioned": true,
+    "commit": "365af43b9dca709731ae78b75d603fd3d64ef726",
+    "branch": "feature/stem-derived-pricing",
+    "dirty": true,
+    "base": "origin/main",
+    "merge_base": "69b9bf4d1515bf9a786245b334c2d06cf8740805"
+  },
+  "revision_source": "self-reported",
+  "top_level_dirs": null
+}

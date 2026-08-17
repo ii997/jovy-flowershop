@@ -119,4 +119,28 @@ class AdminSessionTimeoutTest extends TestCase
         $admin->refresh();
         $this->assertNotNull($admin->last_admin_activity);
     }
+
+    public function test_login_resets_stale_activity_timestamp_and_allows_admin_access(): void
+    {
+        $admin = User::where('email', 'admin@jovy.com')->first();
+        $admin->last_admin_activity = now()->subMinutes(60);
+        $admin->save();
+
+        $response = $this->postJson('/api/login', [
+            'email' => 'admin@jovy.com',
+            'password' => 'password',
+        ]);
+        $response->assertStatus(200);
+
+        // Verify activity timestamp was reset on login
+        $admin->refresh();
+        $this->assertTrue(
+            $admin->last_admin_activity->diffInMinutes(now()) < 1,
+            'Expected last_admin_activity to be updated to near-now upon login.'
+        );
+
+        // Navigating to /admin should now succeed (200 OK) without looping back to /
+        $webResponse = $this->get('/admin');
+        $webResponse->assertStatus(200);
+    }
 }

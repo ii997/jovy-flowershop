@@ -94,10 +94,10 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
                 onTabChange={setActiveTab}
                 onBackToStore={onBackToStore}
                 onLogout={onLogout}
-                pendingOrdersCount={orders.filter(o => 
-                    o.status !== 'confirmed' && 
-                    o.status !== 'delivered' && 
-                    o.status !== 'cancelled' && 
+                pendingOrdersCount={orders.filter(o =>
+                    o.status !== 'confirmed' &&
+                    o.status !== 'delivered' &&
+                    o.status !== 'cancelled' &&
                     o.payment_status !== 'verified'
                 ).length}
                 lowStockCount={products.filter(p => !p.availability).length}
@@ -120,11 +120,11 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
                             }[activeTab] || 'Dashboard'}
                         </h2>
                     </div>
-                    
+
                     <div className="flex items-center gap-4">
                         <NotificationBell />
                         <div className="h-5 w-px bg-[#0A2A1B]/10" />
-                        
+
                         {/* Interactive Admin User Pop-over */}
                         <div className="relative" ref={dropdownRef}>
                             <button
@@ -150,7 +150,7 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
                                             <span className="text-xs font-bold text-[#0A2A1B] leading-none block truncate">{user?.name}</span>
                                             <span className="text-[9px] font-extrabold uppercase text-[#D97706] tracking-wider leading-none mt-1 block">{user?.role}</span>
                                         </div>
-                                        
+
                                         <button
                                             onClick={() => {
                                                 setIsUserDropdownOpen(false);
@@ -160,7 +160,7 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
                                         >
                                             Settings
                                         </button>
-                                        
+
                                         <button
                                             onClick={() => {
                                                 setIsUserDropdownOpen(false);

@@ -54,7 +54,14 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        return response()->json(Auth::user());
+        $user = Auth::user();
+        if ($user && in_array($user->role, [UserRole::Admin, UserRole::Staff], true)) {
+            $user->timestamps = false;
+            $user->last_admin_activity = now();
+            $user->save();
+        }
+
+        return response()->json($user);
     }
 
     /**
