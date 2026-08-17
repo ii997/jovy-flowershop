@@ -16,7 +16,6 @@ export interface Product {
     rating: number;
     occasions: string[];
     seasons: string[];
-    size: string;
     availability: boolean;
     quantity: number;
     gallery: string[];
@@ -70,6 +69,10 @@ export interface Flower {
     id: number;
     name: string;
     price: number;
+    unit_type?: 'stem' | 'stick' | 'kilo' | string;
+    size?: string | null;
+    bundle_qty?: number | null;
+    bundle_price?: number | null;
     quantity: number;
     available: boolean;
     created_at: string;

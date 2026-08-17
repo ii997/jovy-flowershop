@@ -111,11 +111,10 @@ export function ProductCard({ product, onOrderBouquet }: ProductCardProps) {
                     
                     <p className="text-xs text-[#0A2A1B]/75 line-clamp-2 leading-relaxed">{product.description}</p>
 
-                    {/* Size & Stats */}
-                    <div className="flex flex-col gap-1.5 text-[10px] text-[#0A2A1B]/50 font-medium pt-1">
-                        <span>Size: {product.size}</span>
-                        {product.stems && Object.keys(product.stems).length > 0 && (
-                            <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 mt-0.5">
+                    {/* Flower Stems */}
+                    {product.stems && Object.keys(product.stems).length > 0 && (
+                        <div className="flex flex-col gap-1.5 text-[10px] text-[#0A2A1B]/50 font-medium pt-1">
+                            <div className="flex flex-wrap gap-x-1.5 gap-y-0.5">
                                 <Leaf className="h-3 w-3 text-[#D97706]" strokeWidth={1.5} aria-hidden={true} />
                                 {Object.entries(product.stems).map(([flower, count], idx) => (
                                     <span key={idx} className="text-[#0A2A1B]/65">
@@ -124,8 +123,8 @@ export function ProductCard({ product, onOrderBouquet }: ProductCardProps) {
                                     </span>
                                 ))}
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex items-center justify-between pt-2">

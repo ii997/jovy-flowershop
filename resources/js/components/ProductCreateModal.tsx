@@ -14,7 +14,6 @@ interface ProductCreateModalProps {
 export function ProductCreateModal({ isOpen, onClose, flowers, onCreateSuccess }: ProductCreateModalProps) {
     const [name, setName] = useState('');
     const [category, setCategory] = useState('');
-    const [size, setSize] = useState('');
     const [description, setDescription] = useState('');
     const [selectedOccasions, setSelectedOccasions] = useState<string[]>([]);
     const [image, setImage] = useState('/images/roses.png');
@@ -34,7 +33,6 @@ export function ProductCreateModal({ isOpen, onClose, flowers, onCreateSuccess }
     const clearState = () => {
         setName('');
         setCategory('');
-        setSize('');
         setDescription('');
         setSelectedOccasions([]);
         setImage('/images/roses.png');
@@ -46,34 +44,47 @@ export function ProductCreateModal({ isOpen, onClose, flowers, onCreateSuccess }
         setShowSuggestions(false);
     };
 
+    const getFlowerDisplayName = (f: Flower) => {
+        if (f.size && !f.name.toLowerCase().includes(f.size.toLowerCase())) {
+            return `${f.name} (${f.size})`;
+        }
+        return f.name;
+    };
+
     const addStemItem = (e: React.MouseEvent) => {
         e.preventDefault();
         setIngredientError('');
-        const countNum = parseInt(newCount);
+        const countNum = parseFloat(newCount);
         if (!newFlower.trim() || isNaN(countNum) || countNum <= 0) {
             setIngredientError('Please enter a valid flower name and count.');
             return;
         }
 
-        const match = flowers.find(f => f.name.toLowerCase() === newFlower.trim().toLowerCase());
+        const match = flowers.find(f => {
+            const displayName = getFlowerDisplayName(f).toLowerCase();
+            const target = newFlower.trim().toLowerCase();
+            return displayName === target || f.name.toLowerCase() === target;
+        });
+
         if (match) {
-            const existing = stemsList.find(item => item.flower.toLowerCase() === match.name.toLowerCase());
+            const flowerKey = getFlowerDisplayName(match);
+            const existing = stemsList.find(item => item.flower.toLowerCase() === flowerKey.toLowerCase());
             const totalProposed = countNum + (existing ? existing.count : 0);
             if (totalProposed > match.quantity) {
-                setIngredientError(`Insufficient stock. Only ${match.quantity} ${match.name} available.`);
+                setIngredientError(`Insufficient stock. Only ${match.quantity} ${flowerKey} available.`);
                 return;
             }
 
             if (existing) {
                 setStemsList(prev =>
                     prev.map(item =>
-                        item.flower.toLowerCase() === match.name.toLowerCase()
+                        item.flower.toLowerCase() === flowerKey.toLowerCase()
                             ? { ...item, count: totalProposed }
                             : item
                     )
                 );
             } else {
-                setStemsList(prev => [...prev, { flower: match.name, count: countNum }]);
+                setStemsList(prev => [...prev, { flower: flowerKey, count: countNum }]);
             }
         } else {
             setStemsList(prev => [...prev, { flower: newFlower.trim(), count: countNum }]);
@@ -109,7 +120,6 @@ export function ProductCreateModal({ isOpen, onClose, flowers, onCreateSuccess }
             category,
             image,
             description,
-            size: `Size ${size}`,
             seasons: ['All Year'],
             occasions: selectedOccasions,
             stems: stemsRecord,
@@ -143,10 +153,11 @@ export function ProductCreateModal({ isOpen, onClose, flowers, onCreateSuccess }
         }
     };
 
-    const filteredSuggestions = flowers.filter(f =>
-        f.name.toLowerCase().includes(newFlower.toLowerCase()) &&
-        f.available
-    );
+    const filteredSuggestions = flowers.filter(f => {
+        const displayName = getFlowerDisplayName(f).toLowerCase();
+        const query = newFlower.toLowerCase();
+        return (displayName.includes(query) || f.name.toLowerCase().includes(query) || (f.size && f.size.toLowerCase().includes(query))) && f.available;
+    });
 
     const derivedPrice = computeBouquetPrice(stemsList, flowers);
 
@@ -223,28 +234,6 @@ export function ProductCreateModal({ isOpen, onClose, flowers, onCreateSuccess }
                         </div>
                     </div>
 
-                    {/* Size Selection */}
-                    <div className="space-y-1">
-                        <label className="text-xs font-semibold text-[#0A2A1B] block">Size</label>
-                        <div className="flex gap-2">
-                            {['S', 'M', 'L', 'XL'].map(s => (
-                                <button
-                                    key={s}
-                                    type="button"
-                                    onClick={() => setSize(s)}
-                                    className={`w-14 h-10 rounded-xl text-sm font-bold border-2 transition-all cursor-pointer active:scale-95 ${
-                                        size === s
-                                            ? 'bg-[#0A2A1B] text-white border-[#0A2A1B] shadow-sm'
-                                            : 'bg-white text-[#0A2A1B]/70 border-[#0A2A1B]/15 hover:border-[#0A2A1B]/30'
-                                    }`}
-                                >
-                                    {s}
-                                </button>
-                            ))}
-                        </div>
-                        {errors.size && <p className="text-red-600 text-xs mt-1">{errors.size[0]}</p>}
-                    </div>
-
                     {/* Flower Ingredients */}
                     <div className="border-t border-[#0A2A1B]/10 pt-4 space-y-3">
                         <span className="text-xs font-bold text-[#0A2A1B]/40 uppercase tracking-wider block">Flower Ingredients</span>
@@ -282,21 +271,39 @@ export function ProductCreateModal({ isOpen, onClose, flowers, onCreateSuccess }
                                     className="w-full px-3.5 py-2 bg-white border border-[#0A2A1B]/15 rounded-full text-xs text-[#0A2A1B] focus:outline-none focus:border-[#D97706]"
                                 />
                                 {showSuggestions && newFlower.trim() && filteredSuggestions.length > 0 && (
-                                    <div className="absolute left-0 right-0 bottom-full mb-1.5 bg-white border border-[#0A2A1B]/10 rounded-2xl shadow-xl max-h-40 overflow-y-auto z-50 p-2 space-y-1">
-                                        {filteredSuggestions.map(f => (
-                                            <button
-                                                key={f.id}
-                                                type="button"
-                                                onClick={() => {
-                                                    setNewFlower(f.name);
-                                                    setShowSuggestions(false);
-                                                }}
-                                                className="w-full text-left px-3 py-2 hover:bg-[#FAF9F6] rounded-xl text-xs text-[#0A2A1B] font-medium flex justify-between cursor-pointer"
-                                            >
-                                                <span>{f.name}</span>
-                                                <span className="text-[10px] text-[#0A2A1B]/55">Stock: {f.quantity}</span>
-                                            </button>
-                                        ))}
+                                    <div className="absolute left-0 right-0 bottom-full mb-1.5 bg-white border border-[#0A2A1B]/10 rounded-2xl shadow-xl max-h-48 overflow-y-auto z-50 p-2 space-y-1">
+                                        {filteredSuggestions.map(f => {
+                                            const displayName = getFlowerDisplayName(f);
+                                            return (
+                                                <button
+                                                    key={f.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setNewFlower(displayName);
+                                                        setShowSuggestions(false);
+                                                    }}
+                                                    className="w-full text-left px-3 py-2 hover:bg-[#FAF9F6] rounded-xl text-xs text-[#0A2A1B] font-medium flex items-center justify-between cursor-pointer gap-2"
+                                                >
+                                                    <div className="flex items-center gap-1.5 overflow-hidden">
+                                                        <span className="truncate">{f.name}</span>
+                                                        {f.size && (
+                                                            <span className="shrink-0 px-1.5 py-0.5 bg-[#D97706]/10 text-[#D97706] text-[10px] font-bold rounded-md">
+                                                                {f.size}
+                                                            </span>
+                                                        )}
+                                                        {f.unit_type && f.unit_type !== 'stem' && (
+                                                            <span className="shrink-0 px-1.5 py-0.5 bg-[#0A2A1B]/5 text-[#0A2A1B]/60 text-[9px] font-semibold rounded-md">
+                                                                per {f.unit_type}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 shrink-0 text-right">
+                                                        <span className="font-bold text-[#0A2A1B]">₱{f.price}</span>
+                                                        <span className="text-[10px] text-[#0A2A1B]/55">Stock: {f.quantity}</span>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>

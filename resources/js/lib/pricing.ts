@@ -13,10 +13,39 @@ export function computeBouquetPrice(
     stems: { flower: string; count: number }[],
     flowers: Flower[],
 ): number {
-    const priceByFlower = new Map(flowers.map(f => [f.name.toLowerCase(), f.price]));
+    const flowersByName = new Map(flowers.map(f => [f.name.toLowerCase(), f]));
 
-    return stems.reduce((total, item) => {
-        const unitPrice = priceByFlower.get(item.flower.toLowerCase());
-        return total + (unitPrice ?? 0) * item.count;
-    }, 0);
+    let total = 0;
+    for (const item of stems) {
+        const count = Number(item.count);
+        if (count <= 0) continue;
+
+        let flower = flowersByName.get(item.flower.toLowerCase());
+
+        // Fallback match for "Name (Size)" pattern
+        if (!flower) {
+            const match = item.flower.match(/^(.*?)\s*\((.*?)\)$/);
+            if (match) {
+                const baseName = match[1].trim().toLowerCase();
+                const size = match[2].trim().toLowerCase();
+                flower = flowers.find(
+                    f => f.name.toLowerCase() === baseName && (f.size?.toLowerCase() ?? '') === size
+                );
+            }
+        }
+
+        if (flower) {
+            const bQty = flower.bundle_qty ?? 0;
+            const bPrice = flower.bundle_price ?? 0;
+            if (bQty > 0 && bPrice > 0 && count >= bQty) {
+                const bundles = Math.floor(count / bQty);
+                const remainder = count - (bundles * bQty);
+                total += (bundles * bPrice) + (remainder * flower.price);
+            } else {
+                total += count * flower.price;
+            }
+        }
+    }
+
+    return Math.round(total * 100) / 100;
 }

@@ -173,7 +173,15 @@ export function useCancelOrder() {
 export function useAddFlower() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (data: { name: string; price: number; quantity: number }) => {
+        mutationFn: async (data: {
+            name: string;
+            price: number;
+            quantity: number;
+            unit_type?: string;
+            size?: string;
+            bundle_qty?: number;
+            bundle_price?: number;
+        }) => {
             const res = await fetch('/api/admin/flowers', {
                 method: 'POST',
                 headers: {
@@ -209,11 +217,18 @@ export function useUpdateFlower() {
                 body: JSON.stringify({
                     name: flower.name,
                     price: flower.price,
+                    unit_type: flower.unit_type,
+                    size: flower.size,
+                    bundle_qty: flower.bundle_qty,
+                    bundle_price: flower.bundle_price,
                     quantity: flower.quantity,
                     available: flower.available,
                 }),
             });
-            if (!res.ok) throw new Error('Failed to update flower');
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err?.errors?.name?.[0] || err?.message || 'Failed to update flower');
+            }
             return res.json();
         },
         onSuccess: () => {

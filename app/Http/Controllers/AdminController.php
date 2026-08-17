@@ -344,7 +344,6 @@ class AdminController extends Controller
             'category' => 'required|string|max:255',
             'image' => 'nullable|string|max:255',
             'description' => 'required|string',
-            'size' => 'required|string|max:100',
             'occasions' => 'required|array',
             'seasons' => 'required|array',
             'stems' => 'required|array|min:1',
@@ -354,7 +353,6 @@ class AdminController extends Controller
         $product->price = ProductPricing::computePrice($validated['stems']);
         $product->category = $validated['category'];
         $product->description = $validated['description'];
-        $product->size = $validated['size'];
         $product->occasions = $validated['occasions'];
         $product->seasons = $validated['seasons'];
         if (!empty($validated['image'])) $product->image = $validated['image'];
@@ -370,7 +368,6 @@ class AdminController extends Controller
             'category' => 'required|string|max:255',
             'image' => 'required|string|max:255',
             'description' => 'required|string',
-            'size' => 'required|string|max:100',
             'occasions' => 'required|array',
             'seasons' => 'required|array',
             'stems' => 'required|array|min:1',
@@ -397,7 +394,6 @@ class AdminController extends Controller
                 'description' => $validated['description'],
                 'occasions' => $validated['occasions'],
                 'seasons' => $validated['seasons'],
-                'size' => $validated['size'],
                 'gallery' => [$validated['image']],
                 'price' => ProductPricing::computePrice($validated['stems']),
                 'rating' => 5.00,
@@ -428,6 +424,10 @@ class AdminController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
+            'unit_type' => 'nullable|string|in:stem,stick,kilo',
+            'size' => 'nullable|string|max:50',
+            'bundle_qty' => 'nullable|integer|min:1',
+            'bundle_price' => 'nullable|numeric|min:0',
             'quantity' => 'required|integer|min:0',
             'available' => 'boolean',
         ]);
@@ -440,18 +440,29 @@ class AdminController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
+            'unit_type' => 'nullable|string|in:stem,stick,kilo',
+            'size' => 'nullable|string|max:50',
+            'bundle_qty' => 'nullable|integer|min:1',
+            'bundle_price' => 'nullable|numeric|min:0',
             'quantity' => 'required|integer|min:0',
             'available' => 'boolean',
         ]);
         $flower = Flower::findOrFail($id);
         $oldName = $flower->name;
         $oldPrice = (float) $flower->price;
+        $oldSize = $flower->size;
+        $oldBundleQty = $flower->bundle_qty;
+        $oldBundlePrice = $flower->bundle_price !== null ? (float) $flower->bundle_price : null;
+
         $flower->update($validated);
 
-        $priceChanged = (float) $flower->price !== $oldPrice;
+        $priceChanged = (float) $flower->price !== $oldPrice
+            || $flower->size !== $oldSize
+            || $flower->bundle_qty !== $oldBundleQty
+            || ($flower->bundle_price !== null ? (float)$flower->bundle_price : null) !== $oldBundlePrice;
         $nameChanged = $flower->name !== $oldName;
 
-        // Bouquet prices are derived from flower unit prices, so any change to a
+        // Bouquet prices are derived from flower unit/bundle prices, so any change to a
         // flower's price (or name — which is the stems map key) must re-price every
         // product that references it. Otherwise stored prices go stale.
         if ($priceChanged || $nameChanged) {

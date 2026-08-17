@@ -40,6 +40,7 @@ Route::prefix('/api/admin')->middleware(['auth', 'admin.session.timeout', 'throt
     Route::middleware(['can:admin'])->group(function () {
         Route::get('/stats', [AdminController::class, 'stats']);
         Route::post('/products/{id}/update', [AdminController::class, 'updateProductDetails']);
+        Route::put('/products/{id}', [AdminController::class, 'updateProductDetails']);
         Route::post('/products', [AdminController::class, 'storeProduct']);
         Route::post('/flowers', [AdminController::class, 'storeFlower']);
         Route::put('/flowers/{id}', [AdminController::class, 'updateFlower']);

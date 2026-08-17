@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
     'description',
     'occasions',
     'seasons',
-    'size',
     'gallery',
     'price',
     'rating',

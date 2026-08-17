@@ -18,16 +18,15 @@ class AdminTest extends TestCase
         $this->seed(DatabaseSeeder::class);
     }
 
-    public function test_admin_can_create_product_with_size_field(): void
+    public function test_admin_can_create_product(): void
     {
         $admin = User::where('email', 'admin@jovy.com')->first();
 
         $response = $this->actingAs($admin)->postJson('/api/admin/products', [
-            'name' => 'Size Test Bouquet',
+            'name' => 'Test Bouquet',
             'category' => 'Test',
             'image' => '/images/test.png',
-            'description' => 'Testing size field',
-            'size' => '30cm x 20cm',
+            'description' => 'Testing product creation',
             'occasions' => ['Birthday'],
             'seasons' => ['All Year'],
             'stems' => ['Red Roses' => 2, 'Eucalyptus' => 3],
@@ -35,9 +34,8 @@ class AdminTest extends TestCase
 
         $response->assertStatus(200);
 
-        $product = \App\Models\Product::where('name', 'Size Test Bouquet')->first();
+        $product = \App\Models\Product::where('name', 'Test Bouquet')->first();
         $this->assertNotNull($product);
-        $this->assertEquals('30cm x 20cm', $product->size);
     }
 
     public function test_non_admin_cannot_access_admin_stats(): void
@@ -58,7 +56,6 @@ class AdminTest extends TestCase
             'category' => 'Test',
             'image' => '/images/test.png',
             'description' => 'Test description',
-            'size' => '30cm x 20cm',
             'occasions' => ['Birthday'],
             'seasons' => ['All Year'],
         ]);
@@ -76,8 +73,7 @@ class AdminTest extends TestCase
             'gross_sales',
             'total_orders',
             'active_listings',
-            'revenue_tracking',
-            'trends',
+            'recent_orders',
         ]);
     }
 
@@ -121,7 +117,7 @@ class AdminTest extends TestCase
         $response->assertStatus(401); // Redirected to login by auth middleware
     }
 
-    public function test_product_price_is_derived_from_flower_stems(): void
+    public function test_product_price_is_derived_from_stems_catalog(): void
     {
         $admin = User::where('email', 'admin@jovy.com')->first();
 
@@ -132,7 +128,6 @@ class AdminTest extends TestCase
             'category' => 'Test',
             'image' => '/images/test.png',
             'description' => 'Price derived from stems',
-            'size' => 'Size M',
             'occasions' => ['Birthday'],
             'seasons' => ['All Year'],
             'stems' => ['Red Roses' => 2, 'Eucalyptus' => 3],
@@ -155,7 +150,6 @@ class AdminTest extends TestCase
             'category' => 'Test',
             'image' => '/images/test.png',
             'description' => 'x',
-            'size' => 'Size S',
             'occasions' => ['Birthday'],
             'seasons' => ['All Year'],
             'gallery' => ['/images/test.png'],
@@ -163,12 +157,11 @@ class AdminTest extends TestCase
             'stems' => ['Red Roses' => 2], // 36.00
         ]);
 
-        $response = $this->actingAs($admin)->postJson("/api/admin/products/{$product->id}/update", [
+        $response = $this->actingAs($admin)->putJson("/api/admin/products/{$product->id}", [
             'name' => 'Recalc Bouquet',
             'category' => 'Test',
             'image' => '/images/test.png',
             'description' => 'x',
-            'size' => 'Size M',
             'occasions' => ['Birthday'],
             'seasons' => ['All Year'],
             'price' => 999.99, // ignored
@@ -190,7 +183,6 @@ class AdminTest extends TestCase
             'category' => 'Test',
             'image' => '/images/test.png',
             'description' => 'x',
-            'size' => 'Size S',
             'occasions' => ['Birthday'],
             'seasons' => ['All Year'],
             'gallery' => ['/images/test.png'],
@@ -220,7 +212,6 @@ class AdminTest extends TestCase
             'category' => 'Test',
             'image' => '/images/test.png',
             'description' => 'No stems — must be rejected',
-            'size' => 'Size S',
             'occasions' => ['Birthday'],
             'seasons' => ['All Year'],
         ]);

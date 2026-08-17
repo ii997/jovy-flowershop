@@ -16,14 +16,17 @@ class FlowerSeeder extends Seeder
     public function run(): void
     {
         $flowers = [
-            // General inventory flowers (also sold individually)
-            ['name' => 'Roses',              'price' => 15.00, 'quantity' => 120, 'available' => true],
-            ['name' => 'Chrysanthemum',       'price' => 8.00,  'quantity' => 200, 'available' => true],
-            ['name' => 'Anthurium',           'price' => 25.00, 'quantity' => 50,  'available' => true],
-            ['name' => "Lady's Slipper",      'price' => 35.00, 'quantity' => 30,  'available' => true],
-            ['name' => 'Liliums',             'price' => 18.00, 'quantity' => 80,  'available' => true],
-            ['name' => 'Carnation',           'price' => 6.00,  'quantity' => 250, 'available' => true],
-            ['name' => 'Sunflower',           'price' => 12.00, 'quantity' => 90,  'available' => true],
+            // General inventory flowers with pricing rules
+            ['name' => 'Roses',              'price' => 20.00, 'unit_type' => 'stem',  'quantity' => 120, 'available' => true],
+            ['name' => 'Chrysanthemum',      'price' => 35.00, 'unit_type' => 'stem',  'bundle_qty' => 3, 'bundle_price' => 100.00, 'quantity' => 200, 'available' => true],
+            ['name' => 'Anthurium',          'price' => 150.00,'unit_type' => 'stem',  'size' => 'Medium', 'quantity' => 50,  'available' => true],
+            ['name' => 'Anthurium (Small)',  'price' => 100.00,'unit_type' => 'stem',  'size' => 'Small',  'quantity' => 30,  'available' => true],
+            ['name' => 'Anthurium (Medium)', 'price' => 150.00,'unit_type' => 'stem',  'size' => 'Medium', 'quantity' => 50,  'available' => true],
+            ['name' => 'Anthurium (Large)',  'price' => 200.00,'unit_type' => 'stem',  'size' => 'Large',  'quantity' => 20,  'available' => true],
+            ['name' => "Lady's Spread",      'price' => 250.00,'unit_type' => 'kilo',  'quantity' => 30,  'available' => true],
+            ['name' => 'Liliums',            'price' => 250.00,'unit_type' => 'stick', 'quantity' => 80,  'available' => true],
+            ['name' => 'Carnation',          'price' => 60.00, 'unit_type' => 'stick', 'quantity' => 250, 'available' => true],
+            ['name' => 'Sunflower',          'price' => 150.00,'unit_type' => 'stick', 'quantity' => 90,  'available' => true],
 
             // Stem flowers referenced by product recipes
             ['name' => 'Red Roses',           'price' => 18.00, 'quantity' => 200, 'available' => true],
