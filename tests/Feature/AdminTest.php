@@ -230,4 +230,171 @@ class AdminTest extends TestCase
 
         $response->assertStatus(404);
     }
+
+    public function test_admin_can_create_product_with_size_variant_stems(): void
+    {
+        $admin = User::where('email', 'admin@jovy.com')->first();
+
+        // Create Anthurium flower with size Medium
+        \App\Models\Flower::firstOrCreate(
+            ['name' => 'Anthurium', 'size' => 'Medium'],
+            ['price' => 150.00, 'quantity' => 20, 'available' => true]
+        );
+
+        $response = $this->actingAs($admin)->postJson('/api/admin/products', [
+            'name' => 'Anthurium Arrangement',
+            'category' => 'Exotic Plants',
+            'image' => '/images/bouquet1.jpg',
+            'description' => 'Arrangement with size-variant flowers',
+            'occasions' => ['Birthday', 'Anniversary'],
+            'seasons' => ['All Year'],
+            'stems' => ['Anthurium (Medium)' => 2],
+        ]);
+
+        $response->assertStatus(200);
+        $product = \App\Models\Product::where('name', 'Anthurium Arrangement')->first();
+        $this->assertNotNull($product);
+        $this->assertEquals(300.00, $product->price);
+    }
+
+    public function test_admin_can_toggle_holiday_surge_pricing_and_exempt_funeral_products(): void
+    {
+        $admin = User::where('email', 'admin@jovy.com')->first();
+        $customer = User::where('email', 'carlos@customer.com')->first() ?: User::factory()->create();
+
+        // 1. Save settings with surge_pricing = true
+        $res = $this->actingAs($admin)->postJson('/api/admin/settings', [
+            'store_name' => "Jovy's Flowershop",
+            'store_phone' => "+639097850776",
+            'store_address' => "Brgy. Poblacion, Kidapawan City, Cotabato",
+            'maintenance_mode' => false,
+            'surge_pricing' => true,
+            'qr_image' => "",
+            'downpayment_pct' => 30,
+        ]);
+        $res->assertStatus(200);
+
+        // Verify getSettings returns surge_pricing = true
+        $settingsRes = $this->getJson('/api/settings');
+        $settingsRes->assertStatus(200)->assertJson(['surge_pricing' => true]);
+
+        // 2. Create one standard bouquet and one funeral bouquet
+        $flower = \App\Models\Flower::first();
+        $regularProduct = \App\Models\Product::create([
+            'name' => 'Valentine Rose Surprise',
+            'category' => 'Bouquets',
+            'image' => '/images/boquet4.jpg',
+            'description' => 'Romantic bouquet',
+            'occasions' => ['Birthday', 'Anniversary'],
+            'seasons' => ['All Year'],
+            'price' => 1000.00,
+            'rating' => 5.0,
+            'availability' => true,
+            'quantity' => 10,
+            'gallery' => ['/images/boquet4.jpg'],
+            'stems' => [$flower->name => 5],
+        ]);
+
+        $funeralProduct = \App\Models\Product::create([
+            'name' => 'Peaceful Memorial Wreath',
+            'category' => 'Funeral & Sympathy',
+            'image' => '/images/funeral1.jpg',
+            'description' => 'Sympathy arrangement',
+            'occasions' => ['Funeral'],
+            'seasons' => ['All Year'],
+            'price' => 1500.00,
+            'rating' => 5.0,
+            'availability' => true,
+            'quantity' => 5,
+            'gallery' => ['/images/funeral1.jpg'],
+            'stems' => [$flower->name => 5],
+        ]);
+
+        // 3. Test /api/products returns doubled price for standard and regular price for funeral
+        $catalogRes = $this->getJson('/api/products');
+        $catalogRes->assertStatus(200);
+        $items = collect($catalogRes->json('data'));
+
+        $regularInCatalog = $items->firstWhere('id', $regularProduct->id);
+        $funeralInCatalog = $items->firstWhere('id', $funeralProduct->id);
+
+        $this->assertEquals(2000.00, $regularInCatalog['price']);
+        $this->assertTrue($regularInCatalog['is_surge_applied']);
+        $this->assertEquals(1000.00, $regularInCatalog['base_price']);
+
+        $this->assertEquals(1500.00, $funeralInCatalog['price']);
+        $this->assertFalse($funeralInCatalog['is_surge_applied']);
+
+        // 4. Test checkout order creation charges 2x for regular and 1x for funeral
+        $orderRes = $this->actingAs($customer)->postJson('/api/orders', [
+            'order_type' => 'purchase',
+            'recipient_name' => 'Jane Doe',
+            'recipient_phone' => '09123456789',
+            'pickup_date' => now()->addDays(1)->format('Y-m-d'),
+            'items' => [
+                ['id' => $regularProduct->id, 'quantity' => 1],
+                ['id' => $funeralProduct->id, 'quantity' => 1],
+            ],
+        ]);
+
+        $orderRes->assertStatus(200);
+        // Total should be: 2000 (regular doubled) + 1500 (funeral standard) = 3500
+        $this->assertEquals(3500.00, (float) $orderRes->json('total_price'));
+
+        // 5. Test Undas / All Souls' Day mode: surge_pricing = true AND surge_exempt_funeral = false
+        $this->actingAs($admin)->postJson('/api/admin/settings', [
+            'store_name' => "Jovy's Flowershop",
+            'store_phone' => "+639097850776",
+            'store_address' => "Brgy. Poblacion, Kidapawan City, Cotabato",
+            'maintenance_mode' => false,
+            'surge_pricing' => true,
+            'surge_exempt_funeral' => false,
+            'qr_image' => "",
+            'downpayment_pct' => 30,
+        ]);
+
+        $settingsRes2 = $this->getJson('/api/settings');
+        $settingsRes2->assertStatus(200)->assertJson([
+            'surge_pricing' => true,
+            'surge_exempt_funeral' => false,
+        ]);
+
+        $catalogRes2 = $this->getJson('/api/products');
+        $items2 = collect($catalogRes2->json('data'));
+        $regularInCatalog2 = $items2->firstWhere('id', $regularProduct->id);
+        $funeralInCatalog2 = $items2->firstWhere('id', $funeralProduct->id);
+
+        // Both regular and funeral are doubled in Undas mode
+        $this->assertEquals(2000.00, $regularInCatalog2['price']);
+        $this->assertTrue($regularInCatalog2['is_surge_applied']);
+        $this->assertEquals(3000.00, $funeralInCatalog2['price']);
+        $this->assertTrue($funeralInCatalog2['is_surge_applied']);
+
+        // Order in Undas mode: 2000 + 3000 = 5000
+        $orderRes2 = $this->actingAs($customer)->postJson('/api/orders', [
+            'order_type' => 'purchase',
+            'recipient_name' => 'Jane Doe Undas',
+            'recipient_phone' => '09123456789',
+            'pickup_date' => now()->addDays(1)->format('Y-m-d'),
+            'items' => [
+                ['id' => $regularProduct->id, 'quantity' => 1],
+                ['id' => $funeralProduct->id, 'quantity' => 1],
+            ],
+        ]);
+        $orderRes2->assertStatus(200);
+        $this->assertEquals(5000.00, (float) $orderRes2->json('total_price'));
+
+        // 6. Clean up settings back to false
+        $this->actingAs($admin)->postJson('/api/admin/settings', [
+            'store_name' => "Jovy's Flowershop",
+            'store_phone' => "+639097850776",
+            'store_address' => "Brgy. Poblacion, Kidapawan City, Cotabato",
+            'maintenance_mode' => false,
+            'surge_pricing' => false,
+            'surge_exempt_funeral' => true,
+            'qr_image' => "",
+            'downpayment_pct' => 30,
+        ]);
+    }
 }
+

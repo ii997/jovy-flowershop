@@ -27,14 +27,14 @@ export function Header({
         <header className="sticky top-0 z-40 bg-[#FAF9F6]/95 backdrop-blur-md border-b border-[#0A2A1B]/10 px-6 py-4 select-none">
             <div className="max-w-6xl mx-auto flex items-center justify-between">
                 {/* Logo */}
-                <div className="flex items-center gap-2 group cursor-pointer select-none" aria-label="Jovy's Flowershop home">
-                    <svg className="h-6 w-6 text-[#D97706] transition-transform duration-500 group-hover:rotate-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                        <path d="M12 4C12 4 8 7 8 10C8 12.5 10 14 12 14C14 14 16 12.5 16 10C16 7 12 4 12 4Z" />
-                        <path d="M12 14C12 14 9 16 9 18.5C9 20.5 10.5 22 12 22C13.5 22 15 20.5 15 18.5C15 16 12 14 12 14Z" />
-                        <path d="M10 8H14" /><path d="M12 6V10" />
-                    </svg>
+                <a href="/" className="flex items-center gap-2.5 group cursor-pointer select-none" aria-label="Jovy's Flowershop home">
+                    <img 
+                        src="/images/logo.png" 
+                        alt="Jovy's Flowershop Logo" 
+                        className="h-9 w-9 rounded-full object-cover shadow-xs border border-amber-200/50 transition-transform duration-500 group-hover:scale-105 group-hover:rotate-6" 
+                    />
                     <span className="font-serif text-xl font-bold tracking-wide uppercase text-[#0A2A1B]">Jovy's Flowershop</span>
-                </div>
+                </a>
 
                 {/* Nav Links */}
                 <nav className="hidden md:flex items-center gap-8 text-sm font-medium tracking-wider uppercase text-[#0A2A1B]/70">
@@ -73,39 +73,48 @@ export function Header({
                             {/* Dropdown Menu */}
                             <AnimatePresence>
                                 {isDropdownOpen && (
-                                    <motion.div
-                                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                        transition={transition}
-                                        className="absolute right-0 mt-2.5 w-44 bg-white border border-[#0A2A1B]/15 rounded-2xl shadow-xl py-2 z-50 origin-top-right"
-                                    >
-                                        {/* Role Label */}
-                                        <div className="px-4 py-1.5 border-b border-[#0A2A1B]/5 mb-1.5">
-                                            <span className="text-[9px] uppercase font-bold tracking-wider text-[#0A2A1B]/40 block">Account Role</span>
-                                            <span className="text-xs font-semibold text-[#D97706]">{user.role}</span>
-                                        </div>
-
-                                        <button
-                                            onClick={() => {
-                                                setIsDropdownOpen(false);
-                                                onProfileClick();
-                                            }}
-                                            className="w-full text-left px-4 py-2 hover:bg-[#0A2A1B]/5 text-xs font-medium text-[#0A2A1B] cursor-pointer"
+                                    <>
+                                        {/* Invisible backdrop to dismiss on click outside */}
+                                        <div
+                                            className="fixed inset-0 z-40"
+                                            onClick={() => setIsDropdownOpen(false)}
+                                        />
+                                        <motion.div
+                                            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                            transition={transition}
+                                            className="absolute right-0 mt-2.5 w-44 bg-white border border-[#0A2A1B]/15 rounded-2xl shadow-xl py-2 z-50 origin-top-right"
                                         >
-                                            My Profile &amp; Orders
-                                        </button>
+                                            {/* Role Label */}
+                                            <div className="px-4 py-1.5 border-b border-[#0A2A1B]/5 mb-1.5">
+                                                <span className="text-[9px] uppercase font-bold tracking-wider text-[#0A2A1B]/40 block">Account Role</span>
+                                                <span className="text-xs font-semibold text-[#D97706]">{user.role}</span>
+                                            </div>
 
-                                        <button
-                                            onClick={() => {
-                                                setIsDropdownOpen(false);
-                                                onLogout();
-                                            }}
-                                            className="w-full text-left px-4 py-2 hover:bg-red-50 text-xs font-medium text-red-600 cursor-pointer"
-                                        >
-                                            Log Out
-                                        </button>
-                                    </motion.div>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsDropdownOpen(false);
+                                                    onProfileClick();
+                                                }}
+                                                className="w-full text-left px-4 py-2 hover:bg-[#0A2A1B]/5 text-xs font-medium text-[#0A2A1B] cursor-pointer"
+                                            >
+                                                My Profile &amp; Orders
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsDropdownOpen(false);
+                                                    onLogout();
+                                                }}
+                                                className="w-full text-left px-4 py-2 hover:bg-red-50 text-xs font-medium text-red-600 cursor-pointer transition-colors"
+                                            >
+                                                Log Out
+                                            </button>
+                                        </motion.div>
+                                    </>
                                 )}
                             </AnimatePresence>
                         </div>

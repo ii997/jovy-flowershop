@@ -12,30 +12,30 @@ Route::get('/', function () {
 });
 
 // Catalog & settings routes (throttled to prevent scraping)
-Route::get('/api/products', [ProductController::class, 'index'])->middleware('throttle:60,1');
-Route::get('/api/settings', [AdminController::class, 'getSettings'])->middleware('throttle:60,1');
+Route::get('/api/products', [ProductController::class, 'index']);
+Route::get('/api/settings', [AdminController::class, 'getSettings']);
 
 // Authentication routes (strict rate limits to prevent brute-force)
-Route::post('/api/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
-Route::post('/api/login', [AuthController::class, 'login'])->name('login')->middleware('throttle:5,1');
-Route::post('/api/logout', [AuthController::class, 'logout'])->middleware('throttle:10,1');
+Route::post('/api/register', [AuthController::class, 'register']);
+Route::post('/api/login', [AuthController::class, 'login'])->name('login');
+Route::post('/api/logout', [AuthController::class, 'logout']);
 Route::get('/api/user', [AuthController::class, 'user'])->middleware('auth');
-Route::post('/api/profile', [AuthController::class, 'update'])->middleware('auth')->middleware('throttle:10,1');
-Route::post('/api/account/delete', [AuthController::class, 'requestAccountDeletion'])->middleware('auth')->middleware('throttle:10,1');
-Route::post('/api/account/cancel-deletion', [AuthController::class, 'cancelAccountDeletion'])->middleware('auth')->middleware('throttle:10,1');
+Route::post('/api/profile', [AuthController::class, 'update'])->middleware('auth');
+Route::post('/api/account/delete', [AuthController::class, 'requestAccountDeletion'])->middleware('auth');
+Route::post('/api/account/cancel-deletion', [AuthController::class, 'cancelAccountDeletion'])->middleware('auth');
 
 // Customer orders routes
-Route::post('/api/orders', [OrderController::class, 'store'])->middleware('auth')->middleware('throttle:10,1');
+Route::post('/api/orders', [OrderController::class, 'store'])->middleware('auth');
 Route::get('/api/orders', [OrderController::class, 'index'])->middleware('auth');
-Route::post('/api/orders/{id}/payment', [OrderController::class, 'submitPayment'])->middleware('auth')->middleware('throttle:10,1');
-Route::post('/api/orders/{id}/cancel', [OrderController::class, 'cancel'])->middleware('auth')->middleware('throttle:10,1');
+Route::post('/api/orders/{id}/payment', [OrderController::class, 'submitPayment'])->middleware('auth');
+Route::post('/api/orders/{id}/cancel', [OrderController::class, 'cancel'])->middleware('auth');
 
 // Notifications routes
 Route::get('/api/notifications', [NotificationController::class, 'index'])->middleware('auth');
 Route::post('/api/notifications/read', [NotificationController::class, 'markRead'])->middleware('auth');
 
 // Secure Admin API routes group (secured via Gate middleware)
-Route::prefix('/api/admin')->middleware(['auth', 'admin.session.timeout', 'throttle:60,1'])->group(function () {
+Route::prefix('/api/admin')->middleware(['auth', 'admin.session.timeout'])->group(function () {
     // Admin-only endpoints
     Route::middleware(['can:admin'])->group(function () {
         Route::get('/stats', [AdminController::class, 'stats']);

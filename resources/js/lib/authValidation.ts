@@ -13,6 +13,11 @@ export interface PasswordCriteria {
     hasNumberOrSpecial: boolean;
 }
 
+export interface ValidationResult {
+    isValid: boolean;
+    message: string;
+}
+
 export interface PasswordValidationResult {
     score: number; // 0 to 4
     label: 'Weak' | 'Fair' | 'Good' | 'Strong';

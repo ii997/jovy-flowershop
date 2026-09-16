@@ -17,6 +17,7 @@ const ProfileModal = lazy(() => import('./components/ProfileModal').then(m => ({
 const CheckoutModal = lazy(() => import('./components/CheckoutModal').then(m => ({ default: m.CheckoutModal })));
 const OrderSummaryModal = lazy(() => import('./components/OrderSummaryModal').then(m => ({ default: m.OrderSummaryModal })));
 const OrderConfirmedModal = lazy(() => import('./components/OrderConfirmedModal').then(m => ({ default: m.OrderConfirmedModal })));
+const PaymentResubmissionModal = lazy(() => import('./components/PaymentResubmissionModal').then(m => ({ default: m.PaymentResubmissionModal })));
 
 function App() {
     // Dynamic catalog & order states
@@ -34,8 +35,12 @@ function App() {
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
     const [isSummaryOpen, setIsSummaryOpen] = useState(false);
     const [isConfirmedOpen, setIsConfirmedOpen] = useState(false);
+    const [isResubmissionOpen, setIsResubmissionOpen] = useState(false);
     const [activeOrder, setActiveOrder] = useState<Order | null>(null);
+    const [resubmittingOrder, setResubmittingOrder] = useState<Order | null>(null);
     const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
+    const [isSurgePricing, setIsSurgePricing] = useState(false);
+    const [isSurgeExemptFuneral, setIsSurgeExemptFuneral] = useState(true);
 
     // Load catalog items from backend database
     const fetchProducts = async () => {
@@ -77,10 +82,14 @@ function App() {
                     const data = await res.json();
                     if (data) {
                         setIsMaintenanceMode(!!data.maintenance_mode);
+                        setIsSurgePricing(!!data.surge_pricing);
+                        setIsSurgeExemptFuneral(data.surge_exempt_funeral !== undefined ? !!data.surge_exempt_funeral : true);
                         localStorage.setItem('store_settings_downpayment_pct', String(data.downpayment_pct ?? 30));
                         localStorage.setItem('store_settings_name', data.store_name || "Jovy's Flowershop");
                         localStorage.setItem('store_settings_phone', data.store_phone || "+639097850776");
                         localStorage.setItem('store_settings_maintenance', String(!!data.maintenance_mode));
+                        localStorage.setItem('store_settings_surge_pricing', String(!!data.surge_pricing));
+                        localStorage.setItem('store_settings_surge_exempt_funeral', String(data.surge_exempt_funeral !== undefined ? !!data.surge_exempt_funeral : true));
                         localStorage.setItem('store_settings_qr_image', data.qr_image || "");
                     }
                 }
@@ -119,15 +128,22 @@ function App() {
 
     const handleLogout = async () => {
         try {
-            await fetch('/api/logout', {
+            const response = await fetch('/api/logout', {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken() || '',
                 },
             });
+            const data = await response.json().catch(() => null);
+            if (data?.csrf_token) {
+                const metaTag = document.querySelector('meta[name="csrf-token"]');
+                if (metaTag) {
+                    metaTag.setAttribute('content', data.csrf_token);
+                }
+            }
         } catch (error) {
-            console.error('Logout failed');
+            console.error('Logout failed:', error);
         }
         setUser(null);
         setOrders([]);
@@ -169,6 +185,25 @@ function App() {
                     <span>Store Notice: Under Maintenance — Browsing is open, but online orders & reservations are temporarily paused.</span>
                 </div>
             )}
+            {!isMaintenanceMode && isSurgePricing && (
+                <div className="bg-gradient-to-r from-rose-900 via-rose-800 to-rose-900 text-white px-4 py-2.5 text-center text-xs font-semibold tracking-wide shadow-xs flex items-center justify-center gap-2 select-none border-b border-rose-950/20">
+                    <span className="text-sm">🌹</span>
+                    <span>
+                        <strong>Holiday Seasonal Rates in Effect:</strong>{' '}
+                        {isSurgeExemptFuneral ? (
+                            <>
+                                Standard flower bouquets are currently under 2x holiday rates.{' '}
+                                <span className="text-rose-200 ml-1">🕊️ Funeral & Sympathy arrangements remain at regular pricing.</span>
+                            </>
+                        ) : (
+                            <>
+                                All flower arrangements (including 🕯️ Memorial & Cemetery arrangements) are currently under 2x holiday rates.
+                            </>
+                        )}
+                    </span>
+                </div>
+            )}
+
             <Hero />
             <Features />
             <ProductList
@@ -199,6 +234,11 @@ function App() {
                         setIsProfileOpen(false);
                         setIsSummaryOpen(true);
                     }}
+                    onSelectOrderToResubmit={(order) => {
+                        setResubmittingOrder(order);
+                        setIsProfileOpen(false);
+                        setIsResubmissionOpen(true);
+                    }}
                     onCancelSuccess={() => {
                         fetchOrders(user);
                         fetchProducts();
@@ -226,6 +266,23 @@ function App() {
                         setIsConfirmedOpen(true);
                         fetchProducts(); // Refresh product quantities after payment is confirmed
                         fetchOrders(user); // Refresh order status after payment
+                    }}
+                />
+
+                <PaymentResubmissionModal
+                    key={`resubmit-${resubmittingOrder?.id ?? 'empty'}`}
+                    isOpen={isResubmissionOpen}
+                    onClose={() => {
+                        setIsResubmissionOpen(false);
+                        setResubmittingOrder(null);
+                    }}
+                    order={resubmittingOrder}
+                    onResubmissionSuccess={() => {
+                        setIsResubmissionOpen(false);
+                        setResubmittingOrder(null);
+                        fetchProducts();
+                        fetchOrders(user);
+                        toast.success('Payment proof resubmitted successfully! The store will re-verify your order shortly.');
                     }}
                 />
 

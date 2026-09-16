@@ -1,14 +1,39 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Check, Image as ImageIcon } from 'reicon-react';
 
-const PRESET_IMAGES = [
-    { src: '/images/roses.png', label: 'Red Roses' },
-    { src: '/images/orchids.png', label: 'Orchids' },
-    { src: '/images/tulips.png', label: 'Tulips' },
-    { src: '/images/sunflowers.png', label: 'Sunflowers' },
-    { src: '/images/wedding.png', label: 'Wedding' },
-    { src: '/images/funeral.png', label: 'Sympathy' },
-    { src: '/images/autumn.png', label: 'Autumn' },
+export interface PresetImage {
+    src: string;
+    label: string;
+    category: 'Bouquets' | 'Funeral & Sympathy' | 'Exotics & Seasonal';
+}
+
+const PRESET_IMAGES: PresetImage[] = [
+    // Bouquets & Floral Arrangements
+    { src: '/images/bouquet1.jpg', label: 'Classic Crimson Bouquet', category: 'Bouquets' },
+    { src: '/images/bouquet2.jpg', label: 'Blushing Pastels Bouquet', category: 'Bouquets' },
+    { src: '/images/bouquet3.jpg', label: 'Sweet Spring Arrangement', category: 'Bouquets' },
+    { src: '/images/boquet4.jpg', label: 'Artisan Floral Wrap', category: 'Bouquets' },
+    { src: '/images/boquet5.jpg', label: 'Romantic Rose & Carnation Mix', category: 'Bouquets' },
+    { src: '/images/boquet6.jpg', label: 'Golden Sunflower & Daisy Mix', category: 'Bouquets' },
+    { src: '/images/boquet7.jpg', label: 'Lavender Serenity Bundle', category: 'Bouquets' },
+    { src: '/images/boquet8.jpg', label: 'Tropical Elegance Bouquet', category: 'Bouquets' },
+    { src: '/images/boquet9.jpg', label: 'Daisy Dreams Hand-tied', category: 'Bouquets' },
+    { src: '/images/boquet10.jpg', label: 'Pastel Elegance Layout', category: 'Bouquets' },
+    { src: '/images/roses.png', label: 'Red Roses Vase', category: 'Bouquets' },
+    { src: '/images/tulips.png', label: 'Pink Tulips Wrap', category: 'Bouquets' },
+
+    // Sympathy & Funeral Arrangements
+    { src: '/images/funeral1.jpg', label: 'Serene Standing Spray', category: 'Funeral & Sympathy' },
+    { src: '/images/funeral2.jpg', label: 'Condolence Floral Basket', category: 'Funeral & Sympathy' },
+    { src: '/images/funeral3.jpg', label: 'Peace & Grace Wreath', category: 'Funeral & Sympathy' },
+    { src: '/images/funeral4.jpg', label: 'White Lily Tribute Arrangement', category: 'Funeral & Sympathy' },
+    { src: '/images/funeral.png', label: 'Sympathy Basket Classic', category: 'Funeral & Sympathy' },
+
+    // Exotics & Seasonal
+    { src: '/images/orchids.png', label: 'Midnight Orchid Plant', category: 'Exotics & Seasonal' },
+    { src: '/images/sunflowers.png', label: 'Golden Radiance Sunflowers', category: 'Exotics & Seasonal' },
+    { src: '/images/wedding.png', label: 'Pure Harmony Wedding Layout', category: 'Exotics & Seasonal' },
+    { src: '/images/autumn.png', label: 'Autumn Harvest Layout', category: 'Exotics & Seasonal' },
 ];
 
 interface ImagePickerProps {
@@ -17,6 +42,7 @@ interface ImagePickerProps {
 }
 
 export function ImagePicker({ value, onChange }: ImagePickerProps) {
+    const [selectedCategory, setSelectedCategory] = useState<string>('All');
     const [isDragging, setIsDragging] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadError, setUploadError] = useState('');
@@ -92,6 +118,13 @@ export function ImagePicker({ value, onChange }: ImagePickerProps) {
 
     const isPreset = PRESET_IMAGES.some((img) => img.src === value);
 
+    const filteredPresets = useMemo(() => {
+        if (selectedCategory === 'All') return PRESET_IMAGES;
+        return PRESET_IMAGES.filter((img) => img.category === selectedCategory);
+    }, [selectedCategory]);
+
+    const categories = ['All', 'Bouquets', 'Funeral & Sympathy', 'Exotics & Seasonal'];
+
     return (
         <div className="space-y-3">
             <label className="text-xs font-semibold text-[#0A2A1B] block">Product Image</label>
@@ -117,13 +150,33 @@ export function ImagePicker({ value, onChange }: ImagePickerProps) {
                 </div>
             )}
 
-            {/* Preset gallery */}
-            <div>
-                <span className="text-[10px] font-bold text-[#0A2A1B]/40 uppercase tracking-wider block mb-2">
-                    Catalog Presets
-                </span>
-                <div className="grid grid-cols-7 gap-1.5">
-                    {PRESET_IMAGES.map((img) => (
+            {/* Preset gallery with Category Pills */}
+            <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-[#0A2A1B]/40 uppercase tracking-wider block">
+                        Catalog Presets
+                    </span>
+                    {/* Category Filter Pills */}
+                    <div className="flex gap-1 overflow-x-auto select-none">
+                        {categories.map((cat) => (
+                            <button
+                                key={cat}
+                                type="button"
+                                onClick={() => setSelectedCategory(cat)}
+                                className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold transition-all cursor-pointer ${
+                                    selectedCategory === cat
+                                        ? 'bg-[#0A2A1B] text-white'
+                                        : 'bg-[#FAF9F6] text-[#0A2A1B]/60 hover:text-[#0A2A1B] border border-[#0A2A1B]/10'
+                                }`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-5 sm:grid-cols-7 gap-1.5 max-h-48 overflow-y-auto p-1 border border-[#0A2A1B]/5 rounded-2xl bg-[#FAF9F6]/40">
+                    {filteredPresets.map((img) => (
                         <button
                             key={img.src}
                             type="button"
@@ -133,7 +186,7 @@ export function ImagePicker({ value, onChange }: ImagePickerProps) {
                                     ? 'border-[#D97706] ring-2 ring-[#D97706]/30 scale-[1.02]'
                                     : 'border-[#0A2A1B]/10 hover:border-[#D97706]/50 hover:scale-[1.03]'
                             }`}
-                            title={img.label}
+                            title={`${img.label} (${img.category})`}
                         >
                             <img
                                 src={img.src}
@@ -160,7 +213,7 @@ export function ImagePicker({ value, onChange }: ImagePickerProps) {
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onClick={() => fileInputRef.current?.click()}
-                    className={`relative flex flex-col items-center justify-center gap-2 py-5 px-4 rounded-2xl border-2 border-dashed cursor-pointer transition-all duration-200 ${
+                    className={`relative flex flex-col items-center justify-center gap-2 py-4 px-4 rounded-2xl border-2 border-dashed cursor-pointer transition-all duration-200 ${
                         isDragging
                             ? 'border-[#D97706] bg-[#D97706]/5 scale-[1.01]'
                             : 'border-[#0A2A1B]/15 bg-[#FAF9F6] hover:border-[#D97706]/50 hover:bg-[#D97706]/[0.03]'
@@ -173,7 +226,7 @@ export function ImagePicker({ value, onChange }: ImagePickerProps) {
                         </>
                     ) : (
                         <>
-                            <ImageIcon className="h-6 w-6 text-[#0A2A1B]/30" strokeWidth={1.5} />
+                            <ImageIcon className="h-5 w-5 text-[#0A2A1B]/30" strokeWidth={1.5} />
                             <span className="text-xs text-[#0A2A1B]/50 font-medium">
                                 Drop image here or <span className="text-[#D97706] font-semibold">browse</span>
                             </span>
@@ -195,3 +248,4 @@ export function ImagePicker({ value, onChange }: ImagePickerProps) {
         </div>
     );
 }
+

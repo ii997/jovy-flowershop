@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserRole;
+use App\Models\Flower;
 use App\Models\Order;
-use App\Models\Product;
+use App\Models\OrderCancellation;
 use App\Models\PaymentTransaction;
+use App\Models\Product;
+use App\Services\NotificationService;
+use App\Support\ProductPricing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Services\NotificationService;
+use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
 {
@@ -19,7 +24,7 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         // Enforce authentication — guest checkout is not supported
-        if (!$request->user()) {
+        if (! $request->user()) {
             return response()->json([
                 'message' => 'Authentication required. Please log in to place an order.',
             ], 401);
@@ -29,9 +34,9 @@ class OrderController extends Controller
         $settingsPath = storage_path('app/settings.json');
         if (file_exists($settingsPath)) {
             $settings = json_decode(file_get_contents($settingsPath), true);
-            if (!empty($settings['maintenance_mode'])) {
+            if (! empty($settings['maintenance_mode'])) {
                 $user = Auth::user();
-                if (!$user || !in_array($user->role, ['admin', 'staff'])) {
+                if (! $user || ! in_array($user->role, ['admin', 'staff'])) {
                     return response()->json([
                         'message' => 'The store is currently undergoing scheduled maintenance. New orders and reservations are temporarily disabled.',
                     ], 503);
@@ -57,20 +62,21 @@ class OrderController extends Controller
             foreach ($validated['items'] as $item) {
                 $product = Product::where('id', $item['id'])->lockForUpdate()->firstOrFail();
 
-                if (!$product->availability) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
+                if (! $product->availability) {
+                    throw ValidationException::withMessages([
                         'items' => ["'{$product->name}' is currently unavailable."],
                     ]);
                 }
 
                 $qty = (int) $item['quantity'];
-                $itemTotal = $product->price * $qty;
+                $itemPrice = ProductPricing::getEffectivePrice($product);
+                $itemTotal = $itemPrice * $qty;
                 $totalPrice += $itemTotal;
 
                 $processedItems[] = [
                     'id' => $product->id,
                     'name' => $product->name,
-                    'price' => $product->price,
+                    'price' => $itemPrice,
                     'quantity' => $qty,
                 ];
             }
@@ -94,11 +100,9 @@ class OrderController extends Controller
             foreach ($processedItems as $item) {
                 $product = Product::where('id', $item['id'])->lockForUpdate()->first();
                 if ($product) {
-                    if (!empty($product->stems)) {
+                    if (! empty($product->stems)) {
                         foreach ($product->stems as $flowerName => $countNeeded) {
-                            $flower = \App\Models\Flower::where('name', $flowerName)
-                                ->lockForUpdate()
-                                ->first();
+                            $flower = Flower::findByNameOrVariant($flowerName, true);
                             if ($flower) {
                                 $qtyToDeduct = $countNeeded * $item['quantity'];
                                 $flower->quantity = max(0, $flower->quantity - $qtyToDeduct);
@@ -136,11 +140,12 @@ class OrderController extends Controller
         NotificationService::send(
             null,
             'New Order Submitted',
-            "New order #JFS-{$order->id} submitted by " . strip_tags($order->recipient_name) . ". Amount: ₱{$order->total_price}.",
+            "New order #JFS-{$order->id} submitted by ".strip_tags($order->recipient_name).". Amount: ₱{$order->total_price}.",
             'new_order_alert',
             true,
-            !empty($storePhone),
-            $storePhone
+            ! empty($storePhone),
+            $storePhone,
+            $order->id
         );
 
         return response()->json($order);
@@ -153,11 +158,11 @@ class OrderController extends Controller
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        if ($user->role === \App\Enums\UserRole::Staff) {
+        if ($user->role === UserRole::Staff) {
             $orders = Order::with('user', 'paymentTransactions', 'cancellation')
                 ->orderBy('created_at', 'desc')
                 ->get();
@@ -181,7 +186,7 @@ class OrderController extends Controller
         $order = Order::findOrFail($id);
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             abort(401, 'Authentication required.');
         }
 
@@ -218,8 +223,8 @@ class OrderController extends Controller
             }
         }
 
-        $minExpectedAmount = $order->order_type === 'reservation' 
-            ? (float) $order->total_price * ($downpaymentPct / 100.0) 
+        $minExpectedAmount = $order->order_type === 'reservation'
+            ? (float) $order->total_price * ($downpaymentPct / 100.0)
             : (float) $order->total_price;
 
         if ($validated['amount'] !== null && (float) $validated['amount'] < ($minExpectedAmount - 0.01)) {
@@ -231,7 +236,7 @@ class OrderController extends Controller
         $path = $request->file('receipt')->store('receipts', 'public');
 
         // Keep backward-compatible fields for existing frontend code
-        $order->payment_receipt = '/storage/' . $path;
+        $order->payment_receipt = '/storage/'.$path;
         $order->payment_details = [
             'reference_no' => $validated['reference_no'] ?? null,
             'amount' => $validated['amount'] ?? null,
@@ -247,7 +252,7 @@ class OrderController extends Controller
             'amount' => $validated['amount'] ?? $order->total_price,
             'method' => 'instapay',
             'reference_no' => $validated['reference_no'],
-            'receipt_image' => '/storage/' . $path,
+            'receipt_image' => '/storage/'.$path,
         ]);
 
         // Fetch store owner contact number from settings
@@ -272,11 +277,12 @@ class OrderController extends Controller
         NotificationService::send(
             null,
             'New Payment Receipt',
-            "New payment proof uploaded for order #JFS-{$order->id}. Reference: " . ($validated['reference_no'] ?? 'N/A') . ". Action required: Review.",
+            "New payment proof uploaded for order #JFS-{$order->id}. Reference: ".($validated['reference_no'] ?? 'N/A').'. Action required: Review.',
             'payment_review_alert',
             true,
-            !empty($storePhone),
-            $storePhone
+            ! empty($storePhone),
+            $storePhone,
+            $order->id
         );
 
         return response()->json($order->load('paymentTransactions'));
@@ -292,7 +298,7 @@ class OrderController extends Controller
         $order = Order::findOrFail($id);
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             abort(401, 'Authentication required.');
         }
 
@@ -315,7 +321,7 @@ class OrderController extends Controller
         \Illuminate\Support\Facades\DB::transaction(function () use ($order, $validated, $request) {
             $isPaidOrVerifying = in_array($order->payment_status, ['verified', 'awaiting_verification']);
 
-            \App\Models\OrderCancellation::create([
+            OrderCancellation::create([
                 'order_id' => $order->id,
                 'cancelled_by' => $request->user()->id,
                 'reason' => $validated['reason'],
@@ -332,20 +338,18 @@ class OrderController extends Controller
                         // order still references this product. Otherwise, the product was either
                         // manually disabled by an admin or consumed by other orders, and we must
                         // not incorrectly re-enable it — that would cause overselling.
-                        $otherActive = \App\Models\Order::whereIn('status', ['confirmed', 'preparing', 'ready'])
+                        $otherActive = Order::whereIn('status', ['confirmed', 'preparing', 'ready'])
                             ->where('id', '!=', $order->id)
                             ->whereJsonContains('items', [['id' => $product->id]])
                             ->exists();
-                        if (!$otherActive) {
+                        if (! $otherActive) {
                             $product->availability = true;
                         }
                         $product->save();
 
-                        if (!empty($product->stems) && is_array($product->stems)) {
+                        if (! empty($product->stems) && is_array($product->stems)) {
                             foreach ($product->stems as $flowerName => $countNeeded) {
-                                $flower = \App\Models\Flower::where('name', $flowerName)
-                                    ->lockForUpdate()
-                                    ->first();
+                                $flower = Flower::findByNameOrVariant($flowerName, true);
                                 if ($flower) {
                                     $qtyToRestore = $countNeeded * (int) ($item['quantity'] ?? 1);
                                     $flower->quantity += $qtyToRestore;
@@ -376,10 +380,10 @@ class OrderController extends Controller
         NotificationService::send(
             null,
             'Order Cancelled by Customer',
-            "Order #JFS-{$order->id} was cancelled by " . strip_tags($order->recipient_name) . ". Reason: " . strip_tags($validated['reason']) . ".",
+            "Order #JFS-{$order->id} was cancelled by ".strip_tags($order->recipient_name).'. Reason: '.strip_tags($validated['reason']).'.',
             'order_cancelled_customer',
             true,
-            !empty($storePhone),
+            ! empty($storePhone),
             $storePhone,
             $order->id
         );

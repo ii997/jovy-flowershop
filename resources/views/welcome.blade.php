@@ -21,6 +21,8 @@
         <meta name="twitter:description" content="Bespoke, luxury floral arrangements handpicked and styled to order. Shop fresh roses, seasonal tulips, and exotic plants for easy store pickup and pre-ordering.">
 
         <title>Jovy's Flowershop</title>
+        <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
+        <link rel="apple-touch-icon" href="{{ asset('images/logo.png') }}">
 
         @fonts
 

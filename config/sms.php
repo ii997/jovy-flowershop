@@ -8,11 +8,22 @@ return [
     |--------------------------------------------------------------------------
     |
     | This option controls the default SMS gateway driver that will be used
-    | to deliver SMS messages. Supported drivers: "textbee", "httpsms", "log"
+    | to deliver SMS messages. Supported drivers: "android_gateway", "semaphore", "textbee", "httpsms", "log", "null"
     |
     */
 
-    'default' => env('SMS_DRIVER', 'textbee'),
+    'default' => env('SMS_DRIVER', 'android_gateway'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | SMS Sender Name Header
+    |--------------------------------------------------------------------------
+    |
+    | The prefix/header included in SMS notification messages.
+    |
+    */
+
+    'sender_name' => env('SMS_SENDER_NAME', "Jovy's Flowershop"),
 
     /*
     |--------------------------------------------------------------------------
@@ -57,6 +68,20 @@ return [
     */
 
     'gateways' => [
+
+        'android_gateway' => [
+            'endpoint' => env('ANDROID_GATEWAY_ENDPOINT', 'https://api.sms-gate.app/3rdparty/v1/message'),
+            'token' => env('ANDROID_GATEWAY_TOKEN'),
+            'login' => env('ANDROID_GATEWAY_LOGIN'),
+            'password' => env('ANDROID_GATEWAY_PASSWORD'),
+            'sim_number' => env('ANDROID_GATEWAY_SIM_NUMBER', 1),
+        ],
+
+        'semaphore' => [
+            'key' => env('SEMAPHORE_API_KEY'),
+            'sender_name' => env('SEMAPHORE_SENDER_NAME'),
+            'endpoint' => env('SEMAPHORE_ENDPOINT', 'https://api.semaphore.co/api/v4/messages'),
+        ],
 
         'httpsms' => [
             'key' => env('HTTPSMS_API_KEY'),

@@ -20,7 +20,10 @@ export interface Product {
     quantity: number;
     gallery: string[];
     stems?: Record<string, number> | null;
+    base_price?: number;
+    is_surge_applied?: boolean;
 }
+
 
 export interface OrderItem {
     id: number;
@@ -50,6 +53,8 @@ export interface Order {
     payment_transactions?: PaymentTransaction[];
     cancellation?: OrderCancellation | null;
     user?: User;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface DashboardStats {

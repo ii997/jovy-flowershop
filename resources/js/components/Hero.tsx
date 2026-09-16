@@ -128,7 +128,7 @@ export function Hero() {
                         {/* Inner Orbit (Dashed ring, rotates clockwise) */}
                         <div className="absolute w-[210px] h-[210px] sm:w-[250px] sm:h-[250px] rounded-full border border-dashed border-[#0A2A1B]/15 z-10 animate-orbit-cw hover-pause">
                             
-                            {/* Inner Orbiting Item 1: Orchids (Top) */}
+                            {/* Inner Orbiting Item 1: Bouquet 1 (Top) */}
                             <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
                                 <div className="hover-child animate-orbit-counter-cw">
                                     <motion.div 
@@ -136,16 +136,16 @@ export function Hero() {
                                         className="relative group cursor-pointer"
                                     >
                                         <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-[#0A2A1B]/10 hover:border-[#D97706] shadow-md transition-all duration-300">
-                                            <img src="/images/orchids.png" alt="Rare Orchids" className="w-full h-full object-cover" />
+                                            <img src="/images/bouquet1.jpg" alt="Crimson Romance" className="w-full h-full object-cover" />
                                         </div>
                                         <div className="absolute left-1/2 -bottom-7 -translate-x-1/2 bg-[#0A2A1B] text-white text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap shadow-md border border-[#D97706]/20">
-                                            Rare Orchids
+                                            Crimson Romance
                                         </div>
                                     </motion.div>
                                 </div>
                             </div>
 
-                            {/* Inner Orbiting Item 2: Sunflowers (Bottom) */}
+                            {/* Inner Orbiting Item 2: Bouquet 6 (Bottom) */}
                             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
                                 <div className="hover-child animate-orbit-counter-cw">
                                     <motion.div 
@@ -153,10 +153,10 @@ export function Hero() {
                                         className="relative group cursor-pointer"
                                     >
                                         <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-[#0A2A1B]/10 hover:border-[#D97706] shadow-md transition-all duration-300">
-                                            <img src="/images/sunflowers.png" alt="Golden Sunflowers" className="w-full h-full object-cover" />
+                                            <img src="/images/boquet6.jpg" alt="Golden Radiance" className="w-full h-full object-cover" />
                                         </div>
                                         <div className="absolute left-1/2 -bottom-7 -translate-x-1/2 bg-[#0A2A1B] text-white text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap shadow-md border border-[#D97706]/20">
-                                            Sunflowers
+                                            Golden Radiance
                                         </div>
                                     </motion.div>
                                 </div>
@@ -167,7 +167,7 @@ export function Hero() {
                         {/* Outer Orbit (Dashed ring, rotates counter-clockwise) */}
                         <div className="absolute w-[310px] h-[310px] sm:w-[370px] sm:h-[370px] rounded-full border border-dashed border-[#0A2A1B]/10 z-0 animate-orbit-ccw hover-pause">
                             
-                            {/* Outer Orbiting Item 1: Roses (Left) */}
+                            {/* Outer Orbiting Item 1: Bouquet 2 (Left) */}
                             <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2">
                                 <div className="hover-child animate-orbit-counter-ccw">
                                     <motion.div 
@@ -175,16 +175,16 @@ export function Hero() {
                                         className="relative group cursor-pointer"
                                     >
                                         <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-[#0A2A1B]/10 hover:border-[#D97706] shadow-md transition-all duration-300">
-                                            <img src="/images/roses.png" alt="Luxury Roses" className="w-full h-full object-cover" />
+                                            <img src="/images/bouquet2.jpg" alt="Blushing Pastels" className="w-full h-full object-cover" />
                                         </div>
                                         <div className="absolute left-1/2 -bottom-7 -translate-x-1/2 bg-[#0A2A1B] text-white text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap shadow-md border border-[#D97706]/20">
-                                            Luxury Roses
+                                            Blushing Pastels
                                         </div>
                                     </motion.div>
                                 </div>
                             </div>
 
-                            {/* Outer Orbiting Item 2: Tulips (Right) */}
+                            {/* Outer Orbiting Item 2: Bouquet 3 (Right) */}
                             <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2">
                                 <div className="hover-child animate-orbit-counter-ccw">
                                     <motion.div 
@@ -192,10 +192,10 @@ export function Hero() {
                                         className="relative group cursor-pointer"
                                     >
                                         <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-[#0A2A1B]/10 hover:border-[#D97706] shadow-md transition-all duration-300">
-                                            <img src="/images/tulips.png" alt="Blushing Tulips" className="w-full h-full object-cover" />
+                                            <img src="/images/bouquet3.jpg" alt="Sweet Spring" className="w-full h-full object-cover" />
                                         </div>
                                         <div className="absolute left-1/2 -bottom-7 -translate-x-1/2 bg-[#0A2A1B] text-white text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap shadow-md border border-[#D97706]/20">
-                                            Blushing Tulips
+                                            Sweet Spring
                                         </div>
                                     </motion.div>
                                 </div>

@@ -34,7 +34,6 @@ export function OrderSummaryModal({ isOpen, onClose, order, onPaymentSuccess }: 
         refNo,
         setRefNo,
         paymentAmount,
-        setPaymentAmount,
         txnDate,
         setTxnDate,
         validateAndSetFile,
@@ -248,13 +247,13 @@ export function OrderSummaryModal({ isOpen, onClose, order, onPaymentSuccess }: 
                                                         <input
                                                             type="text"
                                                             value={paymentAmount}
-                                                            onChange={(e) => setPaymentAmount(e.target.value)}
-                                                            className={`px-3 py-2 border-2 font-semibold rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706]/40 transition-colors ${
+                                                            readOnly
+                                                            className={`px-3 py-2 border-2 font-semibold rounded-xl focus:outline-none transition-colors bg-gray-50 text-[#0A2A1B]/70 cursor-not-allowed ${
                                                                 amountMismatch
                                                                     ? 'border-red-500 text-red-700 bg-red-50/50'
-                                                                    : 'border-[#0A2A1B]/20 text-[#0A2A1B] bg-white'
+                                                                    : 'border-[#0A2A1B]/20'
                                                             }`}
-                                                            placeholder="Enter or verify Amount"
+                                                            placeholder="Amount extracted from receipt"
                                                         />
                                                         {amountMismatch && (
                                                             <div className="flex items-start gap-1.5 mt-1 px-1">

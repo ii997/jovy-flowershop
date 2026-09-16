@@ -63,9 +63,17 @@ export function ProductCard({ product, onOrderBouquet }: ProductCardProps) {
                 )}
 
                 {/* Category Badge */}
-                <div className="absolute top-3 left-3 bg-[#FAF9F6] border border-[#0A2A1B]/10 px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wider text-[#0A2A1B] uppercase select-none">
+                <div className="absolute top-3 left-3 bg-[#FAF9F6]/95 backdrop-blur-xs border border-[#0A2A1B]/10 px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wider text-[#0A2A1B] uppercase select-none shadow-2xs">
                     {product.category}
                 </div>
+
+                {/* Holiday Surge Badge */}
+                {product.is_surge_applied && (
+                    <div className="absolute top-3 right-3 bg-rose-600/90 backdrop-blur-xs text-white border border-rose-400/40 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase select-none shadow-xs flex items-center gap-1 animate-pulse">
+                        <span>🌹</span>
+                        <span>2x Holiday Rate</span>
+                    </div>
+                )}
 
                 {/* Gallery Controls (if multiple images exist) */}
                 {hasGallery && product.availability && (
@@ -127,8 +135,19 @@ export function ProductCard({ product, onOrderBouquet }: ProductCardProps) {
                     )}
                 </div>
 
-                <div className="flex items-center justify-between pt-2">
-                    <span className="text-lg font-bold text-[#0A2A1B]">₱{product.price.toFixed(2)}</span>
+                <div className="flex items-end justify-between pt-2">
+                    <div className="flex flex-col">
+                        {product.is_surge_applied && product.base_price && (
+                            <span className="text-[11px] font-medium text-[#0A2A1B]/40 line-through">
+                                Regular: ₱{product.base_price.toFixed(2)}
+                            </span>
+                        )}
+                        <span className={`text-lg font-bold ${product.is_surge_applied ? 'text-rose-900' : 'text-[#0A2A1B]'}`}>
+                            ₱{product.price.toFixed(2)}
+                        </span>
+                    </div>
+
+
                     {product.availability ? (
                         <motion.button
                             whileHover={{ scale: 1.02 }}

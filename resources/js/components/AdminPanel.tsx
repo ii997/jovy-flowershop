@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Product, User } from '../types';
 import { ProductEditModal } from './ProductEditModal';
 import { ProductCreateModal } from './ProductCreateModal';
@@ -12,6 +13,7 @@ import { OrdersTab } from './admin/OrdersTab';
 import { InventoryTab } from './admin/InventoryTab';
 import { FlowersTab } from './admin/FlowersTab';
 import { SettingsTab } from './admin/SettingsTab';
+import { TransactionsTab } from './admin/TransactionsTab';
 import {
     useAdminStats,
     useAdminOrders,
@@ -29,7 +31,8 @@ interface AdminPanelProps {
 }
 
 export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, onLogout, isLoadingProducts = false }: AdminPanelProps) {
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'inventory' | 'flowers' | 'settings'>('dashboard');
+    const queryClient = useQueryClient();
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'transactions' | 'inventory' | 'flowers' | 'settings'>('dashboard');
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -72,9 +75,13 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
         <div className="min-h-screen bg-[#FAF9F6] text-[#0A2A1B] font-sans antialiased flex flex-col md:flex-row select-none">
             {/* Mobile Header Bar */}
             <div className="flex md:hidden items-center justify-between p-4 bg-white border-b border-[#0A2A1B]/10 sticky top-0 z-40 w-full shrink-0">
-                <div className="flex items-center gap-3">
-                    <span className="text-2xl text-[#D97706]">✿</span>
-                    <span className="font-serif text-lg font-extrabold tracking-tight text-[#0A2A1B]">Jovy Floral</span>
+                <div className="flex items-center gap-2.5">
+                    <img 
+                        src="/images/logo.png" 
+                        alt="Jovy's Flowershop" 
+                        className="h-7 w-7 rounded-full object-cover border border-[#D97706]/30 shadow-2xs" 
+                    />
+                    <span className="font-serif text-lg font-extrabold tracking-tight text-[#0A2A1B]">Jovy's Flowershop</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <NotificationBell />
@@ -114,6 +121,7 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
                             {{
                                 dashboard: 'Dashboard',
                                 orders: 'Orders',
+                                transactions: 'Transactions',
                                 inventory: 'Inventory',
                                 flowers: 'Flowers',
                                 settings: 'Settings'
@@ -179,10 +187,27 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
 
                 {/* Tab Content */}
                 <main className="flex-1 p-6 md:p-10 overflow-y-auto max-h-[calc(100vh-65px)] md:max-h-[calc(100vh-68px)]">
-                    {activeTab === 'dashboard' && <DashboardTab stats={stats} isLoading={isLoadingStats} />}
+                    {activeTab === 'dashboard' && (
+                        <DashboardTab
+                            stats={stats}
+                            isLoading={isLoadingStats}
+                            onViewAllOrders={() => setActiveTab('orders')}
+                        />
+                    )}
 
                     {activeTab === 'orders' && (
-                        <OrdersTab orders={orders} isLoading={isLoadingOrders} />
+                        <OrdersTab
+                            orders={orders}
+                            onUpdateOrders={(updated) => {
+                                queryClient.setQueryData(['adminOrders'], updated);
+                                queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+                            }}
+                            isLoading={isLoadingOrders}
+                        />
+                    )}
+
+                    {activeTab === 'transactions' && (
+                        <TransactionsTab />
                     )}
 
                     {activeTab === 'inventory' && (
@@ -190,6 +215,7 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
                             user={user}
                             products={products}
                             onToggleAvailability={handleToggleAvailability}
+                            onUpdateProducts={onUpdateProducts}
                             onEditProduct={(p) => {
                                 setSelectedProductForEdit(p);
                                 setIsEditModalOpen(true);
@@ -202,6 +228,9 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
                     {activeTab === 'flowers' && (
                         <FlowersTab
                             flowers={flowers}
+                            onFlowersChange={(updated) => {
+                                queryClient.setQueryData(['adminFlowers'], updated);
+                            }}
                             isAdmin={user?.role === 'admin'}
                             isLoading={isLoadingFlowers}
                         />

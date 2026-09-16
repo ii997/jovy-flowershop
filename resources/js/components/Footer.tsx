@@ -11,12 +11,12 @@ export function Footer() {
         <footer id="footer" className="bg-[#0A2A1B] text-white/70 py-16 px-6 text-sm">
             <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-white">
-                        <svg className="h-6 w-6 text-[#D97706]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                            <path d="M12 4C12 4 8 7 8 10C8 12.5 10 14 12 14C14 14 16 12.5 16 10C16 7 12 4 12 4Z" />
-                            <path d="M12 14C12 14 9 16 9 18.5C9 20.5 10.5 22 12 22C13.5 22 15 20.5 15 18.5C15 16 12 14 12 14Z" />
-                            <path d="M10 8H14" /><path d="M12 6V10" />
-                        </svg>
+                    <div className="flex items-center gap-2.5 text-white">
+                        <img 
+                            src="/images/logo.png" 
+                            alt="Jovy's Flowershop Logo" 
+                            className="h-8 w-8 rounded-full object-cover border border-white/20 shadow-xs" 
+                        />
                         <span className="font-serif text-lg font-bold tracking-wide uppercase">Jovy's Flowershop</span>
                     </div>
                     <p className="text-xs leading-relaxed text-white/60">

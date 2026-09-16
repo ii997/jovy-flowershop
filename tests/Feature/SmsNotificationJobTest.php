@@ -4,11 +4,14 @@ namespace Tests\Feature;
 
 use App\Jobs\SendStatusUpdateSMS;
 use App\Models\Order;
-use App\Models\SmsLog;
+use App\Models\Product;
+use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class SmsNotificationJobTest extends TestCase
@@ -125,6 +128,42 @@ class SmsNotificationJobTest extends TestCase
         ]);
     }
 
+    public function test_send_status_update_sms_job_executes_via_android_gateway()
+    {
+        Http::fake([
+            'https://api.sms-gate.app/*' => Http::response(['status' => 'success', 'id' => 'msg-123'], 200),
+        ]);
+
+        config([
+            'sms.default' => 'android_gateway',
+            'sms.gateways.android_gateway.endpoint' => 'https://api.sms-gate.app/3rdparty/v1/message',
+            'sms.gateways.android_gateway.login' => 'F4ZI0I',
+            'sms.gateways.android_gateway.password' => 'peyymjprxx3cu7',
+            'sms.gateways.android_gateway.sim_number' => 1,
+        ]);
+
+        $order = Order::create([
+            'user_id' => null,
+            'order_type' => 'purchase',
+            'recipient_name' => 'Charlie Day',
+            'recipient_phone' => '09175556666',
+            'pickup_date' => now()->addDays(1)->format('Y-m-d'),
+            'items' => [],
+            'total_price' => 3000.00,
+            'status' => 'confirmed',
+            'payment_status' => 'pending',
+        ]);
+
+        $job = new SendStatusUpdateSMS($order->id, 'confirmed', $order->recipient_phone);
+        $job->handle();
+
+        $this->assertDatabaseHas('sms_logs', [
+            'order_id' => $order->id,
+            'gateway' => 'android_gateway',
+            'status' => 'sent',
+        ]);
+    }
+
     public function test_sms_fallback_to_textbee_when_httpsms_fails()
     {
         Http::fake([
@@ -171,12 +210,12 @@ class SmsNotificationJobTest extends TestCase
         Queue::fake();
 
         $settingsPath = storage_path('app/settings.json');
-        if (!file_exists(dirname($settingsPath))) {
+        if (! file_exists(dirname($settingsPath))) {
             mkdir(dirname($settingsPath), 0755, true);
         }
         file_put_contents($settingsPath, json_encode(['phone' => '+639179998888']));
 
-        $user = \App\Models\User::factory()->create();
+        $user = User::factory()->create();
 
         $order = Order::create([
             'user_id' => $user->id,
@@ -198,6 +237,98 @@ class SmsNotificationJobTest extends TestCase
 
         Queue::assertPushedOn('sms', SendStatusUpdateSMS::class, function ($job) use ($order) {
             return $job->orderId === $order->id && $job->eventType === 'order_cancelled_customer' && $job->phone === '+639179998888';
+        });
+
+        if (file_exists($settingsPath)) {
+            unlink($settingsPath);
+        }
+    }
+
+    public function test_new_order_submission_dispatches_sms_alert_to_admin()
+    {
+        Queue::fake();
+
+        $settingsPath = storage_path('app/settings.json');
+        if (! file_exists(dirname($settingsPath))) {
+            mkdir(dirname($settingsPath), 0755, true);
+        }
+        file_put_contents($settingsPath, json_encode(['phone' => '+639179998888']));
+
+        $user = User::factory()->create();
+        $product = Product::create([
+            'name' => 'Rose Bouquet',
+            'slug' => 'rose-bouquet',
+            'price' => 1500.00,
+            'description' => 'Fresh red roses',
+            'category' => 'Bouquet',
+            'availability' => true,
+            'image' => '/images/rose.jpg',
+            'stock_quantity' => 10,
+            'occasions' => ['Birthday'],
+            'seasons' => ['Spring'],
+            'gallery' => ['/images/rose.jpg'],
+            'stems' => ['Roses' => 12],
+        ]);
+
+        $response = $this->actingAs($user)->postJson('/api/orders', [
+            'order_type' => 'purchase',
+            'recipient_name' => 'Maria Clara',
+            'recipient_phone' => '09171234567',
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'items' => [
+                ['id' => $product->id, 'quantity' => 1],
+            ],
+        ]);
+
+        $response->assertStatus(200);
+        $orderId = $response->json('id');
+
+        Queue::assertPushedOn('sms', SendStatusUpdateSMS::class, function ($job) use ($orderId) {
+            return $job->orderId === $orderId && $job->eventType === 'new_order_alert' && $job->phone === '+639179998888';
+        });
+
+        if (file_exists($settingsPath)) {
+            unlink($settingsPath);
+        }
+    }
+
+    public function test_payment_proof_upload_dispatches_sms_review_alert_to_admin()
+    {
+        Queue::fake();
+
+        $settingsPath = storage_path('app/settings.json');
+        if (! file_exists(dirname($settingsPath))) {
+            mkdir(dirname($settingsPath), 0755, true);
+        }
+        file_put_contents($settingsPath, json_encode(['phone' => '+639179998888']));
+
+        $user = User::factory()->create();
+
+        $order = Order::create([
+            'user_id' => $user->id,
+            'order_type' => 'purchase',
+            'recipient_name' => 'John Doe',
+            'recipient_phone' => '09171234567',
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'items' => [],
+            'total_price' => 1500.00,
+            'status' => 'confirmed',
+            'payment_status' => 'pending',
+        ]);
+
+        Storage::fake('public');
+        $file = UploadedFile::fake()->image('receipt.jpg');
+
+        $response = $this->actingAs($user)->postJson("/api/orders/{$order->id}/payment", [
+            'reference_no' => 'GCASH-123456',
+            'receipt' => $file,
+            'amount' => 1500.00,
+        ]);
+
+        $response->assertStatus(200);
+
+        Queue::assertPushedOn('sms', SendStatusUpdateSMS::class, function ($job) use ($order) {
+            return $job->orderId === $order->id && $job->eventType === 'payment_review_alert' && $job->phone === '+639179998888';
         });
 
         if (file_exists($settingsPath)) {
