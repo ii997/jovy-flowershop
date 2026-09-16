@@ -12,7 +12,18 @@ interface ProductListProps {
     isLoading?: boolean;
 }
 
-const OCCASIONS = ['All', 'Birthday', 'Anniversary', "Valentine's", 'Wedding', 'Funeral'];
+const OCCASIONS = [
+    'All',
+    'Birthday',
+    'Anniversary',
+    "Valentine's",
+    'Wedding',
+    'Funeral',
+    'Graduation',
+    'Romance',
+    'Get Well Soon',
+    'Congratulations',
+];
 
 export function ProductList({ products, onOrderBouquet, isAuthenticated, onAuthClick, isLoading = false }: ProductListProps) {
     const [searchQuery, setSearchQuery] = useState('');
@@ -25,7 +36,9 @@ export function ProductList({ products, onOrderBouquet, isAuthenticated, onAuthC
             product.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
             product.category.toLowerCase().includes(searchQuery.toLowerCase());
 
-        const matchesOccasion = selectedOccasion === 'All' || product.occasions.includes(selectedOccasion);
+        const matchesOccasion = selectedOccasion === 'All' ||
+            (Array.isArray(product.occasions) && product.occasions.includes(selectedOccasion)) ||
+            product.category.toLowerCase() === selectedOccasion.toLowerCase();
         
         // Hide sold out unless showOutOfStock is checked
         const matchesStock = showOutOfStock || product.availability;

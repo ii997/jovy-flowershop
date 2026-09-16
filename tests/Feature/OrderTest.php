@@ -115,21 +115,64 @@ class OrderTest extends TestCase
         }
     }
 
-    public function test_order_rejects_non_existent_product(): void
+    public function test_customer_can_resubmit_rejected_payment_proof(): void
     {
-        $user = User::where('email', 'carlos@customer.com')->first() ?: User::factory()->create();
+        $admin = User::where('email', 'admin@jovy.com')->first();
+        $customer = User::where('email', 'carlos@customer.com')->first() ?: User::factory()->create();
+        $product = Product::first();
 
-        $response = $this->actingAs($user)->postJson('/api/orders', [
+        // 1. Customer places an order
+        $orderRes = $this->actingAs($customer)->postJson('/api/orders', [
             'order_type' => 'purchase',
-            'recipient_name' => 'Jane Doe',
+            'recipient_name' => 'Resubmit Customer',
             'recipient_phone' => '09123456789',
             'pickup_date' => now()->addDays(2)->format('Y-m-d'),
             'wrapper_type' => 'Classic Kraft Paper',
             'items' => [
-                ['id' => 99999, 'quantity' => 1],
+                ['id' => $product->id, 'quantity' => 1],
             ],
         ]);
+        $orderRes->assertStatus(200);
+        $orderId = $orderRes->json('id');
 
-        $response->assertStatus(422);
+        // 2. Customer submits initial payment receipt
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $initialFile = \Illuminate\Http\UploadedFile::fake()->image('receipt1.jpg');
+
+        $payRes1 = $this->actingAs($customer)->postJson("/api/orders/{$orderId}/payment", [
+            'receipt' => $initialFile,
+            'reference_no' => 'REF-WRONG-123',
+            'amount' => $product->price,
+        ]);
+        $payRes1->assertStatus(200);
+        $this->assertEquals('awaiting_verification', Order::find($orderId)->payment_status);
+
+        // 3. Admin rejects payment proof with feedback note
+        $rejectRes = $this->actingAs($admin)->postJson("/api/admin/orders/{$orderId}/payment-status", [
+            'payment_status' => 'failed',
+            'admin_notes' => 'Screenshot reference number cut off. Please re-upload full receipt.',
+        ]);
+        $rejectRes->assertStatus(200);
+
+        $rejectedOrder = Order::with('paymentTransactions')->find($orderId);
+        $this->assertEquals('failed', $rejectedOrder->payment_status);
+        $this->assertEquals(
+            'Screenshot reference number cut off. Please re-upload full receipt.',
+            $rejectedOrder->paymentTransactions->last()->admin_notes
+        );
+
+        // 4. Customer resubmits corrected payment proof
+        $correctedFile = \Illuminate\Http\UploadedFile::fake()->image('receipt2.jpg');
+        $payRes2 = $this->actingAs($customer)->postJson("/api/orders/{$orderId}/payment", [
+            'receipt' => $correctedFile,
+            'reference_no' => 'REF-CORRECTED-999',
+            'amount' => $product->price,
+        ]);
+        $payRes2->assertStatus(200);
+
+        $resubmittedOrder = Order::with('paymentTransactions')->find($orderId);
+        $this->assertEquals('awaiting_verification', $resubmittedOrder->payment_status);
+        $this->assertEquals('REF-CORRECTED-999', $resubmittedOrder->payment_details['reference_no']);
+        $this->assertCount(2, $resubmittedOrder->paymentTransactions);
     }
 }

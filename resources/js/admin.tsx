@@ -79,7 +79,11 @@ function AdminApp() {
         return (
             <div className="flex items-center justify-center min-h-screen bg-[#FAF9F6]">
                 <div className="flex flex-col items-center gap-3">
-                    <span className="text-3xl text-[#D97706] animate-pulse">✿</span>
+                    <img 
+                        src="/images/logo.png" 
+                        alt="Jovy's Flowershop" 
+                        className="h-12 w-12 rounded-full object-cover shadow-sm animate-pulse" 
+                    />
                     <p className="text-sm font-semibold tracking-wide text-[#0A2A1B]/60 font-sans">
                         Verifying administration access…
                     </p>

@@ -533,9 +533,9 @@ class AppClass {
     font: string,
   ) {
     const defaultItems: GalleryItem[] = [
-      { image: "/images/roses.png", text: "Fresh Stems" },
-      { image: "/images/orchids.png", text: "Artisanal Styling" },
-      { image: "/images/tulips.png", text: "Express Store Pickup" },
+      { image: "/images/bouquet1.jpg", text: "Fresh Stems" },
+      { image: "/images/bouquet2.jpg", text: "Artisanal Styling" },
+      { image: "/images/boquet6.jpg", text: "Express Store Pickup" },
     ];
 
     const galleryItems = items && items.length > 0 ? items : defaultItems;
@@ -722,3 +722,5 @@ export const CircularGallery = ({
     />
   );
 };
+
+

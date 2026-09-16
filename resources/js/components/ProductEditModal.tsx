@@ -3,7 +3,7 @@ import { Product, Flower } from '../types';
 import { computeBouquetPrice } from '../lib/pricing';
 import { ImagePicker } from './admin/ImagePicker';
 import { toast } from './ui/Toast';
-import { X } from 'reicon-react';
+import { X, Check } from 'reicon-react';
 
 interface ProductEditModalProps {
     isOpen: boolean;
@@ -13,19 +13,39 @@ interface ProductEditModalProps {
     onUpdateSuccess: (updatedProduct: Product) => void;
 }
 
+const CATEGORY_OPTIONS = [
+    'Bouquets',
+    'Classic Roses',
+    'Seasonal Tulips',
+    'Cheerful Blooms',
+    'Exotic Plants',
+    'Funeral & Sympathy',
+    'Wedding & Events',
+];
+
+const OCCASION_OPTIONS = [
+    'Birthday',
+    'Anniversary',
+    "Valentine's",
+    'Wedding',
+    'Funeral',
+    'Graduation',
+    'Romance',
+    'Get Well Soon',
+    'Congratulations',
+];
+
 export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSuccess }: ProductEditModalProps) {
     const [name, setName] = useState('');
-    const [category, setCategory] = useState('');
+    const [category, setCategory] = useState(CATEGORY_OPTIONS[0]);
+    const [occasions, setOccasions] = useState<string[]>([]);
     const [description, setDescription] = useState('');
-    const [occasions, setOccasions] = useState('');
-    const [seasons, setSeasons] = useState('');
     const [image, setImage] = useState('');
     
     // Stems list builder
     const [stemsList, setStemsList] = useState<{ flower: string; count: number }[]>([]);
     const [newFlower, setNewFlower] = useState('');
     const [newCount, setNewCount] = useState('');
-    const [showSuggestions, setShowSuggestions] = useState(false);
 
     const [errors, setErrors] = useState<Record<string, string[]>>({});
     const [isLoading, setIsLoading] = useState(false);
@@ -33,10 +53,11 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
     useEffect(() => {
         if (product) {
             setName(product.name);
-            setCategory(product.category);
+            setCategory(product.category || CATEGORY_OPTIONS[0]);
+            setOccasions(Array.isArray(product.occasions) && product.occasions.length > 0
+                ? product.occasions
+                : [product.category || 'Bouquets']);
             setDescription(product.description);
-            setOccasions(product.occasions.join(', '));
-            setSeasons(product.seasons.join(', '));
             setImage(product.image);
             
             // Map Record to array list
@@ -54,10 +75,15 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
         setNewFlower('');
         setNewCount('');
         setErrors({});
-        setShowSuggestions(false);
     }, [product, isOpen]);
 
     if (!isOpen || !product) return null;
+
+    const toggleOccasion = (occ: string) => {
+        setOccasions(prev =>
+            prev.includes(occ) ? prev.filter(o => o !== occ) : [...prev, occ]
+        );
+    };
 
     const getFlowerDisplayName = (f: Flower) => {
         if (f.size && !f.name.toLowerCase().includes(f.size.toLowerCase())) {
@@ -70,7 +96,7 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
         e.preventDefault();
         const countNum = parseFloat(newCount);
         if (!newFlower.trim() || isNaN(countNum) || countNum <= 0) {
-            toast.error('Please enter a valid flower name and count.');
+            toast.error('Please select a flower ingredient and enter a valid quantity.');
             return;
         }
 
@@ -106,7 +132,6 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
 
         setNewFlower('');
         setNewCount('');
-        setShowSuggestions(false);
     };
 
     const removeStemItem = (idx: number) => {
@@ -129,13 +154,15 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
             return acc;
         }, {});
 
+        const finalOccasions = occasions.length > 0 ? occasions : [category];
+
         const payload = {
             name,
             category,
             image,
             description,
             seasons: ['All Year'],
-            occasions: occasions.split(',').map(s => s.trim()).filter(Boolean),
+            occasions: finalOccasions,
             stems: stemsRecord,
         };
 
@@ -165,12 +192,6 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
             setIsLoading(false);
         }
     };
-
-    const filteredSuggestions = flowers.filter(f => {
-        const displayName = getFlowerDisplayName(f).toLowerCase();
-        const query = newFlower.toLowerCase();
-        return (displayName.includes(query) || f.name.toLowerCase().includes(query) || (f.size && f.size.toLowerCase().includes(query))) && f.available;
-    });
 
     const derivedPrice = computeBouquetPrice(stemsList, flowers);
 
@@ -219,23 +240,54 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
                         {/* Price — derived from stems, read-only */}
                         <div className="space-y-1">
                             <label className="text-xs font-semibold text-[#0A2A1B] block">Price (₱ PHP)</label>
-                            <div className="w-full px-4 py-2.5 bg-[#F7F4EB] border border-[#0A2A1B]/10 rounded-full text-sm font-bold text-[#0A2A1B]">
-                                ₱{derivedPrice.toFixed(2)}
-                                <span className="ml-1.5 text-[10px] font-medium text-[#0A2A1B]/50">auto from stems</span>
+                            <div className="w-full px-4 py-2.5 bg-[#F7F4EB] border border-[#0A2A1B]/10 rounded-full text-sm font-bold text-[#0A2A1B] flex items-center justify-between">
+                                <span>₱{derivedPrice.toFixed(2)}</span>
+                                <span className="text-[10px] font-medium text-[#0A2A1B]/50">auto from stems</span>
                             </div>
                         </div>
 
-                        {/* Category */}
+                        {/* Category Dropdown */}
                         <div className="space-y-1">
                             <label className="text-xs font-semibold text-[#0A2A1B] block">Category</label>
-                            <input
-                                type="text"
+                            <select
                                 value={category}
                                 onChange={(e) => setCategory(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-white border border-[#0A2A1B]/15 rounded-full text-sm focus:outline-none focus:border-[#D97706] text-[#0A2A1B] transition-colors"
+                                className="w-full px-4 py-2.5 bg-white border border-[#0A2A1B]/15 rounded-full text-sm focus:outline-none focus:border-[#D97706] text-[#0A2A1B] transition-colors cursor-pointer"
                                 required
-                            />
+                            >
+                                {CATEGORY_OPTIONS.map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
                             {errors.category && <p className="text-red-600 text-xs mt-1">{errors.category[0]}</p>}
+                        </div>
+                    </div>
+
+                    {/* Multi-Select Occasions Badges */}
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-semibold text-[#0A2A1B] block">Suitable Occasions</label>
+                            <span className="text-[10px] text-[#0A2A1B]/50 font-medium select-none">Select all that apply</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 select-none">
+                            {OCCASION_OPTIONS.map(occ => {
+                                const isSelected = occasions.includes(occ);
+                                return (
+                                    <button
+                                        key={occ}
+                                        type="button"
+                                        onClick={() => toggleOccasion(occ)}
+                                        className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 border ${
+                                            isSelected
+                                                ? 'bg-[#0A2A1B] text-white border-[#0A2A1B] shadow-xs scale-[1.02]'
+                                                : 'bg-[#FAF9F6] text-[#0A2A1B]/70 hover:text-[#0A2A1B] border-[#0A2A1B]/15 hover:border-[#D97706]/50'
+                                        }`}
+                                    >
+                                        {isSelected && <Check className="h-3 w-3 text-[#D97706]" strokeWidth={2.5} />}
+                                        <span>{occ}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -261,61 +313,32 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
                             </div>
                         )}
 
-                        <div className="flex gap-2 relative">
-                            <div className="flex-1 relative">
-                                <input
-                                    type="text"
+                        <div className="flex gap-2">
+                            <div className="flex-1">
+                                <select
                                     value={newFlower}
-                                    onChange={(e) => {
-                                        setNewFlower(e.target.value);
-                                        setShowSuggestions(true);
-                                    }}
-                                    onFocus={() => setShowSuggestions(true)}
-                                    placeholder="Flower name (e.g. Roses)"
-                                    className="w-full px-3.5 py-2 bg-white border border-[#0A2A1B]/15 rounded-full text-xs text-[#0A2A1B] focus:outline-none focus:border-[#D97706]"
-                                />
-                                {showSuggestions && newFlower.trim() && filteredSuggestions.length > 0 && (
-                                    <div className="absolute left-0 right-0 bottom-full mb-1.5 bg-white border border-[#0A2A1B]/10 rounded-2xl shadow-xl max-h-48 overflow-y-auto z-50 p-2 space-y-1">
-                                        {filteredSuggestions.map(f => {
-                                            const displayName = getFlowerDisplayName(f);
-                                            return (
-                                                <button
-                                                    key={f.id}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setNewFlower(displayName);
-                                                        setShowSuggestions(false);
-                                                    }}
-                                                    className="w-full text-left px-3 py-2 hover:bg-[#FAF9F6] rounded-xl text-xs text-[#0A2A1B] font-medium flex items-center justify-between cursor-pointer gap-2"
-                                                >
-                                                    <div className="flex items-center gap-1.5 overflow-hidden">
-                                                        <span className="truncate">{f.name}</span>
-                                                        {f.size && (
-                                                            <span className="shrink-0 px-1.5 py-0.5 bg-[#D97706]/10 text-[#D97706] text-[10px] font-bold rounded-md">
-                                                                {f.size}
-                                                            </span>
-                                                        )}
-                                                        {f.unit_type && f.unit_type !== 'stem' && (
-                                                            <span className="shrink-0 px-1.5 py-0.5 bg-[#0A2A1B]/5 text-[#0A2A1B]/60 text-[9px] font-semibold rounded-md">
-                                                                per {f.unit_type}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex items-center gap-2 shrink-0 text-right">
-                                                        <span className="font-bold text-[#0A2A1B]">₱{f.price}</span>
-                                                        <span className="text-[10px] text-[#0A2A1B]/55">Stock: {f.quantity}</span>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
+                                    onChange={(e) => setNewFlower(e.target.value)}
+                                    className="w-full px-3.5 py-2.5 bg-white border border-[#0A2A1B]/15 rounded-full text-xs text-[#0A2A1B] focus:outline-none focus:border-[#D97706] cursor-pointer"
+                                >
+                                    <option value="">-- Select Flower Ingredient --</option>
+                                    {flowers.filter(f => f.available).map(f => {
+                                        const displayName = getFlowerDisplayName(f);
+                                        const unitLabel = f.unit_type && f.unit_type !== 'stem' ? `/${f.unit_type}` : '';
+                                        return (
+                                            <option key={f.id} value={displayName}>
+                                                {displayName} — ₱{f.price}{unitLabel} [Stock: {f.quantity}]
+                                            </option>
+                                        );
+                                    })}
+                                </select>
                             </div>
                             <input
                                 type="number"
+                                step="any"
+                                min="0.01"
                                 value={newCount}
                                 onChange={(e) => setNewCount(e.target.value)}
-                                placeholder="Count"
+                                placeholder="Qty"
                                 className="w-20 px-3.5 py-2 bg-white border border-[#0A2A1B]/15 rounded-full text-xs text-[#0A2A1B] focus:outline-none focus:border-[#D97706]"
                             />
                             <button
@@ -326,37 +349,6 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
                                 Add
                             </button>
                         </div>
-                    </div>
-
-                    {/* Occasions — Pill Selection */}
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-[#0A2A1B] block">Occasions</label>
-                        <div className="flex flex-wrap gap-2">
-                            {['Birthday', 'Anniversary', 'Valentines', 'Wedding', 'Funeral'].map(occ => {
-                                const selectedList = occasions.split(',').map(o => o.trim()).filter(Boolean);
-                                const isSelected = selectedList.includes(occ);
-                                return (
-                                    <button
-                                        key={occ}
-                                        type="button"
-                                        onClick={() => {
-                                            const updatedList = isSelected
-                                                ? selectedList.filter(o => o !== occ)
-                                                : [...selectedList, occ];
-                                            setOccasions(updatedList.join(', '));
-                                        }}
-                                        className={`px-4 py-2 text-xs font-bold rounded-full border-2 transition-all cursor-pointer active:scale-95 select-none ${
-                                            isSelected
-                                                ? 'bg-[#D97706] text-white border-[#D97706] shadow-sm'
-                                                : 'bg-white text-[#0A2A1B]/70 border-[#0A2A1B]/15 hover:border-[#D97706]/40'
-                                        }`}
-                                    >
-                                        {occ}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        {errors.occasions && <p className="text-red-600 text-xs mt-1">{errors.occasions[0]}</p>}
                     </div>
 
                     {/* Description */}
@@ -384,3 +376,4 @@ export function ProductEditModal({ isOpen, onClose, product, flowers, onUpdateSu
         </div>
     );
 }
+

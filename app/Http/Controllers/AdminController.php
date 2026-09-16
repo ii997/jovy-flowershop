@@ -59,10 +59,17 @@ class AdminController extends Controller
                     $prodId = $item['id'] ?? null;
                     if ($prodId) {
                         $prodName = $item['name'] ?? ("Product #" . $prodId);
+                        $prodPrice = (float) ($item['price'] ?? 0);
                         if (!isset($productCounts[$prodId])) {
-                            $productCounts[$prodId] = ['id' => $prodId, 'name' => $prodName, 'count' => 0];
+                            $productCounts[$prodId] = [
+                                'id' => $prodId,
+                                'name' => $prodName,
+                                'count' => 0,
+                                'revenue' => 0,
+                            ];
                         }
                         $productCounts[$prodId]['count'] += $qty;
+                        $productCounts[$prodId]['revenue'] += ($prodPrice * $qty);
                     }
 
                     // Occasions and seasons breakdowns from actual Product models
@@ -193,14 +200,18 @@ class AdminController extends Controller
         }
         $order->payment_status = $validated['payment_status'];
 
-        if ($validated['payment_status'] === 'verified') {
-            $latestTx = $order->paymentTransactions()->latest()->first();
-            if ($latestTx) {
+        $notes = isset($validated['admin_notes']) ? strip_tags($validated['admin_notes']) : null;
+
+        $latestTx = $order->paymentTransactions()->latest()->first();
+        if ($latestTx) {
+            if ($validated['payment_status'] === 'verified') {
                 $latestTx->verified_by = $request->user()->id;
                 $latestTx->verified_at = now();
-                $latestTx->admin_notes = isset($validated['admin_notes']) ? strip_tags($validated['admin_notes']) : null;
-                $latestTx->save();
             }
+            if ($notes) {
+                $latestTx->admin_notes = $notes;
+            }
+            $latestTx->save();
         }
 
         $order->save();
@@ -293,9 +304,7 @@ class AdminController extends Controller
 
                         if (!empty($product->stems) && is_array($product->stems)) {
                             foreach ($product->stems as $flowerName => $countNeeded) {
-                                $flower = \App\Models\Flower::where('name', $flowerName)
-                                    ->lockForUpdate()
-                                    ->first();
+                                $flower = Flower::findByNameOrVariant($flowerName, true);
                                 if ($flower) {
                                     $qtyToRestore = $countNeeded * (int) ($item['quantity'] ?? 1);
                                     $flower->quantity += $qtyToRestore;
@@ -376,7 +385,7 @@ class AdminController extends Controller
         $product = DB::transaction(function () use ($validated) {
             if (!empty($validated['stems'])) {
                 foreach ($validated['stems'] as $flowerName => $countNeeded) {
-                    $flower = Flower::where('name', $flowerName)->first();
+                    $flower = Flower::findByNameOrVariant($flowerName, true);
                     if (!$flower) {
                         throw ValidationException::withMessages(['stems' => ["Flower '{$flowerName}' is not registered in the database."]]);
                     }
@@ -508,11 +517,19 @@ class AdminController extends Controller
                 'store_phone' => "+639097850776",
                 'store_address' => "Brgy. Poblacion, Kidapawan City, Cotabato",
                 'maintenance_mode' => false,
+                'surge_pricing' => false,
+                'surge_exempt_funeral' => true,
                 'qr_image' => "",
                 'downpayment_pct' => 30
             ]);
         }
         $settings = json_decode(file_get_contents($path), true);
+        if (!isset($settings['surge_pricing'])) {
+            $settings['surge_pricing'] = false;
+        }
+        if (!isset($settings['surge_exempt_funeral'])) {
+            $settings['surge_exempt_funeral'] = true;
+        }
         return response()->json($settings);
     }
 
@@ -523,9 +540,17 @@ class AdminController extends Controller
             'store_phone' => 'required|string|max:50',
             'store_address' => 'required|string|max:500',
             'maintenance_mode' => 'required|boolean',
+            'surge_pricing' => 'nullable|boolean',
+            'surge_exempt_funeral' => 'nullable|boolean',
             'qr_image' => 'nullable|string|max:1000',
             'downpayment_pct' => 'required|integer|min:0|max:100',
         ]);
+        $validated['surge_pricing'] = !empty($validated['surge_pricing']);
+        $validated['surge_exempt_funeral'] = array_key_exists('surge_exempt_funeral', $validated)
+            ? (bool) $validated['surge_exempt_funeral']
+            : true;
+
+
 
         $path = storage_path('app/settings.json');
         

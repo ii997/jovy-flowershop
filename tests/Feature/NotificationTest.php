@@ -2,13 +2,17 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
+use App\Enums\UserRole;
+use App\Jobs\SendStatusUpdateSMS;
 use App\Models\Notification;
 use App\Models\Order;
 use App\Models\Product;
-use App\Enums\UserRole;
+use App\Models\User;
+use App\Services\NotificationService;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class NotificationTest extends TestCase
@@ -21,7 +25,7 @@ class NotificationTest extends TestCase
 
         // Setup settings.json mock
         $settingsPath = storage_path('app/settings.json');
-        if (!file_exists(dirname($settingsPath))) {
+        if (! file_exists(dirname($settingsPath))) {
             mkdir(dirname($settingsPath), 0755, true);
         }
         file_put_contents($settingsPath, json_encode([
@@ -36,7 +40,7 @@ class NotificationTest extends TestCase
         config(['sms.test_mode' => false]);
 
         // Seed products and inventory
-        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+        $this->seed(DatabaseSeeder::class);
     }
 
     protected function tearDown(): void
@@ -132,7 +136,7 @@ class NotificationTest extends TestCase
         $this->assertNull($notification->read_at);
 
         $response = $this->actingAs($customer)->postJson('/api/notifications/read', [
-            'ids' => [$notification->id]
+            'ids' => [$notification->id],
         ]);
 
         $response->assertStatus(200);
@@ -141,7 +145,7 @@ class NotificationTest extends TestCase
 
     public function test_checkout_triggers_notifications_and_dispatches_sms(): void
     {
-        \Illuminate\Support\Facades\Queue::fake();
+        Queue::fake();
 
         $customer = User::factory()->create(['role' => UserRole::Customer]);
         $product = Product::first(); // Grab seeded product
@@ -156,8 +160,8 @@ class NotificationTest extends TestCase
             'wrapper_type' => 'Classic Kraft Paper',
             'gift_message' => 'Happy Birthday!',
             'items' => [
-                ['id' => $product->id, 'quantity' => 1]
-            ]
+                ['id' => $product->id, 'quantity' => 1],
+            ],
         ]);
 
         $response->assertStatus(200);
@@ -177,20 +181,24 @@ class NotificationTest extends TestCase
         ]);
 
         // Verify SendStatusUpdateSMS job was dispatched to queue
-        \Illuminate\Support\Facades\Queue::assertPushedOn('sms', \App\Jobs\SendStatusUpdateSMS::class);
+        Queue::assertPushedOn('sms', SendStatusUpdateSMS::class);
     }
 
     public function test_sms_delivery_failure_logs_failed_sms_log(): void
     {
         Http::fake([
-            'api.httpsms.com/*' => Http::response(['message' => 'Gateway Offline'], 500),
-            'api.textbee.dev/*' => Http::response(['message' => 'Device Offline'], 500),
+            '*' => Http::response(['message' => 'Gateway Offline'], 500),
         ]);
 
-        config(['services.httpsms.key' => 'key', 'services.httpsms.from' => '+639170000000']);
-        config(['services.textbee.key' => 'key', 'services.textbee.device_id' => 'dev1']);
+        config([
+            'sms.default' => 'httpsms',
+            'services.httpsms.key' => 'key',
+            'services.httpsms.from' => '+639170000000',
+            'services.textbee.key' => 'key',
+            'services.textbee.device_id' => 'dev1',
+        ]);
 
-        $success = \App\Services\NotificationService::sendSmsDirect('+639170000000', 'Test Failure');
+        $success = NotificationService::sendSmsDirect('+639170000000', 'Test Failure');
 
         $this->assertFalse($success);
 
@@ -213,11 +221,11 @@ class NotificationTest extends TestCase
         ]);
 
         Http::fake([
-            'api.textbee.dev/*' => Http::response(['message' => 'Service Unavailable'], 503),
-            'api.httpsms.com/*' => Http::response(['success' => true], 200),
+            '*textbee.dev*' => Http::response(['message' => 'Service Unavailable'], 503),
+            '*httpsms.com*' => Http::response(['success' => true], 200),
         ]);
 
-        $success = \App\Services\NotificationService::sendSmsDirect('+639170000000', 'Test Fallback');
+        $success = NotificationService::sendSmsDirect('+639170000000', 'Test Fallback');
 
         $this->assertTrue($success);
 
@@ -231,10 +239,10 @@ class NotificationTest extends TestCase
 
     public function test_phone_number_formatting_utility(): void
     {
-        $this->assertEquals('+639171234567', \App\Services\NotificationService::formatPhoneNumber('09171234567'));
-        $this->assertEquals('+639171234567', \App\Services\NotificationService::formatPhoneNumber('9171234567'));
-        $this->assertEquals('+639171234567', \App\Services\NotificationService::formatPhoneNumber('+639171234567'));
-        $this->assertEquals('+639171234567', \App\Services\NotificationService::formatPhoneNumber(' 0917-123-4567 '));
+        $this->assertEquals('+639171234567', NotificationService::formatPhoneNumber('09171234567'));
+        $this->assertEquals('+639171234567', NotificationService::formatPhoneNumber('9171234567'));
+        $this->assertEquals('+639171234567', NotificationService::formatPhoneNumber('+639171234567'));
+        $this->assertEquals('+639171234567', NotificationService::formatPhoneNumber(' 0917-123-4567 '));
     }
 
     public function test_sms_test_mode_logs_to_laravel_log_and_database(): void
@@ -254,7 +262,7 @@ class NotificationTest extends TestCase
             'items' => [],
         ]);
 
-        $success = \App\Services\NotificationService::sendSmsDirect('+639170000000', 'Test Mode Message', $order->id);
+        $success = NotificationService::sendSmsDirect('+639170000000', 'Test Mode Message', $order->id);
 
         $this->assertTrue($success);
 

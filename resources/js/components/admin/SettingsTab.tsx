@@ -31,6 +31,8 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
     const [storePhone, setStorePhone] = useState("+639097850776");
     const [storeAddress, setStoreAddress] = useState("Barangay Pob. Kidapawan City");
     const [maintenanceMode, setMaintenanceMode] = useState(false);
+    const [surgePricing, setSurgePricing] = useState(false);
+    const [surgeExemptFuneral, setSurgeExemptFuneral] = useState(true);
     const [downpaymentPct, setDownpaymentPct] = useState(30);
     const [storeSuccess, setStoreSuccess] = useState('');
     const [qrImage, setQrImage] = useState('');
@@ -57,6 +59,8 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
                         setStorePhone(data.store_phone || "+639097850776");
                         setStoreAddress(data.store_address || "Brgy. Pob. Kidapawan City, Cotabato");
                         setMaintenanceMode(!!data.maintenance_mode);
+                        setSurgePricing(!!data.surge_pricing);
+                        setSurgeExemptFuneral(data.surge_exempt_funeral !== undefined ? !!data.surge_exempt_funeral : true);
                         setQrImage(data.qr_image || "");
                         setDownpaymentPct(data.downpayment_pct ?? 30);
                     }
@@ -139,6 +143,8 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
             store_phone: storePhone,
             store_address: storeAddress,
             maintenance_mode: maintenanceMode,
+            surge_pricing: surgePricing,
+            surge_exempt_funeral: surgeExemptFuneral,
             qr_image: qrImage,
             downpayment_pct: downpaymentPct
         };
@@ -160,6 +166,8 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
                 localStorage.setItem('store_settings_phone', storePhone);
                 localStorage.setItem('store_settings_address', storeAddress);
                 localStorage.setItem('store_settings_maintenance', String(maintenanceMode));
+                localStorage.setItem('store_settings_surge_pricing', String(surgePricing));
+                localStorage.setItem('store_settings_surge_exempt_funeral', String(surgeExemptFuneral));
                 localStorage.setItem('store_settings_qr_image', qrImage);
                 localStorage.setItem('store_settings_downpayment_pct', String(downpaymentPct));
 
@@ -379,7 +387,50 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
                                     <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${maintenanceMode ? 'translate-x-5' : 'translate-x-0'}`} />
                                 </button>
                             </div>
+
+                            {/* Holiday Surge Pricing (2x) Toggle & Options */}
+                            <div className="p-4 bg-rose-50/30 rounded-2xl border border-rose-200/60 hover:border-rose-300 transition-colors space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5 pr-4">
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="text-xs font-bold text-[#0A2A1B]">🌹 Holiday Surge Pricing (2x Rate)</h4>
+                                            <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${surgePricing ? 'bg-rose-100 text-rose-800 border border-rose-300 font-extrabold animate-pulse' : 'bg-gray-200 text-gray-600'}`}>
+                                                {surgePricing ? '2X ACTIVE' : 'OFF'}
+                                            </span>
+                                        </div>
+                                        <p className="text-[10px] text-[#0A2A1B]/60 font-medium leading-relaxed">
+                                            Doubles arrangement prices storewide during peak flower holidays (e.g. Valentine's Day, Mother's Day, All Souls' Day / Undas).
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSurgePricing(!surgePricing)}
+                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-hidden ${surgePricing ? 'bg-rose-600' : 'bg-gray-200'}`}
+                                        title="Toggle 2x Holiday Surge Pricing"
+                                    >
+                                        <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${surgePricing ? 'translate-x-5' : 'translate-x-0'}`} />
+                                    </button>
+                                </div>
+
+                                {/* Sub-Option Checkbox: Funeral & Sympathy Exemption */}
+                                <div className="pt-2.5 border-t border-rose-200/50 flex items-center justify-between text-xs">
+                                    <label className="flex items-center gap-2 cursor-pointer select-none text-[11px] text-[#0A2A1B]/80 font-medium">
+                                        <input
+                                            type="checkbox"
+                                            checked={surgeExemptFuneral}
+                                            onChange={(e) => setSurgeExemptFuneral(e.target.checked)}
+                                            className="w-4 h-4 rounded border-rose-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                                        />
+                                        <span>Exempt Funeral & Sympathy arrangements from 2x rate</span>
+                                    </label>
+                                    <span className="text-[10px] font-bold text-[#0A2A1B]/40 hidden sm:inline">
+                                        {surgeExemptFuneral ? '🕊️ Standard 1x Price' : '🕯️ 2x Rate (Undas Mode)'}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
+
+
 
                         <div className="pt-4">
                             <button

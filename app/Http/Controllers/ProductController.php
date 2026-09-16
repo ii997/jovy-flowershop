@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Support\ProductPricing;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
@@ -14,6 +15,21 @@ class ProductController extends Controller
     {
         $perPage = (int) $request->input('per_page', 50);
         $perPage = max(1, min(200, $perPage));
-        return response()->json(Product::paginate($perPage));
+
+        $paginated = Product::paginate($perPage);
+        $paginated->getCollection()->transform(function ($product) {
+            $basePrice = (float) $product->price;
+            $effectivePrice = ProductPricing::getEffectivePrice($product);
+
+            $product->base_price = $basePrice;
+            $product->price = $effectivePrice;
+            $product->is_surge_applied = ($effectivePrice > $basePrice);
+
+            return $product;
+        });
+
+
+        return response()->json($paginated);
     }
 }
+

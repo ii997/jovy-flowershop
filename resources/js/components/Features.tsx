@@ -1,12 +1,16 @@
 import { CircularGallery, GalleryItem } from './ui/circular-gallery-2';
 
 const galleryItems: GalleryItem[] = [
-    { image: '/images/roses.png', text: 'Fresh Stems' },
-    { image: '/images/orchids.png', text: 'Artisanal Styling' },
-    { image: '/images/tulips.png', text: 'Express Store Pickup' },
-    { image: '/images/sunflowers.png', text: 'Bespoke Design' },
-    { image: '/images/wedding.png', text: 'Luxury Packaging' },
-    { image: '/images/autumn.png', text: 'Seasonal Blooms' },
+    { image: '/images/bouquet1.jpg', text: 'Crimson Romance' },
+    { image: '/images/bouquet2.jpg', text: 'Blushing Pastels' },
+    { image: '/images/boquet6.jpg', text: 'Golden Radiance' },
+    { image: '/images/boquet4.jpg', text: 'Artisan Wrap' },
+    { image: '/images/boquet5.jpg', text: 'Romantic Blooms' },
+    { image: '/images/boquet10.jpg', text: 'Pastel Elegance' },
+    { image: '/images/boquet8.jpg', text: 'Tropical Sunrise' },
+    { image: '/images/boquet7.jpg', text: 'Lavender Serenity' },
+    { image: '/images/boquet9.jpg', text: 'Daisy Dreams' },
+    { image: '/images/bouquet3.jpg', text: 'Sweet Spring' },
 ];
 
 export function Features() {
