@@ -41,6 +41,8 @@ function App() {
     const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
     const [isSurgePricing, setIsSurgePricing] = useState(false);
     const [isSurgeExemptFuneral, setIsSurgeExemptFuneral] = useState(true);
+    const [shopOccasion, setShopOccasion] = useState<string | undefined>(undefined);
+    const [shopSearch, setShopSearch] = useState<string | undefined>(undefined);
 
     // Load catalog items from backend database
     const fetchProducts = async () => {
@@ -126,6 +128,15 @@ function App() {
         setIsCheckoutOpen(true);
     };
 
+    const handleSelectOccasionFlower = (occasion: string, flowerName?: string) => {
+        setShopOccasion(occasion);
+        setShopSearch(flowerName || '');
+        const target = document.getElementById('shop');
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
     const handleLogout = async () => {
         try {
             const response = await fetch('/api/logout', {
@@ -205,13 +216,18 @@ function App() {
             )}
 
             <Hero />
-            <Features />
+            <Features 
+                products={products}
+                onSelectOccasionFlower={handleSelectOccasionFlower}
+            />
             <ProductList
                 products={products}
                 onOrderBouquet={handleOrderBouquet}
                 isAuthenticated={!!user}
                 onAuthClick={() => setIsAuthOpen(true)}
                 isLoading={isLoadingProducts}
+                activeOccasion={shopOccasion}
+                activeSearch={shopSearch}
             />
             <Footer />
 

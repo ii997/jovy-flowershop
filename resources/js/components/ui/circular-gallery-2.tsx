@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 export interface GalleryItem {
   image: string;
   text: string;
+  flowerKey?: string;
+  description?: string;
 }
 
 interface CircularGalleryProps
@@ -49,6 +51,10 @@ interface CircularGalleryProps
    * Optional class name to override the default font (e.g., from Next/font).
    */
   fontClassName?: string;
+  /**
+   * Callback fired when an item in the 3D gallery is clicked/tapped.
+   */
+  onItemClick?: (item: GalleryItem, index: number) => void;
 }
 
 /* --------------------------------
@@ -288,6 +294,7 @@ class Media {
         uniform vec2 uPlaneSizes;
         uniform sampler2D tMap;
         uniform float uBorderRadius;
+        uniform float uLoaded;
         varying vec2 vUv;
         
         float roundedBoxSDF(vec2 p, vec2 b, float r) {
@@ -296,6 +303,9 @@ class Media {
         }
         
         void main() {
+          if (uLoaded < 0.5) {
+            discard;
+          }
           vec2 ratio = vec2(
             min((uPlaneSizes.x / uPlaneSizes.y) / (uImageSizes.x / uImageSizes.y), 1.0),
             min((uPlaneSizes.y / uPlaneSizes.x) / (uImageSizes.y / uImageSizes.x), 1.0)
@@ -322,6 +332,7 @@ class Media {
         uSpeed: { value: 0 },
         uTime: { value: 100 * Math.random() },
         uBorderRadius: { value: this.borderRadius },
+        uLoaded: { value: 0 },
       },
       transparent: true,
     });
@@ -329,13 +340,19 @@ class Media {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = this.image;
-    img.onload = () => {
+    const onLoaded = () => {
       texture.image = img;
       this.program.uniforms.uImageSizes.value = [
         img.naturalWidth,
         img.naturalHeight,
       ];
+      this.program.uniforms.uLoaded.value = 1.0;
     };
+    if (img.complete && img.naturalWidth > 0) {
+      onLoaded();
+    } else {
+      img.onload = onLoaded;
+    }
   }
 
   createMesh() {
@@ -357,15 +374,8 @@ class Media {
     });
   }
 
-  update(
-    scroll: { current: number; last: number },
-    direction: "left" | "right",
-  ) {
-    this.plane.position.x = this.x - scroll.current - this.extra;
-
-    const x = this.plane.position.x;
+  calculateArc(x: number) {
     const H = this.viewport.width / 2;
-
     if (this.bend === 0) {
       this.plane.position.y = 0;
       this.plane.rotation.z = 0;
@@ -383,6 +393,14 @@ class Media {
         this.plane.rotation.z = Math.sign(x) * Math.asin(effectiveX / R);
       }
     }
+  }
+
+  update(
+    scroll: { current: number; last: number },
+    direction: "left" | "right",
+  ) {
+    this.plane.position.x = this.x - scroll.current - this.extra;
+    this.calculateArc(this.plane.position.x);
 
     this.speed = scroll.current - scroll.last;
     this.program.uniforms.uTime.value += 0.04;
@@ -393,13 +411,21 @@ class Media {
     this.isBefore = this.plane.position.x + planeOffset < -viewportOffset;
     this.isAfter = this.plane.position.x - planeOffset > viewportOffset;
 
+    let wrapped = false;
     if (direction === "right" && this.isBefore) {
       this.extra -= this.widthTotal;
       this.isBefore = this.isAfter = false;
+      wrapped = true;
     }
     if (direction === "left" && this.isAfter) {
       this.extra += this.widthTotal;
       this.isBefore = this.isAfter = false;
+      wrapped = true;
+    }
+
+    if (wrapped) {
+      this.plane.position.x = this.x - scroll.current - this.extra;
+      this.calculateArc(this.plane.position.x);
     }
   }
 
@@ -451,6 +477,9 @@ class AppClass {
   medias!: Media[];
   isDown: boolean = false;
   start: number = 0;
+  downPos: { x: number; y: number } = { x: 0, y: 0 };
+  downTime: number = 0;
+  onItemClick?: (item: GalleryItem, index: number) => void;
   screen!: { width: number; height: number };
   viewport!: { width: number; height: number };
   raf!: number;
@@ -458,7 +487,7 @@ class AppClass {
   boundOnWheel!: (e: WheelEvent) => void;
   boundOnTouchDown!: (e: MouseEvent | TouchEvent) => void;
   boundOnTouchMove!: (e: MouseEvent | TouchEvent) => void;
-  boundOnTouchUp!: () => void;
+  boundOnTouchUp!: (e?: MouseEvent | TouchEvent) => void;
 
   constructor(
     container: HTMLElement,
@@ -470,6 +499,7 @@ class AppClass {
       font,
       scrollSpeed,
       scrollEase,
+      onItemClick,
     }: {
       items?: GalleryItem[];
       bend: number;
@@ -478,12 +508,14 @@ class AppClass {
       font: string;
       scrollSpeed: number;
       scrollEase: number;
+      onItemClick?: (item: GalleryItem, index: number) => void;
     },
   ) {
     this.container = container;
     this.scrollSpeed = scrollSpeed;
     this.scroll = { ease: scrollEase, current: 0, target: 0, last: 0 };
     this.onCheckDebounce = debounce(this.onCheck.bind(this), 200);
+    this.onItemClick = onItemClick;
 
     autoBind(this);
 
@@ -563,7 +595,11 @@ class AppClass {
   onTouchDown(e: MouseEvent | TouchEvent) {
     this.isDown = true;
     this.scroll.position = this.scroll.current;
-    this.start = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    this.start = clientX;
+    this.downPos = { x: clientX, y: clientY };
+    this.downTime = Date.now();
   }
 
   onTouchMove(e: MouseEvent | TouchEvent) {
@@ -573,9 +609,80 @@ class AppClass {
     this.scroll.target = (this.scroll.position || 0) + distance;
   }
 
-  onTouchUp() {
+  onTouchUp(e?: MouseEvent | TouchEvent) {
     this.isDown = false;
     this.onCheck();
+
+    if (!this.onItemClick || !this.medias || this.medias.length === 0) return;
+
+    let upX = this.downPos.x;
+    let upY = this.downPos.y;
+    if (e) {
+      if ("changedTouches" in e && e.changedTouches.length > 0) {
+        upX = e.changedTouches[0].clientX;
+        upY = e.changedTouches[0].clientY;
+      } else if ("clientX" in e) {
+        upX = e.clientX;
+        upY = e.clientY;
+      }
+    }
+
+    const dist = Math.hypot(upX - this.downPos.x, upY - this.downPos.y);
+    const duration = Date.now() - this.downTime;
+
+    // Trigger click if movement is minimal (< 12px) and duration is short (< 450ms)
+    if (dist < 12 && duration < 450) {
+      this.handlePointerClick(upX, upY);
+    }
+  }
+
+  handlePointerClick(clientX: number, clientY: number) {
+    if (!this.container || !this.viewport) return;
+    const rect = this.container.getBoundingClientRect();
+    if (
+      clientX < rect.left ||
+      clientX > rect.right ||
+      clientY < rect.top ||
+      clientY > rect.bottom
+    ) {
+      return;
+    }
+
+    const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const ndcY = -(((clientY - rect.top) / rect.height) * 2 - 1);
+
+    const worldX = (ndcX * this.viewport.width) / 2;
+    const worldY = (ndcY * this.viewport.height) / 2;
+
+    let bestMedia: Media | null = null;
+    let minDist = Infinity;
+
+    for (const media of this.medias) {
+      const posX = media.plane.position.x;
+      const posY = media.plane.position.y;
+      const halfW = (media.plane.scale.x * 1.1) / 2;
+      const halfH = (media.plane.scale.y * 1.1) / 2;
+
+      if (
+        worldX >= posX - halfW &&
+        worldX <= posX + halfW &&
+        worldY >= posY - halfH &&
+        worldY <= posY + halfH
+      ) {
+        const dist = Math.hypot(worldX - posX, worldY - posY);
+        if (dist < minDist) {
+          minDist = dist;
+          bestMedia = media;
+        }
+      }
+    }
+
+    if (bestMedia) {
+      const originalLength = this.mediasImages.length / 2;
+      const originalIndex = bestMedia.index % originalLength;
+      const item = this.mediasImages[bestMedia.index];
+      this.onItemClick?.(item, originalIndex);
+    }
   }
 
   onWheel(e: WheelEvent) {
@@ -677,9 +784,15 @@ export const CircularGallery = ({
   scrollEase = 0.05,
   className,
   fontClassName,
+  onItemClick,
   ...props
 }: CircularGalleryProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const onItemClickRef = useRef(onItemClick);
+
+  useEffect(() => {
+    onItemClickRef.current = onItemClick;
+  }, [onItemClick]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -701,6 +814,9 @@ export const CircularGallery = ({
       font: computedFont,
       scrollSpeed,
       scrollEase,
+      onItemClick: (item, index) => {
+        onItemClickRef.current?.(item, index);
+      },
     });
 
     return () => {

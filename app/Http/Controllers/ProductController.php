@@ -16,7 +16,12 @@ class ProductController extends Controller
         $perPage = (int) $request->input('per_page', 50);
         $perPage = max(1, min(200, $perPage));
 
-        $paginated = Product::paginate($perPage);
+        $query = Product::query();
+        if ($request->boolean('with_archived')) {
+            $query->withTrashed();
+        }
+
+        $paginated = $query->paginate($perPage);
         $paginated->getCollection()->transform(function ($product) {
             $basePrice = (float) $product->price;
             $effectivePrice = ProductPricing::getEffectivePrice($product);
@@ -27,7 +32,6 @@ class ProductController extends Controller
 
             return $product;
         });
-
 
         return response()->json($paginated);
     }

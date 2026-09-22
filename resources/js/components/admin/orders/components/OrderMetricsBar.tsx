@@ -54,19 +54,19 @@ export function OrderMetricsBar({
                 <div className="text-[10px] text-[#0A2A1B]/50 mt-0.5">Scheduled for today</div>
             </div>
 
-            {/* In Preparation Card */}
+            {/* Confirmed Orders Card */}
             <div 
-                onClick={() => { setSelectedStatusFilter('preparing'); setSelectedPaymentFilter('All'); }}
+                onClick={() => { setSelectedStatusFilter('confirmed'); setSelectedPaymentFilter('All'); }}
                 className={`bg-white p-4 rounded-3xl border transition-all cursor-pointer shadow-2xs hover:shadow-xs ${
-                    selectedStatusFilter === 'preparing' ? 'border-sky-500 ring-2 ring-sky-500/20 bg-sky-50/20' : 'border-sky-200/80'
+                    selectedStatusFilter === 'confirmed' ? 'border-sky-500 ring-2 ring-sky-500/20 bg-sky-50/20' : 'border-sky-200/80'
                 }`}
             >
                 <div className="flex items-center gap-1.5 text-[10px] font-bold text-sky-700 uppercase tracking-wider">
                     <Sparkles className="w-3.5 h-3.5 text-sky-600" />
-                    <span>In Preparation</span>
+                    <span>Confirmed Orders</span>
                 </div>
-                <div className="text-2xl font-bold font-mono text-sky-900 mt-1">{metrics.preparing}</div>
-                <div className="text-[10px] text-sky-700/70 mt-0.5">On the florist bench</div>
+                <div className="text-2xl font-bold font-mono text-sky-900 mt-1">{metrics.confirmed}</div>
+                <div className="text-[10px] text-sky-700/70 mt-0.5">Active fulfillment queue</div>
             </div>
 
             {/* Ready / Delivered Card */}

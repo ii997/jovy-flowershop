@@ -1,4 +1,4 @@
-import { Search } from 'reicon-react';
+import { Search, Add } from 'reicon-react';
 import { DateQuickFilter, UrgencyFilter, OrderSortBy, OrderSortOrder } from '../types';
 
 interface OrderFilterToolbarProps {
@@ -17,6 +17,7 @@ interface OrderFilterToolbarProps {
     orderSortOrder: OrderSortOrder;
     setOrderSortOrder: (val: OrderSortOrder) => void;
     filteredCount: number;
+    onCreateWalkIn?: () => void;
 }
 
 export function OrderFilterToolbar({
@@ -35,6 +36,7 @@ export function OrderFilterToolbar({
     orderSortOrder,
     setOrderSortOrder,
     filteredCount,
+    onCreateWalkIn,
 }: OrderFilterToolbarProps) {
     return (
         <div className="space-y-3.5">
@@ -88,8 +90,20 @@ export function OrderFilterToolbar({
                     ))}
                 </div>
 
-                <div className="text-[11px] font-semibold text-[#0A2A1B]/60 px-2">
-                    Showing <strong className="text-[#0A2A1B]">{filteredCount}</strong> matching orders
+                <div className="flex items-center gap-3">
+                    <div className="text-[11px] font-semibold text-[#0A2A1B]/60 px-2">
+                        Showing <strong className="text-[#0A2A1B]">{filteredCount}</strong> matching orders
+                    </div>
+                    {onCreateWalkIn && (
+                        <button
+                            type="button"
+                            onClick={onCreateWalkIn}
+                            className="px-3.5 py-1.5 bg-[#0A2A1B] hover:bg-[#D97706] text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95 shrink-0"
+                        >
+                            <Add className="w-3.5 h-3.5" />
+                            <span>+ Walk-In Order</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -113,10 +127,9 @@ export function OrderFilterToolbar({
                     onChange={(e) => setSelectedStatusFilter(e.target.value)}
                     className="px-3 py-2 bg-[#FAF9F6] border border-[#0A2A1B]/10 rounded-xl text-xs font-semibold text-[#0A2A1B] focus:outline-none focus:border-[#D97706] cursor-pointer"
                 >
-                    <option value="active">Active Orders (Confirmed + Preparing)</option>
+                    <option value="active">Active Orders (Confirmed)</option>
                     <option value="All">All Fulfillment Statuses</option>
                     <option value="confirmed">Confirmed Only</option>
-                    <option value="preparing">Preparing Only</option>
                     <option value="delivered">Delivered / Completed</option>
                     <option value="cancelled">Cancelled Only</option>
                 </select>

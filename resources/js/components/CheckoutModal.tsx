@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Product } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAnimationTransition } from './animations';
-import { X, Check } from 'reicon-react';
+import { X, Check, AlertTriangle } from 'reicon-react';
 import { toast } from './ui/Toast';
 
 interface CheckoutModalProps {
@@ -18,6 +18,7 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
     const [phone, setPhone] = useState('');
     const [date, setDate] = useState('');
     const [giftMessage, setGiftMessage] = useState('');
+    const [agreedToNoRefund, setAgreedToNoRefund] = useState(false);
     const [errors, setErrors] = useState<Record<string, string[]>>({});
     const [isLoading, setIsLoading] = useState(false);
 
@@ -38,7 +39,10 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
     }, []);
 
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen) {
+            setAgreedToNoRefund(false);
+            return;
+        }
 
         // Reset or initialize default date to today if empty
         if (!date) {
@@ -100,7 +104,7 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
         return date >= todayStr && date <= maxDateStr;
     }, [date, todayStr, maxDateStr]);
 
-    const isFormValid = isNameValid && isPhoneValid && isDateValid && !!product;
+    const isFormValid = isNameValid && isPhoneValid && isDateValid && !!product && agreedToNoRefund;
 
     // Input handlers with strict character enforcement (Fool-proof)
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,6 +165,11 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
         // Client-side guard checks
         if (!product) {
             toast.error('No arrangement selected for checkout.');
+            return;
+        }
+
+        if (!agreedToNoRefund) {
+            toast.error('Please acknowledge and agree to the No Refund Policy.');
             return;
         }
 
@@ -448,6 +457,33 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
                                         </>
                                     );
                                 })()}
+                            </div>
+
+                            {/* No Refund Policy Notice Card */}
+                            <div className="p-3.5 bg-amber-50/90 border border-amber-200/80 rounded-2xl space-y-2.5">
+                                <div className="flex items-start gap-2.5">
+                                    <div className="p-1.5 rounded-lg bg-amber-100 text-amber-800 shrink-0 mt-0.5">
+                                        <AlertTriangle className="h-4 w-4" />
+                                    </div>
+                                    <div className="space-y-0.5 text-xs">
+                                        <p className="font-bold text-amber-950">Perishable Floral Notice — No Refund Policy</p>
+                                        <p className="text-amber-800/90 leading-relaxed text-[11px]">
+                                            Fresh flowers and custom arrangements are perishable goods crafted exclusively for your scheduled pickup. Once confirmed, orders cannot be cancelled, returned, or refunded.
+                                        </p>
+                                    </div>
+                                </div>
+                                <label className="flex items-center gap-2.5 pt-2 border-t border-amber-200/60 cursor-pointer select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={agreedToNoRefund}
+                                        onChange={(e) => setAgreedToNoRefund(e.target.checked)}
+                                        className="h-4 w-4 rounded border-amber-300 text-[#D97706] focus:ring-[#D97706] focus:ring-offset-0 cursor-pointer"
+                                        required
+                                    />
+                                    <span className="text-xs font-semibold text-amber-950">
+                                        I understand and agree to the No Refund Policy <span className="text-red-500">*</span>
+                                    </span>
+                                </label>
                             </div>
 
                             <button

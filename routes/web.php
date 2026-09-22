@@ -42,13 +42,18 @@ Route::prefix('/api/admin')->middleware(['auth', 'admin.session.timeout'])->grou
         Route::post('/products/{id}/update', [AdminController::class, 'updateProductDetails']);
         Route::put('/products/{id}', [AdminController::class, 'updateProductDetails']);
         Route::post('/products', [AdminController::class, 'storeProduct']);
+        Route::delete('/products/{id}', [AdminController::class, 'destroyProduct']);
+        Route::post('/products/{id}/restore', [AdminController::class, 'restoreProduct']);
         Route::post('/flowers', [AdminController::class, 'storeFlower']);
         Route::put('/flowers/{id}', [AdminController::class, 'updateFlower']);
+        Route::delete('/flowers/{id}', [AdminController::class, 'destroyFlower']);
+        Route::post('/flowers/{id}/restore', [AdminController::class, 'restoreFlower']);
     });
 
     // Staff & Admin shared endpoints
     Route::middleware(['can:staff'])->group(function () {
         Route::get('/orders', [AdminController::class, 'orders']);
+        Route::post('/orders/manual', [AdminController::class, 'storeManualOrder']);
         Route::post('/orders/{id}/status', [AdminController::class, 'updateOrderStatus']);
         Route::post('/orders/{id}/payment-status', [AdminController::class, 'updatePaymentStatus']);
         Route::post('/orders/{id}/cancel', [AdminController::class, 'cancelOrder']);

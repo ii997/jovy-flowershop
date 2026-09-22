@@ -41,9 +41,9 @@ class SecurityHeaders
         // - 'strict-dynamic' propagates trust from nonced scripts to dynamically loaded ones (Vite HMR, lazy imports)
         // - 'unsafe-eval' retained for Tesseract.js v7 WASM compilation in Web Workers
         // - 'unsafe-inline' in style-src retained for React 19 + Tailwind v4 dynamic inline styles
-        // - script-src 'unsafe-inline' intentionally removed — @vite() adds nonces to all tags
+        $envkitSha = app()->environment('local') ? " 'sha256-SglC9JRcZEOK7ObqMm9pispirNdXzvijloNQtOtN+kE='" : '';
         $csp = "default-src 'self'; " .
-               "script-src 'nonce-{$nonce}' 'strict-dynamic' 'self' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://unpkg.com; " .
+               "script-src 'nonce-{$nonce}' 'strict-dynamic' 'self' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://unpkg.com{$envkitSha}; " .
                "worker-src 'self' blob: data: https://cdn.jsdelivr.net; " .
                "object-src 'none'; " .
                "base-uri 'self'; " .

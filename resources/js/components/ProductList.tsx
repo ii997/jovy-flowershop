@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Product } from '../types';
 import { ProductCard } from './ProductCard';
 import { CatalogSkeleton } from './ui/Skeleton';
@@ -10,6 +10,8 @@ interface ProductListProps {
     isAuthenticated: boolean;
     onAuthClick: () => void;
     isLoading?: boolean;
+    activeOccasion?: string;
+    activeSearch?: string;
 }
 
 const OCCASIONS = [
@@ -25,20 +27,43 @@ const OCCASIONS = [
     'Congratulations',
 ];
 
-export function ProductList({ products, onOrderBouquet, isAuthenticated, onAuthClick, isLoading = false }: ProductListProps) {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [selectedOccasion, setSelectedOccasion] = useState('All');
+export function ProductList({ 
+    products, 
+    onOrderBouquet, 
+    isAuthenticated, 
+    onAuthClick, 
+    isLoading = false,
+    activeOccasion,
+    activeSearch,
+}: ProductListProps) {
+    const [searchQuery, setSearchQuery] = useState(activeSearch || '');
+    const [selectedOccasion, setSelectedOccasion] = useState(activeOccasion || 'All');
     const [showOutOfStock, setShowOutOfStock] = useState(false);
+
+    useEffect(() => {
+        if (activeOccasion !== undefined) {
+            setSelectedOccasion(activeOccasion);
+        }
+    }, [activeOccasion]);
+
+    useEffect(() => {
+        if (activeSearch !== undefined) {
+            setSearchQuery(activeSearch);
+        }
+    }, [activeSearch]);
 
     // Filter logic
     const filteredProducts = products.filter(product => {
-        const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            product.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            product.category.toLowerCase().includes(searchQuery.toLowerCase());
+        const query = searchQuery.toLowerCase().trim();
+        const matchesSearch = !query ||
+            product.name.toLowerCase().includes(query) ||
+            product.description.toLowerCase().includes(query) ||
+            product.category.toLowerCase().includes(query) ||
+            (product.stems && typeof product.stems === 'object' && Object.keys(product.stems).some(k => k.toLowerCase().includes(query)));
 
         const matchesOccasion = selectedOccasion === 'All' ||
-            (Array.isArray(product.occasions) && product.occasions.includes(selectedOccasion)) ||
-            product.category.toLowerCase() === selectedOccasion.toLowerCase();
+            (Array.isArray(product.occasions) && product.occasions.some(o => o.toLowerCase() === selectedOccasion.toLowerCase())) ||
+            product.category.toLowerCase().includes(selectedOccasion.toLowerCase());
         
         // Hide sold out unless showOutOfStock is checked
         const matchesStock = showOutOfStock || product.availability;

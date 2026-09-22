@@ -73,16 +73,15 @@ export function useOrderMutations({
 
     const handleApproveAndPrepare = async (orderId: number) => {
         try {
-            await updatePaymentMutation.mutateAsync({
+            const updatedOrder = await updatePaymentMutation.mutateAsync({
                 orderId,
                 payment_status: 'verified',
-                admin_notes: adminNotes || 'Payment verified and order set to preparing.',
+                admin_notes: adminNotes || 'Payment verified.',
             });
-            const updatedOrder = await updateStatusMutation.mutateAsync({ orderId, status: 'preparing' });
             onUpdateOrders?.(orders.map(o => o.id === orderId ? updatedOrder : o));
             if (selectedOrder && selectedOrder.id === orderId) setSelectedOrder(updatedOrder);
             setAdminNotes('');
-            toast.success(`✓ Order #JFS-${orderId} verified & set to Preparing!`);
+            toast.success(`✓ Order #JFS-${orderId} payment verified!`);
         } catch (error: any) {
             toast.error(error.message || 'Failed to complete approval flow');
         }

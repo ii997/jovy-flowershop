@@ -18,6 +18,7 @@ import {
     useAdminStats,
     useAdminOrders,
     useAdminFlowers,
+    useAdminProducts,
     useToggleAvailability,
 } from '../lib/adminQueries';
 
@@ -52,6 +53,7 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
     const { data: stats = { gross_sales: 0, total_orders: 0, active_listings: 0, recent_orders: [], revenue_tracking: { paid: 0, pending: 0 }, top_products: [], occasions_breakdown: {}, seasons_breakdown: {}, trends: { daily: [], monthly: [], yearly: [] }, patterns: { average_order_size: 0, repeat_rate: 0, total_customers: 0 } }, isLoading: isLoadingStats } = useAdminStats();
     const { data: orders = [], isLoading: isLoadingOrders } = useAdminOrders();
     const { data: flowers = [], isLoading: isLoadingFlowers } = useAdminFlowers();
+    const { data: adminProducts = products, isLoading: isLoadingAdminProducts } = useAdminProducts(true);
 
     // TanStack Mutations
     const toggleAvailabilityMutation = useToggleAvailability();
@@ -64,7 +66,7 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
     const handleToggleAvailability = async (productId: number) => {
         try {
             const updatedProduct = await toggleAvailabilityMutation.mutateAsync(productId);
-            onUpdateProducts(products.map(p => p.id === productId ? updatedProduct : p));
+            onUpdateProducts(adminProducts.map(p => p.id === productId ? updatedProduct : p));
             toast.success('Arrangement availability updated.');
         } catch {
             toast.error('Failed to toggle availability.');
@@ -198,6 +200,7 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
                     {activeTab === 'orders' && (
                         <OrdersTab
                             orders={orders}
+                            products={products}
                             onUpdateOrders={(updated) => {
                                 queryClient.setQueryData(['adminOrders'], updated);
                                 queryClient.invalidateQueries({ queryKey: ['adminStats'] });
@@ -213,7 +216,7 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
                     {activeTab === 'inventory' && (
                         <InventoryTab
                             user={user}
-                            products={products}
+                            products={adminProducts}
                             onToggleAvailability={handleToggleAvailability}
                             onUpdateProducts={onUpdateProducts}
                             onEditProduct={(p) => {
@@ -221,7 +224,7 @@ export function AdminPanel({ user, products, onUpdateProducts, onBackToStore, on
                                 setIsEditModalOpen(true);
                             }}
                             onOpenCreateModal={() => setIsCreateModalOpen(true)}
-                            isLoading={isLoadingProducts}
+                            isLoading={isLoadingAdminProducts || isLoadingProducts}
                         />
                     )}
 

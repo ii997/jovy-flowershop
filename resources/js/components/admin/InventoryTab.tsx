@@ -3,6 +3,7 @@ import { Product, User } from '../../types';
 import { Pagination } from '../Pagination';
 import { InventoryTabSkeleton } from '../ui/Skeleton';
 import { toast } from '../ui/Toast';
+import { useDeleteProduct, useRestoreProduct } from '../../lib/adminQueries';
 import {
     Search,
     ShoppingBag,
@@ -11,7 +12,8 @@ import {
     DollarSign,
     Add,
     Edit,
-    Filter
+    Filter,
+    Trash,
 } from 'reicon-react';
 import {
     useReactTable,
@@ -44,22 +46,28 @@ export function InventoryTab({
 }: InventoryTabProps) {
     const isAdmin = user?.role === 'admin';
 
-    // Search and Filter States
+    // Search, Stock, and Archive Filter States
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [stockFilter, setStockFilter] = useState<'all' | 'in_stock' | 'out_of_stock'>('all');
+    const [archiveFilter, setArchiveFilter] = useState<'active' | 'archived' | 'all'>('active');
+    const [productToArchive, setProductToArchive] = useState<Product | null>(null);
+
+    const deleteProductMutation = useDeleteProduct();
+    const restoreProductMutation = useRestoreProduct();
 
     // Bulk selection state
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isBulkOperating, setIsBulkOperating] = useState(false);
     const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 8 });
 
-    // Inventory Calculations
-    const totalArrangements = products.length;
-    const inStockCount = products.filter(p => p.availability).length;
-    const outOfStockCount = products.filter(p => !p.availability).length;
+    // Inventory Calculations (based on active products)
+    const activeProducts = useMemo(() => products.filter(p => !p.deleted_at), [products]);
+    const totalArrangements = activeProducts.length;
+    const inStockCount = activeProducts.filter(p => p.availability).length;
+    const outOfStockCount = activeProducts.filter(p => !p.availability).length;
     const averagePrice = totalArrangements > 0
-        ? products.reduce((acc, p) => acc + (p.price || 0), 0) / totalArrangements
+        ? activeProducts.reduce((acc, p) => acc + (p.price || 0), 0) / totalArrangements
         : 0;
 
     // Available categories extracted from current products
@@ -74,6 +82,10 @@ export function InventoryTab({
     // Filtered Products
     const filteredProducts = useMemo(() => {
         return products.filter(product => {
+            // Archival filter
+            if (archiveFilter === 'active' && product.deleted_at) return false;
+            if (archiveFilter === 'archived' && !product.deleted_at) return false;
+
             // Search query filter
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase().trim();
@@ -94,7 +106,7 @@ export function InventoryTab({
 
             return true;
         });
-    }, [products, searchQuery, selectedCategory, stockFilter]);
+    }, [products, searchQuery, selectedCategory, stockFilter, archiveFilter]);
 
     // Bulk Selection Handlers
     const toggleSelect = (id: number) => {
@@ -155,6 +167,8 @@ export function InventoryTab({
         toggleSelect: (id: number) => void;
         onToggleAvailability: (id: number) => void;
         onEditProduct: (p: Product) => void;
+        onArchiveProduct: (p: Product) => void;
+        onRestoreProduct: (p: Product) => void;
     }
 
     const columns = useMemo(() => [
@@ -205,7 +219,14 @@ export function InventoryTab({
                             loading="lazy"
                         />
                         <div className="space-y-0.5 min-w-0">
-                            <span className="font-bold text-sm text-[#0A2A1B] block truncate max-w-xs">{p.name}</span>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-[#0A2A1B] block truncate max-w-xs">{p.name}</span>
+                                {p.deleted_at && (
+                                    <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded-md bg-rose-100 text-rose-800 border border-rose-200">
+                                        Archived
+                                    </span>
+                                )}
+                            </div>
                             <span className="text-[11px] text-[#0A2A1B]/50 block truncate max-w-xs">{p.category}</span>
                         </div>
                     </div>
@@ -268,16 +289,41 @@ export function InventoryTab({
             cell: info => {
                 const p = info.row.original;
                 const meta = info.table.options.meta as InventoryTabMeta;
+                const isArchived = Boolean(p.deleted_at);
+
                 return (
-                    <div className="text-right">
+                    <div className="text-right flex items-center justify-end gap-1.5">
                         {meta.isAdmin ? (
-                            <button
-                                onClick={() => meta.onEditProduct(p)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF9F6] border border-[#0A2A1B]/15 hover:border-transparent hover:bg-[#D97706] hover:text-white text-[11px] font-bold text-[#0A2A1B] rounded-xl transition-all cursor-pointer active:scale-95 shadow-2xs"
-                            >
-                                <Edit className="w-3.5 h-3.5" />
-                                <span>Edit</span>
-                            </button>
+                            <>
+                                {!isArchived ? (
+                                    <>
+                                        <button
+                                            onClick={() => meta.onEditProduct(p)}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF9F6] border border-[#0A2A1B]/15 hover:border-transparent hover:bg-[#D97706] hover:text-white text-[11px] font-bold text-[#0A2A1B] rounded-xl transition-all cursor-pointer active:scale-95 shadow-2xs"
+                                        >
+                                            <Edit className="w-3.5 h-3.5" />
+                                            <span>Edit</span>
+                                        </button>
+                                        <button
+                                            onClick={() => meta.onArchiveProduct(p)}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 border border-rose-200 hover:bg-rose-600 hover:text-white text-[11px] font-bold text-rose-700 rounded-xl transition-all cursor-pointer active:scale-95 shadow-2xs"
+                                            title="Archive arrangement"
+                                        >
+                                            <Trash className="w-3.5 h-3.5" />
+                                            <span>Archive</span>
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button
+                                        onClick={() => meta.onRestoreProduct(p)}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 hover:bg-emerald-600 hover:text-white text-[11px] font-bold text-emerald-800 rounded-xl transition-all cursor-pointer active:scale-95 shadow-2xs"
+                                        title="Restore arrangement to active catalog"
+                                    >
+                                        <Check className="w-3.5 h-3.5" />
+                                        <span>Restore</span>
+                                    </button>
+                                )}
+                            </>
                         ) : (
                             <span className="text-[#0A2A1B]/40 font-medium italic text-[11px]">Read-only</span>
                         )}
@@ -303,6 +349,15 @@ export function InventoryTab({
             toggleSelect,
             onToggleAvailability,
             onEditProduct,
+            onArchiveProduct: (p: Product) => setProductToArchive(p),
+            onRestoreProduct: async (p: Product) => {
+                try {
+                    await restoreProductMutation.mutateAsync(p.id);
+                    toast.success(`"${p.name}" restored to active inventory.`);
+                } catch (e: any) {
+                    toast.error(e.message || 'Failed to restore arrangement');
+                }
+            },
         } satisfies InventoryTabMeta,
     });
 
@@ -411,6 +466,21 @@ export function InventoryTab({
                         <option value="in_stock">In Stock Only</option>
                         <option value="out_of_stock">Out of Stock Only</option>
                     </select>
+
+                    {/* Archive Status Filter */}
+                    <select
+                        value={archiveFilter}
+                        onChange={e => setArchiveFilter(e.target.value as any)}
+                        className={`px-3 py-1.5 border rounded-xl text-xs font-semibold focus:outline-none cursor-pointer transition-colors ${
+                            archiveFilter === 'archived'
+                                ? 'bg-rose-50 border-rose-300 text-rose-800'
+                                : 'bg-[#FAF9F6] border-[#0A2A1B]/10 text-[#0A2A1B] focus:border-[#D97706]'
+                        }`}
+                    >
+                        <option value="active">Active Arrangements</option>
+                        <option value="archived">Archived Only</option>
+                        <option value="all">All Catalog Items</option>
+                    </select>
                 </div>
             </div>
 
@@ -489,6 +559,50 @@ export function InventoryTab({
                     onPageChange={(page) => table.setPageIndex(page - 1)}
                 />
             </div>
+
+            {/* Archive Confirmation Dialog Modal */}
+            {productToArchive && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+                    <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-scale-in">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                                <Trash className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h4 className="text-base font-bold text-[#0A2A1B]">Archive Arrangement?</h4>
+                                <p className="text-xs text-slate-500">Remove from storefront catalog</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                            Are you sure you want to archive <strong>"{productToArchive.name}"</strong>? This will hide it from active customer checkout. Past order history, invoices, and analytics will remain completely intact.
+                        </p>
+                        <div className="flex justify-end gap-2 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setProductToArchive(null)}
+                                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    try {
+                                        await deleteProductMutation.mutateAsync(productToArchive.id);
+                                        toast.success(`"${productToArchive.name}" has been archived.`);
+                                        setProductToArchive(null);
+                                    } catch (e: any) {
+                                        toast.error(e.message || 'Failed to archive arrangement');
+                                    }
+                                }}
+                                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs"
+                            >
+                                Confirm Archive
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

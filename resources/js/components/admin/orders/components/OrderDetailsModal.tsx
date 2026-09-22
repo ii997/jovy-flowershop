@@ -312,20 +312,17 @@ export function OrderDetailsModal({
                             ) : (
                                 <div className="space-y-4">
                                     {/* Stepper Dots */}
-                                    <div className="relative flex items-center justify-between px-6 py-1">
-                                        <div className="absolute left-10 right-10 top-4 -translate-y-1/2 h-0.5 bg-slate-200 z-0" />
+                                    {/* Streamlined Fulfillment Journey (Confirmed -> Delivered) */}
+                                    <div className="relative flex items-center justify-between px-12 py-1">
+                                        <div className="absolute left-16 right-16 top-4 -translate-y-1/2 h-0.5 bg-slate-200 z-0" />
                                         <div 
-                                            className="absolute left-10 top-4 -translate-y-1/2 h-0.5 bg-emerald-600 z-0 transition-all duration-500" 
+                                            className="absolute left-16 top-4 -translate-y-1/2 h-0.5 bg-emerald-600 z-0 transition-all duration-500" 
                                             style={{ 
-                                                width: order.status === 'delivered' 
-                                                    ? 'calc(100% - 2.5rem)' 
-                                                    : order.status === 'preparing' 
-                                                        ? 'calc(50% - 1.25rem)' 
-                                                        : '0%' 
+                                                width: order.status === 'delivered' ? 'calc(100% - 8rem)' : '0%' 
                                             }} 
                                         />
 
-                                        {/* Step 1 */}
+                                        {/* Step 1: Confirmed */}
                                         <div className="relative z-10 flex flex-col items-center">
                                             <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 bg-emerald-50 text-emerald-700 border-emerald-600 shadow-xs">
                                                 1
@@ -333,36 +330,20 @@ export function OrderDetailsModal({
                                             <span className="text-[10px] font-bold text-emerald-700 mt-2 uppercase tracking-wider">Confirmed</span>
                                         </div>
 
-                                        {/* Step 2 */}
+                                        {/* Step 2: Delivered */}
                                         <div className="relative z-10 flex flex-col items-center">
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300 ${
-                                                order.status === 'preparing' || order.status === 'delivered'
+                                                order.status === 'delivered'
                                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-600 shadow-xs'
                                                     : 'bg-white text-slate-400 border-slate-300'
                                             }`}>
                                                 2
                                             </div>
                                             <span className={`text-[10px] font-bold mt-2 uppercase tracking-wider transition-all duration-300 ${
-                                                order.status === 'preparing' || order.status === 'delivered'
-                                                    ? 'text-emerald-700'
-                                                    : 'text-slate-400'
-                                            }`}>Preparing</span>
-                                        </div>
-
-                                        {/* Step 3 */}
-                                        <div className="relative z-10 flex flex-col items-center">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300 ${
-                                                order.status === 'delivered'
-                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-600 shadow-xs'
-                                                    : 'bg-white text-slate-400 border-slate-300'
-                                            }`}>
-                                                3
-                                            </div>
-                                            <span className={`text-[10px] font-bold mt-2 uppercase tracking-wider transition-all duration-300 ${
                                                 order.status === 'delivered'
                                                     ? 'text-emerald-700'
                                                     : 'text-slate-400'
-                                            }`}>Delivered</span>
+                                            }`}>Delivered / Completed</span>
                                         </div>
                                     </div>
 
@@ -371,18 +352,18 @@ export function OrderDetailsModal({
                                         {order.status === 'confirmed' && order.payment_status === 'awaiting_verification' && (
                                             <div className="p-3 bg-amber-50/80 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-center gap-2">
                                                 <span className="text-base">ℹ</span>
-                                                <span className="font-medium">Approve payment proof above to advance fulfillment to bouquet preparation.</span>
+                                                <span className="font-medium">Approve payment proof above to verify customer payment and prepare for delivery/handoff.</span>
                                             </div>
                                         )}
 
                                         {order.status === 'confirmed' && order.payment_status !== 'awaiting_verification' && (
                                             <button 
                                                 disabled={updatingStatus}
-                                                onClick={() => onStatusChange(order.id, 'preparing')}
-                                                className="w-full py-2.5 bg-sky-700 hover:bg-sky-800 disabled:bg-gray-100 text-white text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-xs"
+                                                onClick={() => onStatusChange(order.id, 'delivered')}
+                                                className="w-full py-2.5 bg-[#0A2A1B] hover:bg-[#D97706] disabled:bg-gray-100 text-white text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-xs"
                                             >
-                                                <span>Start Preparing Order</span>
-                                                <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
+                                                <Check className="h-4 w-4" strokeWidth={2.5} />
+                                                <span>Mark Order as Delivered / Completed</span>
                                             </button>
                                         )}
 

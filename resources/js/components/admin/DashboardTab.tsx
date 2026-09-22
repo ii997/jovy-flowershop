@@ -99,6 +99,7 @@ const endLabelPlugin = {
 
 export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: DashboardTabProps) {
     const [trendPeriod, setTrendPeriod] = useState<'daily' | 'monthly' | 'yearly'>('daily');
+    const [yoyMetric, setYoyMetric] = useState<'sales' | 'orders'>('sales');
 
     if (isLoading) {
         return <DashboardSkeleton />;
@@ -175,6 +176,107 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                 ticks: { color: '#718096', font: { size: 10 } }
             }
         }
+    };
+
+    // YoY Multi-Year Comparison (2024, 2025, 2026) Configuration
+    const yoyList = stats?.trends?.yoy || [];
+    const yoyMonths = yoyList.length > 0 ? yoyList.map((y: any) => y.month) : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    const yoyData2024 = yoyList.map((y: any) => yoyMetric === 'sales' ? (y['2024_sales'] || 0) : (y['2024_orders'] || 0));
+    const yoyData2025 = yoyList.map((y: any) => yoyMetric === 'sales' ? (y['2025_sales'] || 0) : (y['2025_orders'] || 0));
+    const yoyData2026 = yoyList.map((y: any) => yoyMetric === 'sales' ? (y['2026_sales'] || 0) : (y['2026_orders'] || 0));
+
+    const total2024 = yoyData2024.reduce((a: number, b: number) => a + b, 0);
+    const total2025 = yoyData2025.reduce((a: number, b: number) => a + b, 0);
+    const total2026 = yoyData2026.reduce((a: number, b: number) => a + b, 0);
+
+    const growth2025 = total2024 > 0 ? (((total2025 - total2024) / total2024) * 100).toFixed(1) : '0';
+    const growth2026 = total2025 > 0 ? (((total2026 - total2025) / total2025) * 100).toFixed(1) : '0';
+
+    const yoyChartData = {
+        labels: yoyMonths,
+        datasets: [
+            {
+                label: '2024',
+                data: yoyData2024,
+                backgroundColor: 'rgba(148, 163, 184, 0.85)',
+                borderColor: '#64748B',
+                borderWidth: 1,
+                borderRadius: 4,
+                barPercentage: 0.75,
+                categoryPercentage: 0.75,
+            },
+            {
+                label: '2025',
+                data: yoyData2025,
+                backgroundColor: 'rgba(217, 119, 6, 0.9)',
+                borderColor: '#B45309',
+                borderWidth: 1,
+                borderRadius: 4,
+                barPercentage: 0.75,
+                categoryPercentage: 0.75,
+            },
+            {
+                label: '2026',
+                data: yoyData2026,
+                backgroundColor: 'rgba(10, 42, 27, 0.95)',
+                borderColor: '#0A2A1B',
+                borderWidth: 1,
+                borderRadius: 4,
+                barPercentage: 0.75,
+                categoryPercentage: 0.75,
+            },
+        ],
+    };
+
+    const yoyChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top' as const,
+                align: 'end' as const,
+                labels: {
+                    boxWidth: 10,
+                    boxHeight: 10,
+                    usePointStyle: true,
+                    font: { size: 11, weight: 'bold' as const },
+                    color: '#0A2A1B',
+                },
+            },
+            tooltip: {
+                backgroundColor: '#0A2A1B',
+                titleFont: { size: 11, family: 'Montserrat, sans-serif' },
+                bodyFont: { size: 12, weight: 'bold' as const },
+                padding: 12,
+                cornerRadius: 10,
+                callbacks: {
+                    label: (context: any) => {
+                        const val = context.parsed.y || 0;
+                        if (yoyMetric === 'sales') {
+                            return ` ${context.dataset.label}: ₱${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                        }
+                        return ` ${context.dataset.label}: ${val} orders`;
+                    },
+                },
+            },
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(10, 42, 27, 0.04)' },
+                ticks: {
+                    color: '#718096',
+                    font: { size: 10 },
+                    callback: (value: any) => yoyMetric === 'sales' ? (value >= 1000 ? `₱${(value / 1000).toFixed(0)}k` : `₱${value}`) : value,
+                },
+            },
+            x: {
+                grid: { display: false },
+                ticks: { color: '#718096', font: { size: 10 } },
+            },
+        },
     };
 
     // 2. Top Products Horizontal Bar Chart Configuration
@@ -443,6 +545,98 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* Multi-Year (2024 - 2026) Monthly Comparison Section */}
+            <div className="bg-white border border-[#0A2A1B]/10 rounded-3xl p-6 shadow-xs space-y-5 hover:border-[#0A2A1B]/20 transition-all duration-300">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-[#D97706] uppercase tracking-wider">Multi-Year Growth & Benchmarks</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                2024 · 2025 · 2026
+                            </span>
+                        </div>
+                        <h3 className="font-serif text-lg font-bold text-[#0A2A1B] mt-0.5">Year-over-Year Monthly Performance</h3>
+                        <p className="text-xs text-[#0A2A1B]/60">Compare monthly sales and order volume across years to identify seasonal peaks and growth patterns.</p>
+                    </div>
+
+                    {/* Metric Switcher: Sales vs Orders */}
+                    <div className="inline-flex bg-[#FAF9F6] p-1 rounded-xl border border-[#0A2A1B]/10 text-[11px] font-bold self-start sm:self-auto shrink-0">
+                        <button
+                            type="button"
+                            onClick={() => setYoyMetric('sales')}
+                            className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                                yoyMetric === 'sales'
+                                    ? 'bg-[#0A2A1B] text-white shadow-2xs'
+                                    : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
+                            }`}
+                        >
+                            REVENUE (₱)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setYoyMetric('orders')}
+                            className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                                yoyMetric === 'orders'
+                                    ? 'bg-[#0A2A1B] text-white shadow-2xs'
+                                    : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
+                            }`}
+                        >
+                            ORDERS (COUNT)
+                        </button>
+                    </div>
+                </div>
+
+                {/* Annual Comparison Snapshot KPI Pills */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
+                    <div className="bg-[#FAF9F6] border border-slate-200 p-3.5 rounded-2xl">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">2024 Total</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">Baseline</span>
+                        </div>
+                        <div className="text-xl font-bold font-mono text-slate-800 mt-1">
+                            {yoyMetric === 'sales' ? `₱${total2024.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `${total2024} orders`}
+                        </div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">Historical foundation</div>
+                    </div>
+
+                    <div className="bg-amber-50/50 border border-amber-200 p-3.5 rounded-2xl">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">2025 Total</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800">
+                                {Number(growth2025) >= 0 ? `+${growth2025}%` : `${growth2025}%`} YoY
+                            </span>
+                        </div>
+                        <div className="text-xl font-bold font-mono text-amber-900 mt-1">
+                            {yoyMetric === 'sales' ? `₱${total2025.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `${total2025} orders`}
+                        </div>
+                        <div className="text-[10px] text-amber-700/80 mt-0.5">Rapid store expansion</div>
+                    </div>
+
+                    <div className="bg-emerald-50/50 border border-emerald-200 p-3.5 rounded-2xl">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">2026 Total</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                                {Number(growth2026) >= 0 ? `+${growth2026}%` : `${growth2026}%`} YoY
+                            </span>
+                        </div>
+                        <div className="text-xl font-bold font-mono text-emerald-950 mt-1">
+                            {yoyMetric === 'sales' ? `₱${total2026.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `${total2026} orders`}
+                        </div>
+                        <div className="text-[10px] text-emerald-700/80 mt-0.5">Current fiscal performance</div>
+                    </div>
+                </div>
+
+                {/* YoY Grouped Bar Chart */}
+                <div className="h-72 pt-2">
+                    <Bar data={yoyChartData} options={yoyChartOptions} />
+                </div>
+
+                <div className="text-[11px] text-[#0A2A1B]/60 bg-[#FAF9F6] p-3 rounded-xl border border-[#0A2A1B]/5 flex items-center gap-2">
+                    <Leaf className="w-3.5 h-3.5 text-[#D97706] shrink-0" />
+                    <span><strong>Floral Seasonal Insights:</strong> Demand surges prominently in <strong>February</strong> (Valentine's Day season) and <strong>May</strong> (Mother's Day season) across all benchmarked years.</span>
                 </div>
             </div>
 

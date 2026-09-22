@@ -6,10 +6,13 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Flower;
 use App\Models\OrderCancellation;
+use App\Models\PaymentTransaction;
 use App\Enums\UserRole;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use App\Services\NotificationService;
 use App\Support\ProductPricing;
 
@@ -47,7 +50,7 @@ class AdminController extends Controller
         // Pre-load Product models to get real occasions/seasons (not stored in items JSON)
         $productDataMap = collect();
         if (!empty($allProductIds)) {
-            $productDataMap = Product::whereIn('id', $allProductIds)->get()->keyBy('id');
+            $productDataMap = Product::withTrashed()->whereIn('id', $allProductIds)->get()->keyBy('id');
         }
 
         foreach ($ordersItems as $items) {
@@ -104,6 +107,21 @@ class AdminController extends Controller
             ->select(DB::raw("{$yearExpr} as year"), DB::raw('SUM(total_price) as total'), DB::raw('COUNT(id) as count'))
             ->groupBy('year')->orderBy('year', 'asc')->get();
 
+        // Build Year-over-Year (YoY) matrix for 2024, 2025, 2026 performance comparison
+        $years = ['2024', '2025', '2026'];
+        $monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        $yoyData = [];
+        foreach ($monthNames as $mIdx => $mName) {
+            $monthNum = str_pad((string) ($mIdx + 1), 2, '0', STR_PAD_LEFT);
+            $entry = ['month' => $mName, 'month_num' => $monthNum];
+            foreach ($years as $yr) {
+                $matching = $monthlyTrends->firstWhere('month', "{$yr}-{$monthNum}");
+                $entry["{$yr}_sales"] = $matching ? (float) $matching->total : 0.0;
+                $entry["{$yr}_orders"] = $matching ? (int) $matching->count : 0;
+            }
+            $yoyData[] = $entry;
+        }
+
         $averageOrderSize = $totalOrders > 0 ? ($grossSales / $totalOrders) : 0;
         $customerOrderCounts = DB::table('orders')
             ->select('user_id', DB::raw('COUNT(id) as count'))
@@ -123,7 +141,12 @@ class AdminController extends Controller
             'top_products' => $topProducts,
             'occasions_breakdown' => $occasionsBreakdown,
             'seasons_breakdown' => $seasonsBreakdown,
-            'trends' => ['daily' => $dailyTrends, 'monthly' => $monthlyTrends, 'yearly' => $yearlyTrends],
+            'trends' => [
+                'daily' => $dailyTrends,
+                'monthly' => $monthlyTrends,
+                'yearly' => $yearlyTrends,
+                'yoy' => $yoyData,
+            ],
             'patterns' => ['average_order_size' => (float) $averageOrderSize, 'repeat_rate' => (float) $repeatRate, 'total_customers' => (int) $totalCustomers],
         ]);
     }
@@ -140,10 +163,92 @@ class AdminController extends Controller
         );
     }
 
+    public function storeManualOrder(Request $request)
+    {
+        $validated = $request->validate([
+            'recipient_name' => 'required|string|max:255',
+            'recipient_phone' => 'nullable|string|max:20',
+            'order_type' => 'nullable|string|in:walk-in,purchase,reservation',
+            'pickup_date' => 'nullable|date',
+            'payment_method' => 'required|string|in:cash,gcash',
+            'status' => 'required|string|in:confirmed,delivered',
+            'gift_message' => 'nullable|string|max:500',
+            'items' => 'required|array|min:1',
+            'items.*.id' => 'required|integer|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+        ]);
+
+        $order = DB::transaction(function () use ($validated, $request) {
+            $totalPrice = 0;
+            $processedItems = [];
+
+            foreach ($validated['items'] as $item) {
+                $product = Product::where('id', $item['id'])->lockForUpdate()->firstOrFail();
+
+                $qty = (int) $item['quantity'];
+                $itemPrice = ProductPricing::getEffectivePrice($product);
+                $itemTotal = $itemPrice * $qty;
+                $totalPrice += $itemTotal;
+
+                $processedItems[] = [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'price' => $itemPrice,
+                    'quantity' => $qty,
+                ];
+
+                // Deduct stems from flower stock
+                if (!empty($product->stems)) {
+                    foreach ($product->stems as $flowerName => $countNeeded) {
+                        $flower = Flower::findByNameOrVariant($flowerName, true);
+                        if ($flower) {
+                            $qtyToDeduct = $countNeeded * $qty;
+                            $flower->quantity = max(0, $flower->quantity - $qtyToDeduct);
+                            $flower->save();
+                        }
+                    }
+                }
+            }
+
+            $orderType = $validated['order_type'] ?? 'walk-in';
+            $pickupDate = !empty($validated['pickup_date']) ? $validated['pickup_date'] : now()->toDateString();
+            $recipientPhone = !empty($validated['recipient_phone']) ? $validated['recipient_phone'] : '09000000000';
+
+            $order = Order::create([
+                'user_id' => Auth::id() ?? 1,
+                'order_type' => $orderType,
+                'recipient_name' => $validated['recipient_name'],
+                'recipient_phone' => $recipientPhone,
+                'pickup_date' => $pickupDate,
+                'gift_message' => $validated['gift_message'] ?? null,
+                'items' => $processedItems,
+                'total_price' => $totalPrice,
+                'status' => $validated['status'],
+                'payment_status' => 'verified',
+            ]);
+
+            PaymentTransaction::create([
+                'order_id' => $order->id,
+                'type' => 'payment',
+                'amount' => $totalPrice,
+                'method' => $validated['payment_method'],
+                'reference_no' => 'WALK-IN-' . strtoupper(Str::random(6)),
+                'receipt_image' => null,
+                'admin_notes' => 'Walk-in order created at store register. Payment verified.',
+                'verified_by' => Auth::id(),
+                'verified_at' => now(),
+            ]);
+
+            return $order;
+        });
+
+        return response()->json($order->load('paymentTransactions'), 201);
+    }
+
     public function updateOrderStatus(Request $request, $id)
     {
         $validated = $request->validate([
-            'status' => 'required|string|in:confirmed,preparing,delivered',
+            'status' => 'required|string|in:confirmed,preparing,delivered,ready_for_pickup',
         ]);
         $order = Order::findOrFail($id);
         if ($order->status === 'delivered') {
@@ -165,6 +270,9 @@ class AdminController extends Controller
         } elseif ($order->status === 'delivered') {
             $title = '✔ Order Delivered';
             $message = "Your order #JFS-{$order->id} has been delivered successfully! Thank you for ordering from Jovy's Flowershop.";
+        } elseif ($order->status === 'ready_for_pickup') {
+            $title = '✔ Order Ready for Pickup';
+            $message = "Your order #JFS-{$order->id} is now ready for pickup! You may claim it at the store.";
         } elseif ($order->status === 'confirmed') {
             $title = 'Order Confirmed';
             $message = "Your order/reservation #JFS-{$order->id} has been confirmed.";
@@ -416,6 +524,20 @@ class AdminController extends Controller
         return response()->json($product);
     }
 
+    public function destroyProduct($id)
+    {
+        $product = Product::findOrFail($id);
+        $product->delete();
+        return response()->json(['message' => 'Product archived successfully', 'id' => (int) $id]);
+    }
+
+    public function restoreProduct($id)
+    {
+        $product = Product::withTrashed()->findOrFail($id);
+        $product->restore();
+        return response()->json(['message' => 'Product restored successfully', 'product' => $product]);
+    }
+
     public function uploadImage(Request $request)
     {
         $request->validate(['image' => 'required|image|mimes:jpeg,png,webp,jpg|max:2048']);
@@ -423,9 +545,27 @@ class AdminController extends Controller
         return response()->json(['url' => '/storage/' . $path]);
     }
 
-    public function flowers()
+    public function flowers(Request $request)
     {
-        return response()->json(Flower::orderBy('name')->get());
+        $query = Flower::orderBy('name');
+        if ($request->boolean('with_archived')) {
+            $query->withTrashed();
+        }
+        return response()->json($query->get());
+    }
+
+    public function destroyFlower($id)
+    {
+        $flower = Flower::findOrFail($id);
+        $flower->delete();
+        return response()->json(['message' => 'Flower archived successfully', 'id' => (int) $id]);
+    }
+
+    public function restoreFlower($id)
+    {
+        $flower = Flower::withTrashed()->findOrFail($id);
+        $flower->restore();
+        return response()->json(['message' => 'Flower restored successfully', 'flower' => $flower]);
     }
 
     public function storeFlower(Request $request)

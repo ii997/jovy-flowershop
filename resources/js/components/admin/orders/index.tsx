@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Order } from '../../../types';
+import { Order, Product } from '../../../types';
 import { OrdersTabSkeleton } from '../../ui/Skeleton';
+import { useAdminProducts } from '../../../lib/adminQueries';
 import { useOrderMetrics } from './hooks/useOrderMetrics';
 import { useOrderFilters } from './hooks/useOrderFilters';
 import { useOrderMutations } from './hooks/useOrderMutations';
@@ -9,14 +10,16 @@ import { OrderFilterToolbar } from './components/OrderFilterToolbar';
 import { OrderTable } from './components/OrderTable';
 import { OrderDetailsModal } from './components/OrderDetailsModal';
 import { ImageZoomModal } from './components/ImageZoomModal';
+import { CreateOrderModal } from './components/CreateOrderModal';
 
 export interface OrdersTabProps {
     orders: Order[];
+    products?: Product[];
     onUpdateOrders?: (updatedOrders: Order[]) => void;
     isLoading?: boolean;
 }
 
-export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersTabProps) {
+export function OrdersTab({ orders, products, onUpdateOrders, isLoading = false }: OrdersTabProps) {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [showCancelForm, setShowCancelForm] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
@@ -24,6 +27,10 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
     const [cancelRefundMethod, setCancelRefundMethod] = useState('none');
     const [adminNotes, setAdminNotes] = useState('');
     const [zoomImage, setZoomImage] = useState<string | null>(null);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    const adminProductsQuery = useAdminProducts();
+    const catalogProducts = products && products.length > 0 ? products : (adminProductsQuery.data || []);
 
     const metrics = useOrderMetrics(orders);
     const filters = useOrderFilters(orders);
@@ -87,6 +94,7 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
                 orderSortOrder={filters.orderSortOrder}
                 setOrderSortOrder={filters.setOrderSortOrder}
                 filteredCount={filters.filteredOrders.length}
+                onCreateWalkIn={() => setIsCreateModalOpen(true)}
             />
 
             {/* Orders Table */}
@@ -132,6 +140,13 @@ export function OrdersTab({ orders, onUpdateOrders, isLoading = false }: OrdersT
             <ImageZoomModal
                 imageUrl={zoomImage}
                 onClose={() => setZoomImage(null)}
+            />
+
+            {/* Create Walk-In / Manual Order Modal */}
+            <CreateOrderModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                products={catalogProducts}
             />
         </div>
     );

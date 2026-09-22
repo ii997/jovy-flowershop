@@ -22,6 +22,7 @@ export interface Product {
     stems?: Record<string, number> | null;
     base_price?: number;
     is_surge_applied?: boolean;
+    deleted_at?: string | null;
 }
 
 
@@ -66,7 +67,16 @@ export interface DashboardStats {
     top_products: { id: number; name: string; count: number }[];
     occasions_breakdown: Record<string, number>;
     seasons_breakdown: Record<string, number>;
-    trends: { daily: any[]; monthly: any[]; yearly: any[] };
+    trends: {
+        daily: any[];
+        monthly: any[];
+        yearly: any[];
+        yoy?: {
+            month: string;
+            month_num: string;
+            [key: string]: any;
+        }[];
+    };
     patterns: { average_order_size: number; repeat_rate: number; total_customers: number };
 }
 
@@ -82,6 +92,7 @@ export interface Flower {
     available: boolean;
     created_at: string;
     updated_at: string;
+    deleted_at?: string | null;
 }
 
 

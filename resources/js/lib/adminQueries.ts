@@ -16,14 +16,16 @@ export async function fetchAdminOrders(): Promise<Order[]> {
     return data.data ?? data;
 }
 
-export async function fetchAdminFlowers(): Promise<Flower[]> {
-    const res = await fetch('/api/admin/flowers');
+export async function fetchAdminFlowers(withArchived = false): Promise<Flower[]> {
+    const url = withArchived ? '/api/admin/flowers?with_archived=1' : '/api/admin/flowers';
+    const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to load flowers');
     return res.json();
 }
 
-export async function fetchAdminProducts(): Promise<Product[]> {
-    const res = await fetch('/api/products?per_page=200');
+export async function fetchAdminProducts(withArchived = false): Promise<Product[]> {
+    const url = withArchived ? '/api/products?per_page=200&with_archived=1' : '/api/products?per_page=200';
+    const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to load products');
     const data = await res.json();
     return data.data ?? data;
@@ -46,18 +48,18 @@ export function useAdminOrders() {
     });
 }
 
-export function useAdminFlowers() {
+export function useAdminFlowers(withArchived = false) {
     return useQuery({
-        queryKey: ['adminFlowers'],
-        queryFn: fetchAdminFlowers,
+        queryKey: ['adminFlowers', withArchived],
+        queryFn: () => fetchAdminFlowers(withArchived),
         staleTime: 1000 * 60 * 5,
     });
 }
 
-export function useAdminProducts() {
+export function useAdminProducts(withArchived = false) {
     return useQuery({
-        queryKey: ['adminProducts'],
-        queryFn: fetchAdminProducts,
+        queryKey: ['adminProducts', withArchived],
+        queryFn: () => fetchAdminProducts(withArchived),
         staleTime: 1000 * 60 * 5,
     });
 }
@@ -228,6 +230,137 @@ export function useUpdateFlower() {
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err?.errors?.name?.[0] || err?.message || 'Failed to update flower');
+            }
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['adminFlowers'] });
+        },
+    });
+}
+
+export function useCreateManualOrder() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (payload: {
+            recipient_name: string;
+            recipient_phone?: string;
+            order_type?: string;
+            pickup_date?: string;
+            payment_method: 'cash' | 'gcash';
+            status: 'confirmed' | 'delivered';
+            gift_message?: string;
+            items: { id: number; quantity: number }[];
+        }) => {
+            const res = await fetch('/api/admin/orders/manual', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken() || '',
+                },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || Object.values(err.errors || {})[0]?.[0] || 'Failed to create manual order');
+            }
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+            queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+            queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
+            queryClient.invalidateQueries({ queryKey: ['adminFlowers'] });
+        },
+    });
+}
+
+export function useDeleteProduct() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id: number) => {
+            const res = await fetch(`/api/admin/products/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken() || '',
+                },
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || 'Failed to delete product');
+            }
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
+            queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+        },
+    });
+}
+
+export function useRestoreProduct() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id: number) => {
+            const res = await fetch(`/api/admin/products/${id}/restore`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken() || '',
+                },
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || 'Failed to restore product');
+            }
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
+            queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+        },
+    });
+}
+
+export function useDeleteFlower() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id: number) => {
+            const res = await fetch(`/api/admin/flowers/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken() || '',
+                },
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || 'Failed to delete flower');
+            }
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['adminFlowers'] });
+        },
+    });
+}
+
+export function useRestoreFlower() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id: number) => {
+            const res = await fetch(`/api/admin/flowers/${id}/restore`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken() || '',
+                },
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || 'Failed to restore flower');
             }
             return res.json();
         },

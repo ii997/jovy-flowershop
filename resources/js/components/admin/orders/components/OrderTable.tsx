@@ -143,28 +143,14 @@ export function OrderTable({
                                                             onApproveAndPrepare(o.id);
                                                         }}
                                                         className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 disabled:bg-gray-200 text-white text-[10px] font-bold rounded-xl shadow-2xs hover:shadow-xs transition-all cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
-                                                        title="Verify payment & advance to Preparing"
+                                                        title="Verify payment"
                                                     >
                                                         <Check className="w-3 h-3" />
-                                                        <span>Verify & Prepare</span>
+                                                        <span>Verify Payment</span>
                                                     </button>
                                                 )}
 
-                                                {!isAwaiting && o.status === 'confirmed' && (
-                                                    <button
-                                                        disabled={updatingStatus}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            onStatusChange(o.id, 'preparing');
-                                                        }}
-                                                        className="px-2.5 py-1.5 bg-sky-700 hover:bg-sky-800 disabled:bg-gray-200 text-white text-[10px] font-bold rounded-xl shadow-2xs hover:shadow-xs transition-all cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
-                                                    >
-                                                        <Sparkles className="w-3 h-3" />
-                                                        <span>Start Preparing</span>
-                                                    </button>
-                                                )}
-
-                                                {o.status === 'preparing' && (
+                                                {!isAwaiting && (o.status === 'confirmed' || o.status === 'preparing') && (
                                                     <button
                                                         disabled={updatingStatus}
                                                         onClick={(e) => {
@@ -172,9 +158,10 @@ export function OrderTable({
                                                             onStatusChange(o.id, 'delivered');
                                                         }}
                                                         className="px-2.5 py-1.5 bg-[#0A2A1B] hover:bg-[#D97706] disabled:bg-gray-200 text-white text-[10px] font-bold rounded-xl shadow-2xs hover:shadow-xs transition-all cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
+                                                        title="Mark order as fulfilled / delivered"
                                                     >
                                                         <Check className="w-3 h-3" />
-                                                        <span>Mark Ready</span>
+                                                        <span>Mark Delivered</span>
                                                     </button>
                                                 )}
                                             </>
