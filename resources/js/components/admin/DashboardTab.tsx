@@ -105,14 +105,22 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
         return <DashboardSkeleton />;
     }
 
+    const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const formatToShortMonth = (dateStr: string) => {
+        if (!dateStr) return '';
+        const parts = dateStr.split('-');
+        const monthNum = parts.length > 1 ? parseInt(parts[1], 10) : parseInt(dateStr, 10);
+        return shortMonths[monthNum - 1] || dateStr;
+    };
+
     // 1. Transaction Trends Chart Configuration
     const trendDataList = stats?.trends?.[trendPeriod] || [];
     const trendLabels = trendDataList.map((item: any) => {
-        if (trendPeriod === 'daily') return item.date;
-        if (trendPeriod === 'monthly') return item.month;
+        if (trendPeriod === 'daily') return formatToShortMonth(item.date);
+        if (trendPeriod === 'monthly') return formatToShortMonth(item.month);
         return item.year;
     });
-    const trendAmounts = trendDataList.map(item => parseFloat(item.total) || 0);
+    const trendAmounts = trendDataList.map((item: any) => parseFloat(item.total) || 0);
 
     const trendChartData = {
         labels: trendLabels,
@@ -490,11 +498,10 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                                 <button
                                     key={p}
                                     onClick={() => setTrendPeriod(p)}
-                                    className={`px-3.5 py-1 rounded-lg transition-all cursor-pointer ${
-                                        trendPeriod === p
-                                            ? 'bg-[#0A2A1B] text-white shadow-2xs'
-                                            : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
-                                    }`}
+                                    className={`px-3.5 py-1 rounded-lg transition-all cursor-pointer ${trendPeriod === p
+                                        ? 'bg-[#0A2A1B] text-white shadow-2xs'
+                                        : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
+                                        }`}
                                 >
                                     {p.toUpperCase()}
                                 </button>
@@ -567,22 +574,20 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                         <button
                             type="button"
                             onClick={() => setYoyMetric('sales')}
-                            className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                                yoyMetric === 'sales'
-                                    ? 'bg-[#0A2A1B] text-white shadow-2xs'
-                                    : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
-                            }`}
+                            className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${yoyMetric === 'sales'
+                                ? 'bg-[#0A2A1B] text-white shadow-2xs'
+                                : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
+                                }`}
                         >
                             REVENUE (₱)
                         </button>
                         <button
                             type="button"
                             onClick={() => setYoyMetric('orders')}
-                            className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                                yoyMetric === 'orders'
-                                    ? 'bg-[#0A2A1B] text-white shadow-2xs'
-                                    : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
-                            }`}
+                            className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${yoyMetric === 'orders'
+                                ? 'bg-[#0A2A1B] text-white shadow-2xs'
+                                : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
+                                }`}
                         >
                             ORDERS (COUNT)
                         </button>
@@ -654,9 +659,9 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
 
                     <div className="h-68">
                         {topProductCounts.length > 0 ? (
-                            <Bar 
-                                data={topProductsChartData} 
-                                options={topProductsChartOptions} 
+                            <Bar
+                                data={topProductsChartData}
+                                options={topProductsChartOptions}
                                 plugins={[endLabelPlugin]}
                             />
                         ) : (
@@ -686,9 +691,8 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                                         </div>
                                         <div className="w-full bg-[#0A2A1B]/5 h-2 rounded-full overflow-hidden">
                                             <div
-                                                className={`h-full rounded-full transition-all duration-500 ${
-                                                    idx === 0 ? 'bg-[#0A2A1B]' : idx === 1 ? 'bg-[#D97706]' : 'bg-emerald-600'
-                                                }`}
+                                                className={`h-full rounded-full transition-all duration-500 ${idx === 0 ? 'bg-[#0A2A1B]' : idx === 1 ? 'bg-[#D97706]' : 'bg-emerald-600'
+                                                    }`}
                                                 style={{ width: `${percentage}%` }}
                                             />
                                         </div>
@@ -751,11 +755,10 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                                         </td>
                                         <td className="py-3.5 px-4 font-semibold text-[#0A2A1B]">{o.recipient_name}</td>
                                         <td className="py-3.5 px-4">
-                                            <span className={`text-[9px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full ${
-                                                o.order_type === 'purchase'
-                                                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                                                    : 'bg-amber-50 text-amber-800 border border-amber-200'
-                                            }`}>
+                                            <span className={`text-[9px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full ${o.order_type === 'purchase'
+                                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                                : 'bg-amber-50 text-amber-800 border border-amber-200'
+                                                }`}>
                                                 {o.order_type === 'purchase' ? 'Direct Purchase' : 'Reservation'}
                                             </span>
                                         </td>
