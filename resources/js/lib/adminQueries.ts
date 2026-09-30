@@ -1,11 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Product, Order, DashboardStats, Flower } from '../types';
+import { Product, Order, DashboardStats, Flower, MonthlyProductSalesResponse } from '../types';
 import { csrfToken } from './utils';
 
 // API Fetchers
 export async function fetchAdminStats(): Promise<DashboardStats> {
     const res = await fetch('/api/admin/stats');
     if (!res.ok) throw new Error('Failed to load stats');
+    return res.json();
+}
+
+export async function fetchMonthlyProductSales(month: string): Promise<MonthlyProductSalesResponse> {
+    const res = await fetch(`/api/admin/stats/monthly-products?month=${encodeURIComponent(month)}`);
+    if (!res.ok) throw new Error('Failed to load monthly product sales');
     return res.json();
 }
 
@@ -37,6 +43,15 @@ export function useAdminStats() {
         queryKey: ['adminStats'],
         queryFn: fetchAdminStats,
         staleTime: 1000 * 60 * 2, // 2 mins
+    });
+}
+
+export function useMonthlyProductSales(month: string | null) {
+    return useQuery({
+        queryKey: ['monthlyProductSales', month],
+        queryFn: () => fetchMonthlyProductSales(month!),
+        enabled: !!month,
+        staleTime: 1000 * 60 * 5,
     });
 }
 
@@ -263,7 +278,8 @@ export function useCreateManualOrder() {
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
-                throw new Error(err.message || Object.values(err.errors || {})[0]?.[0] || 'Failed to create manual order');
+                const firstError = Object.values((err.errors || {}) as Record<string, string[]>)[0]?.[0];
+                throw new Error(err.message || firstError || 'Failed to create manual order');
             }
             return res.json();
         },

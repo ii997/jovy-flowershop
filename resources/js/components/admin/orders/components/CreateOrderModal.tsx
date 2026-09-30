@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Product } from '../../../../types';
 import { useCreateManualOrder } from '../../../../lib/adminQueries';
 import { toast } from '../../../ui/Toast';
-import { X, ShoppingBag, Add, Trash, Check, DollarSign, Calendar, Search } from 'reicon-react';
+import { X, ShoppingBag, Add, Trash, Check, Search } from 'reicon-react';
 
 interface CreateOrderModalProps {
     isOpen: boolean;

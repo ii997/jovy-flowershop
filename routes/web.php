@@ -39,6 +39,7 @@ Route::prefix('/api/admin')->middleware(['auth', 'admin.session.timeout'])->grou
     // Admin-only endpoints
     Route::middleware(['can:admin'])->group(function () {
         Route::get('/stats', [AdminController::class, 'stats']);
+        Route::get('/stats/monthly-products', [AdminController::class, 'monthlyProductSales']);
         Route::post('/products/{id}/update', [AdminController::class, 'updateProductDetails']);
         Route::put('/products/{id}', [AdminController::class, 'updateProductDetails']);
         Route::post('/products', [AdminController::class, 'storeProduct']);

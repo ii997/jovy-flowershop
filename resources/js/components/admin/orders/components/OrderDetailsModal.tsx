@@ -1,4 +1,4 @@
-import { X as XIcon, Printer, ArrowRight, Check, XCircle, FileText, Eye } from 'reicon-react';
+import { X as XIcon, Printer, Check, XCircle, FileText, Eye } from 'reicon-react';
 import { Order } from '../../../../types';
 import { getStatusStyle, getPaymentStatusLabel, printOrderSlip, getOrderUrgency } from '../utils';
 

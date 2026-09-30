@@ -1,4 +1,4 @@
-import { Calendar, Check, Sparkles } from 'reicon-react';
+import { Calendar, Check } from 'reicon-react';
 import { Order } from '../../../../types';
 import { Pagination } from '../../../Pagination';
 import { getStatusStyle, getPaymentStatusLabel, getOrderUrgency } from '../utils';

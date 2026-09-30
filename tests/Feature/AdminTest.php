@@ -396,5 +396,88 @@ class AdminTest extends TestCase
             'downpayment_pct' => 30,
         ]);
     }
+
+    public function test_monthly_product_sales_returns_sorted_top_sellers_with_categories(): void
+    {
+        $admin = User::where('email', 'admin@jovy.com')->first();
+        $customer = User::where('email', 'carlos@customer.com')->first() ?: User::factory()->create();
+
+        $productA = \App\Models\Product::create([
+            'name' => 'Birthday Grand Bouquet',
+            'category' => 'Bouquets',
+            'occasions' => ['Birthday', 'Anniversary'],
+            'seasons' => ['All Year'],
+            'gallery' => [],
+            'price' => 1500.00,
+            'image' => '/images/bouquet1.jpg',
+            'description' => 'Test bouquet',
+            'stems' => ['Roses' => 10],
+            'availability' => true,
+        ]);
+
+        $productB = \App\Models\Product::create([
+            'name' => 'Funeral Standing Spray',
+            'category' => 'Funeral & Sympathy',
+            'occasions' => ['Funeral'],
+            'seasons' => ['All Year'],
+            'gallery' => [],
+            'price' => 3000.00,
+            'image' => '/images/funeral1.jpg',
+            'description' => 'Test funeral spray',
+            'stems' => ['Anthurium' => 10],
+            'availability' => true,
+        ]);
+
+        // Create orders in Jan 2025: Product A (3 units = 4500), Product B (1 unit = 3000)
+        $order1 = new \App\Models\Order([
+            'user_id' => $customer->id,
+            'recipient_name' => 'Jan Recipient',
+            'recipient_phone' => '09171112222',
+            'order_type' => 'purchase',
+            'pickup_date' => '2025-01-15',
+            'total_price' => 4500.00,
+            'status' => 'confirmed',
+            'items' => [
+                ['id' => $productA->id, 'name' => $productA->name, 'price' => 1500.00, 'quantity' => 3],
+            ],
+        ]);
+        $order1->created_at = '2025-01-15 10:00:00';
+        $order1->save();
+
+        $order2 = new \App\Models\Order([
+            'user_id' => $customer->id,
+            'recipient_name' => 'Jan Recipient 2',
+            'recipient_phone' => '09171112222',
+            'order_type' => 'purchase',
+            'pickup_date' => '2025-01-20',
+            'total_price' => 3000.00,
+            'status' => 'confirmed',
+            'items' => [
+                ['id' => $productB->id, 'name' => $productB->name, 'price' => 3000.00, 'quantity' => 1],
+            ],
+        ]);
+        $order2->created_at = '2025-01-20 14:00:00';
+        $order2->save();
+
+        $response = $this->actingAs($admin)->getJson('/api/admin/stats/monthly-products?month=2025-01');
+        $response->assertStatus(200);
+
+        $data = $response->json();
+        $this->assertEquals('2025-01', $data['month']);
+        $this->assertCount(2, $data['products']);
+
+        // First item should be Product A (revenue 4500 > 3000)
+        $this->assertEquals($productA->id, $data['products'][0]['id']);
+        $this->assertEquals(4500.00, $data['products'][0]['revenue']);
+        $this->assertEquals(3, $data['products'][0]['units_sold']);
+        $this->assertContains('Birthday', $data['products'][0]['occasions']);
+        $this->assertEquals('Bouquets', $data['products'][0]['category']);
+
+        // Second item should be Product B
+        $this->assertEquals($productB->id, $data['products'][1]['id']);
+        $this->assertEquals(3000.00, $data['products'][1]['revenue']);
+        $this->assertEquals(1, $data['products'][1]['units_sold']);
+        $this->assertEquals('Funeral & Sympathy', $data['products'][1]['category']);
+    }
 }
 

@@ -80,6 +80,21 @@ export interface DashboardStats {
     patterns: { average_order_size: number; repeat_rate: number; total_customers: number };
 }
 
+export interface MonthlyProductSale {
+    id: number;
+    name: string;
+    category: string;
+    occasions: string[];
+    units_sold: number;
+    revenue: number;
+}
+
+export interface MonthlyProductSalesResponse {
+    month: string;
+    total_products: number;
+    products: MonthlyProductSale[];
+}
+
 export interface Flower {
     id: number;
     name: string;

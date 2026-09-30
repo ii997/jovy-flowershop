@@ -151,6 +151,81 @@ class AdminController extends Controller
         ]);
     }
 
+    public function monthlyProductSales(Request $request)
+    {
+        $request->validate([
+            'month' => 'required|string|regex:/^\d{4}-\d{2}$/',
+        ]);
+
+        $month = $request->input('month');
+        $driver = DB::connection()->getDriverName();
+        $monthExpr = $driver === 'sqlite' ? "strftime('%Y-%m', created_at)" : "DATE_FORMAT(created_at, '%Y-%m')";
+
+        $orders = Order::whereRaw("{$monthExpr} = ?", [$month])
+            ->select('id', 'items', 'total_price', 'created_at')
+            ->get();
+
+        $productCounts = [];
+        $allProductIds = [];
+
+        foreach ($orders as $order) {
+            $items = is_string($order->items) ? json_decode($order->items, true) : $order->items;
+            if (is_array($items)) {
+                foreach ($items as $item) {
+                    $prodId = $item['id'] ?? null;
+                    if ($prodId) {
+                        $allProductIds[$prodId] = $prodId;
+                        $qty = (int) ($item['quantity'] ?? 1);
+                        $price = (float) ($item['price'] ?? 0);
+                        $name = $item['name'] ?? ("Product #" . $prodId);
+
+                        if (!isset($productCounts[$prodId])) {
+                            $productCounts[$prodId] = [
+                                'id' => $prodId,
+                                'name' => $name,
+                                'units_sold' => 0,
+                                'revenue' => 0.0,
+                            ];
+                        }
+                        $productCounts[$prodId]['units_sold'] += $qty;
+                        $productCounts[$prodId]['revenue'] += ($price * $qty);
+                    }
+                }
+            }
+        }
+
+        // Fetch product metadata (category, occasions) from DB
+        $productsMeta = collect();
+        if (!empty($allProductIds)) {
+            $productsMeta = Product::withTrashed()
+                ->whereIn('id', array_keys($allProductIds))
+                ->get()
+                ->keyBy('id');
+        }
+
+        $result = [];
+        foreach ($productCounts as $prodId => $data) {
+            $meta = $productsMeta->get($prodId);
+            $result[] = [
+                'id' => $prodId,
+                'name' => $meta ? $meta->name : $data['name'],
+                'category' => $meta ? ($meta->category ?? 'Uncategorized') : 'Uncategorized',
+                'occasions' => $meta ? ($meta->occasions ?? []) : [],
+                'units_sold' => (int) $data['units_sold'],
+                'revenue' => (float) round($data['revenue'], 2),
+            ];
+        }
+
+        // Sort by revenue descending (top sellers first)
+        usort($result, fn($a, $b) => $b['revenue'] <=> $a['revenue'] ?: $b['units_sold'] <=> $a['units_sold']);
+
+        return response()->json([
+            'month' => $month,
+            'total_products' => count($result),
+            'products' => array_values($result),
+        ]);
+    }
+
     public function orders(Request $request)
     {
         $perPage = (int) $request->input('per_page', 50);

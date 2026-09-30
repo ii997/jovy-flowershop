@@ -15,6 +15,7 @@ import { Line, Bar } from 'react-chartjs-2';
 import { Order } from '../../types';
 import { DashboardSkeleton } from '../ui/Skeleton';
 import { getOrderUrgency } from './orders/utils';
+import { MonthlyProductBreakdownModal } from './MonthlyProductBreakdownModal';
 import {
     DollarSign,
     ShieldCheck,
@@ -62,6 +63,11 @@ interface DashboardTabProps {
             daily: { date: string; total: string; count: number }[];
             monthly: { month: string; total: string; count: number }[];
             yearly: { year: string; total: string; count: number }[];
+            yoy?: {
+                month: string;
+                month_num: string;
+                [key: string]: any;
+            }[];
         };
         patterns?: {
             average_order_size: number;
@@ -99,6 +105,8 @@ const endLabelPlugin = {
 
 export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: DashboardTabProps) {
     const [trendPeriod, setTrendPeriod] = useState<'daily' | 'monthly' | 'yearly'>('daily');
+    const [selectedYear, setSelectedYear] = useState<string>('2025');
+    const [selectedMonthForModal, setSelectedMonthForModal] = useState<string | null>(null);
     const [yoyMetric, setYoyMetric] = useState<'sales' | 'orders'>('sales');
 
     if (isLoading) {
@@ -113,14 +121,48 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
         return shortMonths[monthNum - 1] || dateStr;
     };
 
+    // Extract all distinct years available in data
+    const monthlyRawList = stats?.trends?.monthly || [];
+    const yearlyRawList = stats?.trends?.yearly || [];
+    const detectedYears = Array.from(new Set([
+        '2024',
+        '2025',
+        '2026',
+        ...yearlyRawList.map((y: any) => String(y.year)),
+        ...monthlyRawList.map((m: any) => m.month ? m.month.split('-')[0] : '')
+    ])).filter(Boolean).sort();
+
     // 1. Transaction Trends Chart Configuration
-    const trendDataList = stats?.trends?.[trendPeriod] || [];
-    const trendLabels = trendDataList.map((item: any) => {
-        if (trendPeriod === 'daily') return formatToShortMonth(item.date);
-        if (trendPeriod === 'monthly') return formatToShortMonth(item.month);
-        return item.year;
-    });
-    const trendAmounts = trendDataList.map((item: any) => parseFloat(item.total) || 0);
+    let trendLabels: string[] = [];
+    let trendAmounts: number[] = [];
+    let trendMonthKeys: string[] = []; // Store actual "YYYY-MM" for click handling
+
+    if (trendPeriod === 'monthly') {
+        if (selectedYear === 'all') {
+            // All months sorted chronologically
+            trendLabels = monthlyRawList.map((item: any) => `${formatToShortMonth(item.month)} '${item.month.split('-')[0].slice(-2)}`);
+            trendAmounts = monthlyRawList.map((item: any) => parseFloat(item.total) || 0);
+            trendMonthKeys = monthlyRawList.map((item: any) => item.month);
+        } else {
+            // Full Jan to Dec representation for the specific chosen year (e.g. Jan to Dec 2024 separate from 2025)
+            trendLabels = [...shortMonths];
+            trendMonthKeys = shortMonths.map((_, i) => `${selectedYear}-${String(i + 1).padStart(2, '0')}`);
+            trendAmounts = trendMonthKeys.map(mKey => {
+                const found = monthlyRawList.find((item: any) => item.month === mKey);
+                return found ? parseFloat(found.total) || 0 : 0;
+            });
+        }
+    } else if (trendPeriod === 'daily') {
+        const dailyList = stats?.trends?.daily || [];
+        trendLabels = dailyList.map((item: any) => formatToShortMonth(item.date));
+        trendAmounts = dailyList.map((item: any) => parseFloat(item.total) || 0);
+        trendMonthKeys = dailyList.map((item: any) => item.date ? item.date.slice(0, 7) : '');
+    } else {
+        // Yearly
+        trendLabels = yearlyRawList.map((item: any) => String(item.year));
+        trendAmounts = yearlyRawList.map((item: any) => parseFloat(item.total) || 0);
+        trendMonthKeys = yearlyRawList.map((item: any) => `${item.year}-01`);
+    }
 
     const trendChartData = {
         labels: trendLabels,
@@ -154,6 +196,15 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
     const trendChartOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        onClick: (_event: any, elements: any[]) => {
+            if (elements.length > 0) {
+                const index = elements[0].index;
+                const monthKey = trendMonthKeys[index];
+                if (monthKey && /^\d{4}-\d{2}$/.test(monthKey)) {
+                    setSelectedMonthForModal(monthKey);
+                }
+            }
+        },
         plugins: {
             legend: { display: false },
             tooltip: {
@@ -164,7 +215,7 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                 cornerRadius: 10,
                 displayColors: false,
                 callbacks: {
-                    label: (context: any) => ` Revenue: ₱${parseFloat(context.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    label: (context: any) => ` Revenue: ₱${parseFloat(context.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Click to view products)`
                 }
             }
         },
@@ -240,6 +291,18 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
     const yoyChartOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        onClick: (_event: any, elements: any[]) => {
+            if (elements.length > 0) {
+                const element = elements[0];
+                const datasetIndex = element.datasetIndex;
+                const dataIndex = element.index;
+                const clickedYear = yoyChartData.datasets[datasetIndex]?.label;
+                const monthNum = String(dataIndex + 1).padStart(2, '0');
+                if (clickedYear && monthNum) {
+                    setSelectedMonthForModal(`${clickedYear}-${monthNum}`);
+                }
+            }
+        },
         plugins: {
             legend: {
                 display: true,
@@ -492,20 +555,59 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                         <div>
                             <span className="text-[10px] font-bold text-[#D97706] uppercase tracking-wider">Revenue Analysis</span>
                             <h3 className="font-serif text-lg font-bold text-[#0A2A1B]">Transaction & Sales Trends</h3>
+                            <p className="text-[11px] text-[#0A2A1B]/50 mt-0.5">
+                                {trendPeriod === 'monthly' ? (
+                                    <span>Viewing <strong>{selectedYear === 'all' ? 'All Recorded Years' : `Jan to Dec ${selectedYear}`}</strong>. Click any point to view products.</span>
+                                ) : (
+                                    <span>Track sales patterns across time.</span>
+                                )}
+                            </p>
                         </div>
-                        <div className="inline-flex bg-[#FAF9F6] p-1 rounded-xl border border-[#0A2A1B]/10 text-[11px] font-bold self-start sm:self-auto">
-                            {(['daily', 'monthly', 'yearly'] as const).map(p => (
-                                <button
-                                    key={p}
-                                    onClick={() => setTrendPeriod(p)}
-                                    className={`px-3.5 py-1 rounded-lg transition-all cursor-pointer ${trendPeriod === p
-                                        ? 'bg-[#0A2A1B] text-white shadow-2xs'
-                                        : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
-                                        }`}
-                                >
-                                    {p.toUpperCase()}
-                                </button>
-                            ))}
+                        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                            {/* Year Filter Pills for Monthly view */}
+                            {trendPeriod === 'monthly' && (
+                                <div className="inline-flex bg-[#FAF9F6] p-1 rounded-xl border border-[#0A2A1B]/10 text-[11px] font-bold">
+                                    {detectedYears.map(yr => (
+                                        <button
+                                            key={yr}
+                                            type="button"
+                                            onClick={() => setSelectedYear(yr)}
+                                            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${selectedYear === yr
+                                                ? 'bg-[#0A2A1B] text-white shadow-2xs'
+                                                : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
+                                                }`}
+                                        >
+                                            {yr}
+                                        </button>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedYear('all')}
+                                        className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${selectedYear === 'all'
+                                            ? 'bg-[#0A2A1B] text-white shadow-2xs'
+                                            : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
+                                            }`}
+                                    >
+                                        ALL
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Period Switcher (Daily / Monthly / Yearly) */}
+                            <div className="inline-flex bg-[#FAF9F6] p-1 rounded-xl border border-[#0A2A1B]/10 text-[11px] font-bold">
+                                {(['daily', 'monthly', 'yearly'] as const).map(p => (
+                                    <button
+                                        key={p}
+                                        onClick={() => setTrendPeriod(p)}
+                                        className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${trendPeriod === p
+                                            ? 'bg-[#0A2A1B] text-white shadow-2xs'
+                                            : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
+                                            }`}
+                                    >
+                                        {p.toUpperCase()}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                     <div className="h-68 pt-2">
@@ -785,6 +887,14 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                     </table>
                 </div>
             </div>
+
+            {/* Monthly Product Drill-Down Modal */}
+            {selectedMonthForModal && (
+                <MonthlyProductBreakdownModal
+                    month={selectedMonthForModal}
+                    onClose={() => setSelectedMonthForModal(null)}
+                />
+            )}
         </div>
     );
 }
