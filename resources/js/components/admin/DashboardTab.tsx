@@ -161,7 +161,7 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
         // Yearly
         trendLabels = yearlyRawList.map((item: any) => String(item.year));
         trendAmounts = yearlyRawList.map((item: any) => parseFloat(item.total) || 0);
-        trendMonthKeys = yearlyRawList.map((item: any) => `${item.year}-01`);
+        trendMonthKeys = yearlyRawList.map((item: any) => String(item.year));
     }
 
     const trendChartData = {
@@ -196,12 +196,25 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
     const trendChartOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        onHover: (event: any, chartElement: any[]) => {
+            if (event.native?.target) {
+                event.native.target.style.cursor = (chartElement.length > 0 && (trendPeriod === 'yearly' || trendPeriod === 'monthly')) ? 'pointer' : 'default';
+            }
+        },
         onClick: (_event: any, elements: any[]) => {
             if (elements.length > 0) {
                 const index = elements[0].index;
-                const monthKey = trendMonthKeys[index];
-                if (monthKey && /^\d{4}-\d{2}$/.test(monthKey)) {
-                    setSelectedMonthForModal(monthKey);
+                if (trendPeriod === 'yearly') {
+                    const clickedYear = trendLabels[index] || String(yearlyRawList[index]?.year);
+                    if (clickedYear) {
+                        setSelectedYear(clickedYear);
+                        setTrendPeriod('monthly');
+                    }
+                } else if (trendPeriod === 'monthly') {
+                    const monthKey = trendMonthKeys[index];
+                    if (monthKey && /^\d{4}-\d{2}$/.test(monthKey)) {
+                        setSelectedMonthForModal(monthKey);
+                    }
                 }
             }
         },
@@ -215,7 +228,16 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                 cornerRadius: 10,
                 displayColors: false,
                 callbacks: {
-                    label: (context: any) => ` Revenue: ₱${parseFloat(context.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Click to view products)`
+                    label: (context: any) => {
+                        const val = parseFloat(context.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        if (trendPeriod === 'yearly') {
+                            return ` Revenue: ₱${val} (Click to drill down into months)`;
+                        }
+                        if (trendPeriod === 'monthly') {
+                            return ` Revenue: ₱${val} (Click to view products)`;
+                        }
+                        return ` Revenue: ₱${val}`;
+                    }
                 }
             }
         },
@@ -291,6 +313,11 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
     const yoyChartOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        onHover: (event: any, chartElement: any[]) => {
+            if (event.native?.target) {
+                event.native.target.style.cursor = chartElement.length > 0 ? 'pointer' : 'default';
+            }
+        },
         onClick: (_event: any, elements: any[]) => {
             if (elements.length > 0) {
                 const element = elements[0];
@@ -326,9 +353,9 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                     label: (context: any) => {
                         const val = context.parsed.y || 0;
                         if (yoyMetric === 'sales') {
-                            return ` ${context.dataset.label}: ₱${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                            return ` ${context.dataset.label}: ₱${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Click to view products)`;
                         }
-                        return ` ${context.dataset.label}: ${val} orders`;
+                        return ` ${context.dataset.label}: ${val} orders (Click to view products)`;
                     },
                 },
             },
@@ -557,7 +584,9 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                             <h3 className="font-serif text-lg font-bold text-[#0A2A1B]">Transaction & Sales Trends</h3>
                             <p className="text-[11px] text-[#0A2A1B]/50 mt-0.5">
                                 {trendPeriod === 'monthly' ? (
-                                    <span>Viewing <strong>{selectedYear === 'all' ? 'All Recorded Years' : `Jan to Dec ${selectedYear}`}</strong>. Click any point to view products.</span>
+                                    <span>Viewing <strong>{selectedYear === 'all' ? 'All Recorded Years' : `Jan to Dec ${selectedYear}`}</strong>. Click any month point to view products.</span>
+                                ) : trendPeriod === 'yearly' ? (
+                                    <span>Viewing <strong>Annual Totals</strong>. Click any year point to drill down into its monthly breakdown.</span>
                                 ) : (
                                     <span>Track sales patterns across time.</span>
                                 )}
