@@ -183,6 +183,7 @@ class AdminController extends Controller
                             $productCounts[$prodId] = [
                                 'id' => $prodId,
                                 'name' => $name,
+                                'price' => $price,
                                 'units_sold' => 0,
                                 'revenue' => 0.0,
                             ];
@@ -194,7 +195,7 @@ class AdminController extends Controller
             }
         }
 
-        // Fetch product metadata (category, occasions) from DB
+        // Fetch product metadata (category, occasions, image, price) from DB
         $productsMeta = collect();
         if (!empty($allProductIds)) {
             $productsMeta = Product::withTrashed()
@@ -209,6 +210,8 @@ class AdminController extends Controller
             $result[] = [
                 'id' => $prodId,
                 'name' => $meta ? $meta->name : $data['name'],
+                'image' => $meta ? $meta->image : null,
+                'price' => $meta ? (float) $meta->price : (float) ($data['price'] ?? 0),
                 'category' => $meta ? ($meta->category ?? 'Uncategorized') : 'Uncategorized',
                 'occasions' => $meta ? ($meta->occasions ?? []) : [],
                 'units_sold' => (int) $data['units_sold'],

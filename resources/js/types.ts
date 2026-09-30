@@ -83,6 +83,8 @@ export interface DashboardStats {
 export interface MonthlyProductSale {
     id: number;
     name: string;
+    image?: string | null;
+    price?: number;
     category: string;
     occasions: string[];
     units_sold: number;

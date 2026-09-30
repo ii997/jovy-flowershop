@@ -470,6 +470,8 @@ class AdminTest extends TestCase
         $this->assertEquals($productA->id, $data['products'][0]['id']);
         $this->assertEquals(4500.00, $data['products'][0]['revenue']);
         $this->assertEquals(3, $data['products'][0]['units_sold']);
+        $this->assertEquals(1500.00, $data['products'][0]['price']);
+        $this->assertEquals('/images/bouquet1.jpg', $data['products'][0]['image']);
         $this->assertContains('Birthday', $data['products'][0]['occasions']);
         $this->assertEquals('Bouquets', $data['products'][0]['category']);
 
@@ -477,6 +479,8 @@ class AdminTest extends TestCase
         $this->assertEquals($productB->id, $data['products'][1]['id']);
         $this->assertEquals(3000.00, $data['products'][1]['revenue']);
         $this->assertEquals(1, $data['products'][1]['units_sold']);
+        $this->assertEquals(3000.00, $data['products'][1]['price']);
+        $this->assertEquals('/images/funeral1.jpg', $data['products'][1]['image']);
         $this->assertEquals('Funeral & Sympathy', $data['products'][1]['category']);
     }
 }

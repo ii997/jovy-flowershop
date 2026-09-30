@@ -15,7 +15,7 @@ import { Line, Bar } from 'react-chartjs-2';
 import { Order } from '../../types';
 import { DashboardSkeleton } from '../ui/Skeleton';
 import { getOrderUrgency } from './orders/utils';
-import { MonthlyProductBreakdownModal } from './MonthlyProductBreakdownModal';
+import { MonthlyProductBreakdownSection } from './MonthlyProductBreakdownSection';
 import {
     DollarSign,
     ShieldCheck,
@@ -686,6 +686,14 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                 </div>
             </div>
 
+            {/* Inline Monthly Product Breakdown (appears when a month is clicked) */}
+            {selectedMonthForModal && (
+                <MonthlyProductBreakdownSection
+                    month={selectedMonthForModal}
+                    onClose={() => setSelectedMonthForModal(null)}
+                />
+            )}
+
             {/* Multi-Year (2024 - 2026) Monthly Comparison Section */}
             <div className="bg-white border border-[#0A2A1B]/10 rounded-3xl p-6 shadow-xs space-y-5 hover:border-[#0A2A1B]/20 transition-all duration-300">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -917,13 +925,7 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                 </div>
             </div>
 
-            {/* Monthly Product Drill-Down Modal */}
-            {selectedMonthForModal && (
-                <MonthlyProductBreakdownModal
-                    month={selectedMonthForModal}
-                    onClose={() => setSelectedMonthForModal(null)}
-                />
-            )}
+
         </div>
     );
 }
