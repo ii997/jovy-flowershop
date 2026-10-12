@@ -437,6 +437,7 @@ class AdminTest extends TestCase
             'pickup_date' => '2025-01-15',
             'total_price' => 4500.00,
             'status' => 'confirmed',
+            'payment_status' => 'verified',
             'items' => [
                 ['id' => $productA->id, 'name' => $productA->name, 'price' => 1500.00, 'quantity' => 3],
             ],
@@ -452,6 +453,7 @@ class AdminTest extends TestCase
             'pickup_date' => '2025-01-20',
             'total_price' => 3000.00,
             'status' => 'confirmed',
+            'payment_status' => 'verified',
             'items' => [
                 ['id' => $productB->id, 'name' => $productB->name, 'price' => 3000.00, 'quantity' => 1],
             ],

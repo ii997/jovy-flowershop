@@ -20,8 +20,16 @@ class AdminController extends Controller
 {
     public function stats()
     {
-        $grossSales = Order::sum('total_price');
-        $totalOrders = Order::count();
+        // Gross sales: only orders with verified payment AND not cancelled
+        $grossSales = Order::where('payment_status', 'verified')
+            ->where('status', '!=', 'cancelled')
+            ->sum('total_price');
+        
+        // Total valid orders: verified payment + not cancelled
+        $totalOrders = Order::where('payment_status', 'verified')
+            ->where('status', '!=', 'cancelled')
+            ->count();
+        
         $activeListings = Product::where('availability', true)->count();
         $recentOrders = Order::orderBy('created_at', 'desc')->take(5)->get();
 
@@ -29,7 +37,10 @@ class AdminController extends Controller
         $paidGross = Order::where('payment_status', 'verified')->sum('total_price');
         $pendingGross = Order::where('payment_status', 'awaiting_verification')->sum('total_price');
 
-        $ordersItems = Order::pluck('items');
+        // Only count items from verified, non-cancelled orders for product breakdown
+        $ordersItems = Order::where('payment_status', 'verified')
+            ->where('status', '!=', 'cancelled')
+            ->pluck('items');
         $productCounts = [];
         $occasionsBreakdown = [];
         $seasonsBreakdown = [];
@@ -92,6 +103,8 @@ class AdminController extends Controller
         $topProducts = array_slice(array_values($productCounts), 0, 10);
 
         $dailyTrends = DB::table('orders')
+            ->where('payment_status', 'verified')
+            ->where('status', '!=', 'cancelled')
             ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(total_price) as total'), DB::raw('COUNT(id) as count'))
             ->groupBy('date')->orderBy('date', 'asc')->limit(30)->get();
 
@@ -100,10 +113,14 @@ class AdminController extends Controller
         $yearExpr = $driver === 'sqlite' ? "strftime('%Y', created_at)" : "YEAR(created_at)";
 
         $monthlyTrends = DB::table('orders')
+            ->where('payment_status', 'verified')
+            ->where('status', '!=', 'cancelled')
             ->select(DB::raw("{$monthExpr} as month"), DB::raw('SUM(total_price) as total'), DB::raw('COUNT(id) as count'))
             ->groupBy('month')->orderBy('month', 'asc')->get();
 
         $yearlyTrends = DB::table('orders')
+            ->where('payment_status', 'verified')
+            ->where('status', '!=', 'cancelled')
             ->select(DB::raw("{$yearExpr} as year"), DB::raw('SUM(total_price) as total'), DB::raw('COUNT(id) as count'))
             ->groupBy('year')->orderBy('year', 'asc')->get();
 
@@ -162,6 +179,8 @@ class AdminController extends Controller
         $monthExpr = $driver === 'sqlite' ? "strftime('%Y-%m', created_at)" : "DATE_FORMAT(created_at, '%Y-%m')";
 
         $orders = Order::whereRaw("{$monthExpr} = ?", [$month])
+            ->where('payment_status', 'verified')
+            ->where('status', '!=', 'cancelled')
             ->select('id', 'items', 'total_price', 'created_at')
             ->get();
 

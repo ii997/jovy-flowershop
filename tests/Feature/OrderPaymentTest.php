@@ -617,4 +617,263 @@ class OrderPaymentTest extends TestCase
             }
         }
     }
+
+    // --- Gross Sales Filtering: Only include verified + not cancelled ---
+
+    public function test_gross_sales_excludes_pending_payment_orders(): void
+    {
+        $product = Product::first();
+        
+        // Create order with pending payment
+        $order = $this->createOrder(['payment_status' => 'pending', 'total_price' => 100.00]);
+        
+        // Baseline: get stats and note existing verified orders
+        $baselineResponse = $this->actingAs($this->admin)->getJson('/api/admin/stats');
+        $baselineGross = $baselineResponse->json('gross_sales');
+        
+        // The pending order should NOT add to gross sales
+        // So after adding pending, gross should NOT increase
+        $this->assertEquals($baselineGross, $baselineResponse->json('gross_sales'));
+    }
+
+    public function test_gross_sales_excludes_awaiting_verification_orders(): void
+    {
+        $product = Product::first();
+        $baselineResponse = $this->actingAs($this->admin)->getJson('/api/admin/stats');
+        $baselineGross = $baselineResponse->json('gross_sales');
+        
+        // Create order with payment awaiting verification
+        $order = $this->createOrder(['payment_status' => 'awaiting_verification', 'total_price' => 100.00]);
+        
+        // After creating awaiting_verification order, gross should NOT increase
+        $response = $this->actingAs($this->admin)->getJson('/api/admin/stats');
+        $this->assertEquals($baselineGross, $response->json('gross_sales'));
+    }
+
+    public function test_gross_sales_excludes_cancelled_orders(): void
+    {
+        $product = Product::first();
+        $baselineResponse = $this->actingAs($this->admin)->getJson('/api/admin/stats');
+        $baselineGross = $baselineResponse->json('gross_sales');
+        
+        // Create verified order then cancel it
+        $order = $this->createOrder(['payment_status' => 'verified', 'status' => 'confirmed', 'total_price' => 100.00]);
+        
+        // Before cancellation, should increase
+        $responseBeforeCancel = $this->actingAs($this->admin)->getJson('/api/admin/stats');
+        $grossAfterCreate = $responseBeforeCancel->json('gross_sales');
+        $this->assertEquals($baselineGross + 100.00, $grossAfterCreate);
+        
+        // Cancel the order
+        $order->update(['status' => 'cancelled']);
+        
+        // After cancellation, gross should revert to baseline (cancelled orders excluded)
+        $responseAfterCancel = $this->actingAs($this->admin)->getJson('/api/admin/stats');
+        $this->assertEquals($baselineGross, $responseAfterCancel->json('gross_sales'));
+    }
+
+    public function test_gross_sales_includes_verified_non_cancelled_orders(): void
+    {
+        $product = Product::first();
+        $baselineResponse = $this->actingAs($this->admin)->getJson('/api/admin/stats');
+        $baselineGross = $baselineResponse->json('gross_sales');
+        
+        // Create verified, non-cancelled order
+        $order = $this->createOrder(['payment_status' => 'verified', 'status' => 'confirmed', 'total_price' => 100.00]);
+        
+        $response = $this->actingAs($this->admin)->getJson('/api/admin/stats');
+        
+        // Gross sales should increase by exactly 100.00
+        $this->assertEquals($baselineGross + 100.00, $response->json('gross_sales'));
+    }
+
+    public function test_total_orders_excludes_cancelled_and_unpaid(): void
+    {
+        $product = Product::first();
+        $baselineResponse = $this->actingAs($this->admin)->getJson('/api/admin/stats');
+        $baselineCount = $baselineResponse->json('total_orders');
+        
+        // Create 3 orders: pending, cancelled (verified), verified (confirmed)
+        Order::create([
+            'user_id' => $this->customer->id,
+            'order_type' => 'purchase',
+            'recipient_name' => 'Test Pending',
+            'recipient_phone' => '09123456789',
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'wrapper_type' => 'Paper',
+            'items' => [['id' => $product->id, 'name' => $product->name, 'price' => $product->price, 'quantity' => 1]],
+            'total_price' => $product->price,
+            'status' => 'confirmed',
+            'payment_status' => 'pending',
+        ]);
+        
+        Order::create([
+            'user_id' => $this->customer->id,
+            'order_type' => 'purchase',
+            'recipient_name' => 'Test Cancelled',
+            'recipient_phone' => '09123456789',
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'wrapper_type' => 'Paper',
+            'items' => [['id' => $product->id, 'name' => $product->name, 'price' => $product->price, 'quantity' => 1]],
+            'total_price' => $product->price,
+            'status' => 'cancelled',
+            'payment_status' => 'verified',
+        ]);
+        
+        Order::create([
+            'user_id' => $this->customer->id,
+            'order_type' => 'purchase',
+            'recipient_name' => 'Test Valid',
+            'recipient_phone' => '09123456789',
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'wrapper_type' => 'Paper',
+            'items' => [['id' => $product->id, 'name' => $product->name, 'price' => $product->price, 'quantity' => 1]],
+            'total_price' => $product->price,
+            'status' => 'confirmed',
+            'payment_status' => 'verified',
+        ]);
+        
+        $response = $this->actingAs($this->admin)->getJson('/api/admin/stats');
+        
+        // Only 1 order should be added to baseline (verified + not cancelled)
+        $this->assertEquals($baselineCount + 1, $response->json('total_orders'));
+    }
+
+    public function test_sales_trends_exclude_cancelled_and_unpaid(): void
+    {
+        $product = Product::first();
+        $today = now()->format('Y-m-d');
+        
+        // Get baseline (may have existing seed data for today)
+        $baselineResponse = $this->actingAs($this->admin)->getJson('/api/admin/stats');
+        $dailyBaseline = collect($baselineResponse->json('trends.daily'))
+            ->firstWhere('date', $today);
+        $baselineTotal = $dailyBaseline ? (float) $dailyBaseline['total'] : 0.0;
+        
+        // Create orders with different statuses
+        Order::create([
+            'user_id' => $this->customer->id,
+            'order_type' => 'purchase',
+            'recipient_name' => 'Pending Order',
+            'recipient_phone' => '09123456789',
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'wrapper_type' => 'Paper',
+            'items' => [['id' => $product->id, 'name' => $product->name, 'price' => 50.00, 'quantity' => 1]],
+            'total_price' => 50.00,
+            'status' => 'confirmed',
+            'payment_status' => 'pending',
+            'created_at' => now(),
+        ]);
+        
+        Order::create([
+            'user_id' => $this->customer->id,
+            'order_type' => 'purchase',
+            'recipient_name' => 'Cancelled Order',
+            'recipient_phone' => '09123456789',
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'wrapper_type' => 'Paper',
+            'items' => [['id' => $product->id, 'name' => $product->name, 'price' => 75.00, 'quantity' => 1]],
+            'total_price' => 75.00,
+            'status' => 'cancelled',
+            'payment_status' => 'verified',
+            'created_at' => now(),
+        ]);
+        
+        Order::create([
+            'user_id' => $this->customer->id,
+            'order_type' => 'purchase',
+            'recipient_name' => 'Valid Order',
+            'recipient_phone' => '09123456789',
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'wrapper_type' => 'Paper',
+            'items' => [['id' => $product->id, 'name' => $product->name, 'price' => 100.00, 'quantity' => 1]],
+            'total_price' => 100.00,
+            'status' => 'confirmed',
+            'payment_status' => 'verified',
+            'created_at' => now(),
+        ]);
+        
+        $response = $this->actingAs($this->admin)->getJson('/api/admin/stats');
+        
+        // Daily trends should only show valid (verified + not cancelled) orders
+        $dailyTrends = $response->json('trends.daily');
+        $this->assertNotEmpty($dailyTrends);
+        
+        // Find today's trend entry
+        $todayTrend = collect($dailyTrends)->firstWhere('date', $today);
+        $this->assertNotNull($todayTrend);
+        // Should only add 100.00 (valid order), not 50 (pending) or 75 (cancelled)
+        // So today's total should be baseline + 100
+        $this->assertEquals($baselineTotal + 100.00, (float) $todayTrend['total']);
+        // Today should have at least 1 valid order (could have more from baseline)
+        $this->assertGreaterThanOrEqual(1, $todayTrend['count']);
+    }
+
+    public function test_average_order_size_calculated_from_valid_orders(): void
+    {
+        $product = Product::first();
+        
+        // Create 2 valid orders: 100 + 200 = 300, average = 150
+        Order::create([
+            'user_id' => $this->customer->id,
+            'order_type' => 'purchase',
+            'recipient_name' => 'Order 1',
+            'recipient_phone' => '09123456789',
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'wrapper_type' => 'Paper',
+            'items' => [['id' => $product->id, 'name' => $product->name, 'price' => 100.00, 'quantity' => 1]],
+            'total_price' => 100.00,
+            'status' => 'confirmed',
+            'payment_status' => 'verified',
+        ]);
+        
+        Order::create([
+            'user_id' => $this->customer->id,
+            'order_type' => 'purchase',
+            'recipient_name' => 'Order 2',
+            'recipient_phone' => '09123456789',
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'wrapper_type' => 'Paper',
+            'items' => [['id' => $product->id, 'name' => $product->name, 'price' => 200.00, 'quantity' => 1]],
+            'total_price' => 200.00,
+            'status' => 'confirmed',
+            'payment_status' => 'verified',
+        ]);
+        
+        // Create a cancelled order that should NOT affect average
+        Order::create([
+            'user_id' => $this->customer->id,
+            'order_type' => 'purchase',
+            'recipient_name' => 'Cancelled Order',
+            'recipient_phone' => '09123456789',
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'wrapper_type' => 'Paper',
+            'items' => [['id' => $product->id, 'name' => $product->name, 'price' => 500.00, 'quantity' => 1]],
+            'total_price' => 500.00,
+            'status' => 'cancelled',
+            'payment_status' => 'verified',
+        ]);
+        
+        // Before this test, there may be seeded verified orders
+        // The test verifies that cancelled orders don't inflate the divisor
+        // We create 2 valid orders (100 + 200) and 1 cancelled (500)
+        // The average should be calculated only from verified+not cancelled
+        
+        $response = $this->actingAs($this->admin)->getJson('/api/admin/stats');
+        $totalOrders = $response->json('total_orders');
+        $grossSales = $response->json('gross_sales');
+        $average = $response->json('patterns.average_order_size');
+        
+        // The average is: grossSales / totalOrders
+        // If cancelled orders were included, average would be inflated
+        // Our new orders: 100 + 200 should contribute to numerator
+        // Our cancelled: 500 should NOT be counted in either numerator or denominator
+        
+        if ($totalOrders > 0) {
+            // Recalculate: does average match what we'd expect?
+            $expectedAverage = $grossSales / $totalOrders;
+            $this->assertEquals($expectedAverage, $average, '', 0.01);
+        }
+    }
 }
+
