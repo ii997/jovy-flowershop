@@ -1,4 +1,4 @@
-import { Search, Add } from 'reicon-react';
+import { Search, Add, Printer } from 'reicon-react';
 import { DateQuickFilter, UrgencyFilter, OrderSortBy, OrderSortOrder } from '../types';
 
 interface OrderFilterToolbarProps {
@@ -18,6 +18,7 @@ interface OrderFilterToolbarProps {
     setOrderSortOrder: (val: OrderSortOrder) => void;
     filteredCount: number;
     onCreateWalkIn?: () => void;
+    onPrintSummary?: () => void;
 }
 
 export function OrderFilterToolbar({
@@ -37,6 +38,7 @@ export function OrderFilterToolbar({
     setOrderSortOrder,
     filteredCount,
     onCreateWalkIn,
+    onPrintSummary,
 }: OrderFilterToolbarProps) {
     return (
         <div className="space-y-3.5">
@@ -90,10 +92,21 @@ export function OrderFilterToolbar({
                     ))}
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="text-[11px] font-semibold text-[#0A2A1B]/60 px-2">
+                <div className="flex items-center gap-2">
+                    <div className="text-[11px] font-semibold text-[#0A2A1B]/60 px-2 hidden sm:block">
                         Showing <strong className="text-[#0A2A1B]">{filteredCount}</strong> matching orders
                     </div>
+                    {onPrintSummary && (
+                        <button
+                            type="button"
+                            onClick={onPrintSummary}
+                            className="px-3.5 py-1.5 bg-[#FAF9F6] hover:bg-[#0A2A1B] hover:text-white border border-[#0A2A1B]/15 text-[#0A2A1B] text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95 shrink-0"
+                            title="Print current filtered orders report"
+                        >
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>Print Summary</span>
+                        </button>
+                    )}
                     {onCreateWalkIn && (
                         <button
                             type="button"

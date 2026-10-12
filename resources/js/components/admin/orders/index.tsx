@@ -11,6 +11,7 @@ import { OrderTable } from './components/OrderTable';
 import { OrderDetailsModal } from './components/OrderDetailsModal';
 import { ImageZoomModal } from './components/ImageZoomModal';
 import { CreateOrderModal } from './components/CreateOrderModal';
+import { printOrderSummaryReport } from './utils';
 
 export interface OrdersTabProps {
     orders: Order[];
@@ -23,8 +24,6 @@ export function OrdersTab({ orders, products, onUpdateOrders, isLoading = false 
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [showCancelForm, setShowCancelForm] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
-    const [cancelRefundAmount, setCancelRefundAmount] = useState('');
-    const [cancelRefundMethod, setCancelRefundMethod] = useState('none');
     const [adminNotes, setAdminNotes] = useState('');
     const [zoomImage, setZoomImage] = useState<string | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -43,10 +42,6 @@ export function OrdersTab({ orders, products, onUpdateOrders, isLoading = false 
         setAdminNotes,
         cancelReason,
         setCancelReason,
-        cancelRefundAmount,
-        setCancelRefundAmount,
-        cancelRefundMethod,
-        setCancelRefundMethod,
         setShowCancelForm,
     });
 
@@ -54,8 +49,6 @@ export function OrdersTab({ orders, products, onUpdateOrders, isLoading = false 
         setSelectedOrder(null);
         setShowCancelForm(false);
         setCancelReason('');
-        setCancelRefundAmount('');
-        setCancelRefundMethod('none');
         setAdminNotes('');
     };
 
@@ -95,6 +88,7 @@ export function OrdersTab({ orders, products, onUpdateOrders, isLoading = false 
                 setOrderSortOrder={filters.setOrderSortOrder}
                 filteredCount={filters.filteredOrders.length}
                 onCreateWalkIn={() => setIsCreateModalOpen(true)}
+                onPrintSummary={() => printOrderSummaryReport(filters.filteredOrders, `Pickup: ${filters.dateQuickFilter.toUpperCase()} | Status: ${filters.selectedStatusFilter} | Payment: ${filters.selectedPaymentFilter}`)}
             />
 
             {/* Orders Table */}
@@ -127,10 +121,6 @@ export function OrdersTab({ orders, products, onUpdateOrders, isLoading = false 
                     setShowCancelForm={setShowCancelForm}
                     cancelReason={cancelReason}
                     setCancelReason={setCancelReason}
-                    cancelRefundAmount={cancelRefundAmount}
-                    setCancelRefundAmount={setCancelRefundAmount}
-                    cancelRefundMethod={cancelRefundMethod}
-                    setCancelRefundMethod={setCancelRefundMethod}
                     onCancelOrder={mutations.handleCancelOrder}
                     cancelling={mutations.cancelling}
                 />

@@ -49,6 +49,7 @@ export interface Order {
         reference_no?: string;
         amount?: string | number;
         transaction_date?: string;
+        ocr_review_required?: boolean;
     };
     payment_status?: string;
     payment_transactions?: PaymentTransaction[];
@@ -132,8 +133,8 @@ export interface OrderCancellation {
     order_id: number;
     cancelled_by: number;
     reason: string;
-    refund_amount: number | null;
-    refund_method: string | null;
+    refund_amount?: number | null;
+    refund_method?: string | null;
 }
 
 export interface CartItem {

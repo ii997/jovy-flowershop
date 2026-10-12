@@ -237,11 +237,6 @@ export function ProfileOrdersTab({
                                     <p className="text-xs text-red-800 leading-relaxed">
                                         <span className="font-semibold text-red-900">Reason:</span> {order.cancellation.reason}
                                     </p>
-                                    {parseFloat(order.cancellation.refund_amount || 0) > 0 && (
-                                        <p className="text-xs text-red-800 font-semibold">
-                                            Refunded: ₱{parseFloat(order.cancellation.refund_amount).toFixed(2)} via {order.cancellation.refund_method}
-                                        </p>
-                                    )}
                                 </div>
                             )}
                         </div>

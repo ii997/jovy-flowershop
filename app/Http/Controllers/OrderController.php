@@ -212,6 +212,7 @@ class OrderController extends Controller
             'reference_no' => 'nullable|string|max:100',
             'amount' => 'nullable|numeric|min:0',
             'transaction_date' => 'nullable|string|max:100',
+            'ocr_review_required' => 'nullable|boolean',
         ]);
 
         $downpaymentPct = 30;
@@ -241,6 +242,7 @@ class OrderController extends Controller
             'reference_no' => $validated['reference_no'] ?? null,
             'amount' => $validated['amount'] ?? null,
             'transaction_date' => $validated['transaction_date'] ?? null,
+            'ocr_review_required' => (bool) ($validated['ocr_review_required'] ?? false),
         ];
         $order->payment_status = 'awaiting_verification';
         $order->save();
@@ -319,14 +321,10 @@ class OrderController extends Controller
         ]);
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($order, $validated, $request) {
-            $isPaidOrVerifying = in_array($order->payment_status, ['verified', 'awaiting_verification']);
-
             OrderCancellation::create([
                 'order_id' => $order->id,
                 'cancelled_by' => $request->user()->id,
                 'reason' => $validated['reason'],
-                'refund_amount' => $isPaidOrVerifying ? $order->total_price : null,
-                'refund_method' => $isPaidOrVerifying ? 'original_payment' : 'none',
             ]);
 
             // Restore products inventory and flower stems count
@@ -362,9 +360,6 @@ class OrderController extends Controller
             }
 
             $order->status = 'cancelled';
-            if ($isPaidOrVerifying) {
-                $order->payment_status = 'refunded';
-            }
             $order->save();
         });
 

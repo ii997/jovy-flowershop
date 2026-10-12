@@ -23,5 +23,4 @@ export interface TransactionMetrics {
     totalCount: number;
     gcashCount: number;
     cashCount: number;
-    avgTicket: number;
 }

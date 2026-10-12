@@ -130,15 +130,13 @@ export function useTransactions(orders: Order[] = []) {
         });
 
         const totalTransactions = filteredData.length;
-        const avgTicket = totalTransactions > 0 ? (totalVerifiedAmount + totalPendingAmount) / totalTransactions : 0;
 
         return {
             totalVerifiedAmount,
             totalPendingAmount,
             totalCount: totalTransactions,
             gcashCount,
-            cashCount,
-            avgTicket
+            cashCount
         };
     }, [filteredData]);
 

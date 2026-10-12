@@ -15,10 +15,6 @@ interface UseOrderMutationsProps {
     setAdminNotes: (notes: string) => void;
     cancelReason: string;
     setCancelReason: (reason: string) => void;
-    cancelRefundAmount: string;
-    setCancelRefundAmount: (amount: string) => void;
-    cancelRefundMethod: string;
-    setCancelRefundMethod: (method: string) => void;
     setShowCancelForm: (show: boolean) => void;
 }
 
@@ -31,10 +27,6 @@ export function useOrderMutations({
     setAdminNotes,
     cancelReason,
     setCancelReason,
-    cancelRefundAmount,
-    setCancelRefundAmount,
-    cancelRefundMethod,
-    setCancelRefundMethod,
     setShowCancelForm,
 }: UseOrderMutationsProps) {
     const updateStatusMutation = useUpdateOrderStatus();
@@ -96,15 +88,11 @@ export function useOrderMutations({
             const updatedOrder = await cancelOrderMutation.mutateAsync({
                 orderId,
                 reason: cancelReason.trim(),
-                refund_amount: cancelRefundAmount ? parseFloat(cancelRefundAmount) : null,
-                refund_method: cancelRefundMethod,
             });
             onUpdateOrders?.(orders.map(o => o.id === orderId ? updatedOrder : o));
             if (selectedOrder && selectedOrder.id === orderId) setSelectedOrder(updatedOrder);
             setShowCancelForm(false);
             setCancelReason('');
-            setCancelRefundAmount('');
-            setCancelRefundMethod('none');
             toast.success('Order cancelled and inventory restored');
         } catch (error: any) {
             toast.error(error.message || 'Failed to cancel order');

@@ -83,7 +83,7 @@ export function TransactionToolbar({
                     className="px-3 py-2 bg-[#FAF9F6] border border-[#0A2A1B]/10 rounded-2xl text-xs font-semibold text-[#0A2A1B] focus:outline-none focus:border-[#D97706] cursor-pointer"
                 >
                     <option value="all">All Channels</option>
-                    <option value="gcash">GCash</option>
+                    <option value="gcash">Online</option>
                     <option value="downpayment">Downpayment</option>
                     <option value="online">Online Payment</option>
                 </select>

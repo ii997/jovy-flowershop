@@ -18,7 +18,7 @@ import {
     ChevronRight 
 } from 'reicon-react';
 import { FlattenedTransaction } from '../types';
-import { handleCopyReference } from '../utils';
+import { formatTransactionMethod, handleCopyReference } from '../utils';
 
 interface TransactionTableProps {
     data: FlattenedTransaction[];
@@ -82,7 +82,7 @@ export function TransactionTable({
                         isGcash ? 'bg-sky-50 text-sky-800 border border-sky-300' : 'bg-amber-50 text-amber-900 border border-amber-300'
                     }`}>
                         {isGcash ? <CreditCard className="h-3 w-3 text-sky-600" /> : <Money className="h-3 w-3 text-amber-600" />}
-                        {val}
+                        {formatTransactionMethod(val)}
                     </span>
                 );
             },

@@ -37,13 +37,16 @@ export function PaymentResubmissionModal({
         setUploadSuccess,
         isOcrLoading,
         ocrProgress,
+        isReceiptImage,
+        ocrReviewRequired,
+        ocrConfidence,
         refNo,
         setRefNo,
         paymentAmount,
         txnDate,
         setTxnDate,
         validateAndSetFile,
-    } = useReceiptOcr(order, isOpen);
+    } = useReceiptOcr(isOpen);
 
     useEffect(() => {
         if (isOpen) {
@@ -86,7 +89,7 @@ export function PaymentResubmissionModal({
 
     // Security layer: detect amount mismatch between OCR-extracted value and expected payment total
     const parsedPaymentAmount = parseFloat(paymentAmount.replace(/,/g, '') || '0');
-    const amountMismatch = paymentAmount !== '' && !isOcrLoading && Math.abs(parsedPaymentAmount - expectedPaymentAmount) > 0.01;
+    const amountMismatch = paymentAmount !== '' && !isOcrLoading && ocrConfidence >= 70 && Math.abs(parsedPaymentAmount - expectedPaymentAmount) > 0.01;
 
     // Find the latest rejected payment transaction audit note if available
     const latestTx: PaymentTransaction | undefined = order?.payment_transactions && order.payment_transactions.length > 0
@@ -107,6 +110,7 @@ export function PaymentResubmissionModal({
         formData.append('reference_no', refNo);
         formData.append('amount', paymentAmount);
         formData.append('transaction_date', txnDate);
+        formData.append('ocr_review_required', ocrReviewRequired ? '1' : '0');
 
         try {
             const res = await fetch(`/api/orders/${order.id}/payment`, {
@@ -361,6 +365,11 @@ export function PaymentResubmissionModal({
                                                     <span className="text-[10px] font-bold text-[#0A2A1B]/60 uppercase tracking-wider block">
                                                         ✿ Transaction Details Extracted
                                                     </span>
+                                                    {ocrReviewRequired && (
+                                                        <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] font-semibold text-amber-800">
+                                                            Some receipt details could not be read clearly. Your upload will be flagged for manual review.
+                                                        </p>
+                                                    )}
 
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                                                         <div className="flex flex-col gap-1">
@@ -429,7 +438,7 @@ export function PaymentResubmissionModal({
                                                 <div className="pt-2">
                                                     <button
                                                         type="button"
-                                                        disabled={isUploading || amountMismatch}
+                                                        disabled={isUploading || amountMismatch || !isReceiptImage}
                                                         onClick={handleSubmitReceipt}
                                                         className={`w-full py-3 text-white text-xs font-bold rounded-full transition-all active:scale-[0.98] text-center flex items-center justify-center gap-2 cursor-pointer shadow-md ${
                                                             amountMismatch
@@ -444,6 +453,8 @@ export function PaymentResubmissionModal({
                                                             </>
                                                         ) : amountMismatch ? (
                                                             <span>⚠ Amount Does Not Match Required Total</span>
+                                                        ) : !isReceiptImage ? (
+                                                            <span>Upload a Valid Payment Confirmation</span>
                                                         ) : (
                                                             <>
                                                                 <span>Resubmit Corrected Payment Proof</span>

@@ -204,3 +204,109 @@ export const printOrderSlip = (order: Order) => {
     printWindow.document.write(html);
     printWindow.document.close();
 };
+
+export const printOrderSummaryReport = (orders: Order[], filterDescription: string = 'Current Orders Filter') => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        toast.error('Unable to open print preview. Please check popup permissions.');
+        return;
+    }
+
+    const totalRevenue = orders.reduce((sum, o) => sum + (parseFloat(o.total_price.toString()) || 0), 0);
+    const verifiedOrders = orders.filter(o => o.payment_status === 'verified').length;
+    const pendingOrders = orders.filter(o => o.payment_status === 'pending' || o.payment_status === 'awaiting_verification').length;
+
+    const rowsHtml = orders.map(o => `
+        <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+            <td style="padding: 8px 6px; font-weight: bold; font-family: monospace;">#JFS-${o.id}</td>
+            <td style="padding: 8px 6px;">${o.recipient_name}</td>
+            <td style="padding: 8px 6px;">${o.recipient_phone || '—'}</td>
+            <td style="padding: 8px 6px; text-transform: uppercase;">${o.order_type}</td>
+            <td style="padding: 8px 6px;">${o.pickup_date || 'N/A'}</td>
+            <td style="padding: 8px 6px; text-transform: capitalize;">${o.status}</td>
+            <td style="padding: 8px 6px; font-weight: 600; text-transform: uppercase;">${o.payment_status || 'PENDING'}</td>
+            <td style="padding: 8px 6px; text-align: right; font-weight: bold; font-family: monospace;">₱${(parseFloat(o.total_price.toString()) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        </tr>
+    `).join('');
+
+    const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Orders Summary Report - Jovy's Flowershop</title>
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #0A2A1B; line-height: 1.4; }
+                .header { text-align: center; border-bottom: 2px solid #0A2A1B; padding-bottom: 12px; margin-bottom: 16px; }
+                .title { font-size: 20px; font-weight: 800; text-transform: uppercase; margin: 0; color: #0A2A1B; }
+                .subtitle { font-size: 11px; color: #D97706; font-weight: bold; margin-top: 4px; }
+                .meta { font-size: 12px; color: #64748b; margin-top: 6px; }
+                .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+                .kpi-card { background: #FAF9F6; border: 1px solid #e2e8f0; padding: 10px 12px; border-radius: 8px; }
+                .kpi-title { font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: bold; }
+                .kpi-value { font-size: 16px; font-weight: 800; color: #0A2A1B; margin-top: 2px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                th { text-align: left; padding: 8px 6px; font-size: 10px; text-transform: uppercase; color: #64748b; border-bottom: 2px solid #0A2A1B; }
+                .footer { margin-top: 30px; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+                @media print { body { padding: 0; } }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="title">Jovy's Flowershop</div>
+                <div class="subtitle">ORDERS AUDIT & FULFILLMENT SUMMARY REPORT</div>
+                <div class="meta">Scope: ${filterDescription} • Generated: ${new Date().toLocaleString('en-PH')}</div>
+            </div>
+
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-title">Listed Orders</div>
+                    <div class="kpi-value">${orders.length}</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Gross Total Value</div>
+                    <div class="kpi-value">₱${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Verified Paid</div>
+                    <div class="kpi-value">${verifiedOrders}</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Pending Verification</div>
+                    <div class="kpi-value">${pendingOrders}</div>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Recipient</th>
+                        <th>Phone</th>
+                        <th>Type</th>
+                        <th>Schedule</th>
+                        <th>Fulfillment</th>
+                        <th>Payment</th>
+                        <th style="text-align: right;">Total (PHP)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml.length > 0 ? rowsHtml : '<tr><td colspan="8" style="text-align:center; padding: 20px; color:#94a3b8;">No orders recorded in this filter.</td></tr>'}
+                </tbody>
+            </table>
+
+            <div class="footer">
+                <div>Prepared By: Store Cashier / Admin</div>
+                <div>Fulfillment Lead: ____________________</div>
+                <div>Page 1 of 1</div>
+            </div>
+
+            <script>
+                window.onload = function() { window.print(); }
+            </script>
+        </body>
+        </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+};

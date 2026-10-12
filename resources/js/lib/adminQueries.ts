@@ -156,13 +156,9 @@ export function useCancelOrder() {
         mutationFn: async ({
             orderId,
             reason,
-            refund_amount,
-            refund_method,
         }: {
             orderId: number;
             reason: string;
-            refund_amount?: number | null;
-            refund_method?: string;
         }) => {
             const res = await fetch(`/api/admin/orders/${orderId}/cancel`, {
                 method: 'POST',
@@ -171,7 +167,7 @@ export function useCancelOrder() {
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken() || '',
                 },
-                body: JSON.stringify({ reason, refund_amount, refund_method }),
+                body: JSON.stringify({ reason }),
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));

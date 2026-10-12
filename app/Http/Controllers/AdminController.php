@@ -102,15 +102,60 @@ class AdminController extends Controller
         usort($productCounts, fn($a, $b) => $b['count'] - $a['count']);
         $topProducts = array_slice(array_values($productCounts), 0, 10);
 
-        $dailyTrends = DB::table('orders')
-            ->where('payment_status', 'verified')
-            ->where('status', '!=', 'cancelled')
-            ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(total_price) as total'), DB::raw('COUNT(id) as count'))
-            ->groupBy('date')->orderBy('date', 'asc')->limit(30)->get();
-
         $driver = DB::connection()->getDriverName();
-        $monthExpr = $driver === 'sqlite' ? "strftime('%Y-%m', created_at)" : "DATE_FORMAT(created_at, '%Y-%m')";
-        $yearExpr = $driver === 'sqlite' ? "strftime('%Y', created_at)" : "YEAR(created_at)";
+        $dateExpr = $driver === 'sqlite' ? "strftime('%Y-%m-%d', COALESCE(payment_transactions.verified_at, orders.updated_at, orders.created_at))" : "DATE(COALESCE(payment_transactions.verified_at, orders.updated_at, orders.created_at))";
+        $hourExpr = $driver === 'sqlite' ? "strftime('%H', COALESCE(payment_transactions.verified_at, orders.updated_at, orders.created_at))" : "DATE_FORMAT(COALESCE(payment_transactions.verified_at, orders.updated_at, orders.created_at), '%H')";
+        $monthExpr = $driver === 'sqlite' ? "strftime('%Y-%m', orders.created_at)" : "DATE_FORMAT(orders.created_at, '%Y-%m')";
+        $yearExpr = $driver === 'sqlite' ? "strftime('%Y', orders.created_at)" : "YEAR(orders.created_at)";
+
+        // Base verified & non-cancelled orders query using verified credit timestamp
+        $verifiedOrdersBase = DB::table('orders')
+            ->leftJoin('payment_transactions', function ($join) {
+                $join->on('orders.id', '=', 'payment_transactions.order_id')
+                    ->where('payment_transactions.type', '=', 'payment');
+            })
+            ->where('orders.payment_status', 'verified')
+            ->where('orders.status', '!=', 'cancelled');
+
+        // 1. Daily trends (grouped by calendar day of payment approval, last 30 days)
+        $dailyTrends = (clone $verifiedOrdersBase)
+            ->select(
+                DB::raw("{$dateExpr} as date"),
+                DB::raw('SUM(orders.total_price) as total'),
+                DB::raw('COUNT(DISTINCT orders.id) as count')
+            )
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
+            ->limit(30)
+            ->get();
+
+        // 2. Hourly breakdown across 24 hours (12:00 AM - 11:59 PM) for today
+        $todayDate = now()->format('Y-m-d');
+        $rawHourly = (clone $verifiedOrdersBase)
+            ->whereRaw("{$dateExpr} = ?", [$todayDate])
+            ->select(
+                DB::raw("{$hourExpr} as hour"),
+                DB::raw('SUM(orders.total_price) as total'),
+                DB::raw('COUNT(DISTINCT orders.id) as count')
+            )
+            ->groupBy('hour')
+            ->orderBy('hour', 'asc')
+            ->get()
+            ->keyBy(function ($item) {
+                return str_pad((string) (int) $item->hour, 2, '0', STR_PAD_LEFT);
+            });
+
+        $hourlyTrends = [];
+        for ($h = 0; $h < 24; $h++) {
+            $hKey = str_pad((string) $h, 2, '0', STR_PAD_LEFT);
+            $matching = $rawHourly->get($hKey);
+            $hourlyTrends[] = [
+                'hour' => (int) $h,
+                'hour_label' => date('g A', strtotime("{$h}:00")),
+                'total' => $matching ? (string) $matching->total : '0.00',
+                'count' => $matching ? (int) $matching->count : 0,
+            ];
+        }
 
         $monthlyTrends = DB::table('orders')
             ->where('payment_status', 'verified')
@@ -159,6 +204,7 @@ class AdminController extends Controller
             'occasions_breakdown' => $occasionsBreakdown,
             'seasons_breakdown' => $seasonsBreakdown,
             'trends' => [
+                'hourly' => $hourlyTrends,
                 'daily' => $dailyTrends,
                 'monthly' => $monthlyTrends,
                 'yearly' => $yearlyTrends,
@@ -470,8 +516,6 @@ class AdminController extends Controller
     {
         $validated = $request->validate([
             'reason' => 'required|string|min:5|max:1000',
-            'refund_amount' => 'nullable|numeric|min:0',
-            'refund_method' => 'nullable|string|in:original_payment,store_credit,none',
         ]);
 
         $order = Order::findOrFail($id);
@@ -489,8 +533,6 @@ class AdminController extends Controller
                 'order_id' => $order->id,
                 'cancelled_by' => $request->user()->id,
                 'reason' => strip_tags($validated['reason']),
-                'refund_amount' => $validated['refund_amount'] ?? null,
-                'refund_method' => $validated['refund_method'] ?? 'none',
             ]);
 
             // Restore products inventory and flower stems count
@@ -522,9 +564,6 @@ class AdminController extends Controller
             }
 
             $order->status = 'cancelled';
-            if (($validated['refund_amount'] ?? 0) > 0 || $order->payment_status === 'verified') {
-                $order->payment_status = 'refunded';
-            }
             $order->save();
         });
 

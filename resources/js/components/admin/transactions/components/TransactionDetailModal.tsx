@@ -1,5 +1,6 @@
-import { X as XIcon } from 'reicon-react';
+import { X as XIcon, Printer } from 'reicon-react';
 import { FlattenedTransaction } from '../types';
+import { formatTransactionMethod, printTransactionReceipt } from '../utils';
 
 interface TransactionDetailModalProps {
     tx: FlattenedTransaction | null;
@@ -22,13 +23,24 @@ export function TransactionDetailModal({
                         <span className="text-[10px] font-bold uppercase tracking-wider text-[#D97706]">Transaction Audit Record</span>
                         <h3 className="font-serif text-lg font-bold text-[#0A2A1B]">Order #JFS-{tx.order_id}</h3>
                     </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 cursor-pointer"
-                    >
-                        <XIcon className="h-5 w-5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => printTransactionReceipt(tx)}
+                            className="px-3 py-1.5 bg-[#FAF9F6] hover:bg-[#0A2A1B] hover:text-white border border-[#0A2A1B]/15 text-[#0A2A1B] text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                            title="Print Payment Receipt Slip"
+                        >
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>Print Receipt</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 cursor-pointer"
+                        >
+                            <XIcon className="h-5 w-5" />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="space-y-3.5 text-xs text-[#0A2A1B]">
@@ -44,7 +56,7 @@ export function TransactionDetailModal({
                     )}
                     <div className="flex justify-between py-1.5 border-b border-[#0A2A1B]/5">
                         <span className="text-[#0A2A1B]/60">Payment Method</span>
-                        <span className="font-bold">{tx.method}</span>
+                        <span className="font-bold">{formatTransactionMethod(tx.method)}</span>
                     </div>
                     <div className="flex justify-between py-1.5 border-b border-[#0A2A1B]/5">
                         <span className="text-[#0A2A1B]/60">Reference Code</span>

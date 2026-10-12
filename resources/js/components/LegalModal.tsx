@@ -77,13 +77,11 @@ function TermsContent() {
             </section>
 
             <section className="space-y-2">
-                <h4 className="font-bold text-[#0A2A1B] text-xs">7. Cancellation &amp; Refunds</h4>
+                <h4 className="font-bold text-[#0A2A1B] text-xs">7. Cancellation &amp; No Refund Policy</h4>
                 <ul className="list-disc pl-5 space-y-1">
                     <li>Orders that are still in <strong>"confirmed"</strong> status (not yet being prepared) may be cancelled by the customer through their account profile.</li>
                     <li>Orders that have already moved to <strong>"preparing"</strong> or <strong>"delivered"</strong> status cannot be cancelled by the customer.</li>
-                    <li>For cancelled orders with verified payment, a refund will be processed using the original payment method. Refund processing may take 3–7 business days.</li>
-                    <li>We reserve the right to cancel any order at our discretion. In such cases, a full refund will be issued.</li>
-                    <li>Refunds for reservation downpayments follow the same process as purchase refunds.</li>
+                    <li>Due to the perishable nature of fresh flowers and custom floral arrangements crafted exclusively for your pickup, all confirmed orders and payments are strictly non-refundable upon cancellation.</li>
                 </ul>
             </section>
 
@@ -203,7 +201,7 @@ function PrivacyContent() {
                 <ul className="list-disc pl-5 space-y-1">
                     <li><strong>Order Processing &amp; Fulfillment:</strong> To process your orders, confirm payments, notify you about order status updates, and coordinate pickup arrangements.</li>
                     <li><strong>Account Management:</strong> To create and maintain your account, verify your identity, and provide customer support.</li>
-                    <li><strong>Payment Verification:</strong> To verify payment receipts and process refunds when applicable.</li>
+                    <li><strong>Payment Verification:</strong> To verify customer payment receipts and ensure transactional security.</li>
                     <li><strong>Notifications:</strong> To send you order confirmations, status updates, payment alerts, and administrative messages. These are transactional and essential to your use of our service.</li>
                     <li><strong>Improvement &amp; Analytics:</strong> To analyze usage patterns, diagnose technical issues, and improve our website and services.</li>
                     <li><strong>Legal Compliance:</strong> To comply with applicable laws, regulations, and legal processes.</li>

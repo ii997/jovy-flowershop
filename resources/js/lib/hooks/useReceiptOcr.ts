@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Tesseract from 'tesseract.js';
-import { Order } from '../../types';
+import { classifyReceiptText } from '../receiptOcrValidation';
 
-export function useReceiptOcr(order: Order | null, isOpen: boolean) {
+export function useReceiptOcr(isOpen: boolean) {
+    const ocrRequestId = useRef(0);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string>('');
     const [uploadError, setUploadError] = useState<string>('');
@@ -12,11 +13,15 @@ export function useReceiptOcr(order: Order | null, isOpen: boolean) {
     // OCR states
     const [isOcrLoading, setIsOcrLoading] = useState<boolean>(false);
     const [ocrProgress, setOcrProgress] = useState<number>(0);
+    const [isReceiptImage, setIsReceiptImage] = useState<boolean>(false);
+    const [ocrReviewRequired, setOcrReviewRequired] = useState<boolean>(false);
+    const [ocrConfidence, setOcrConfidence] = useState<number>(0);
     const [refNo, setRefNo] = useState<string>('');
     const [paymentAmount, setPaymentAmount] = useState<string>('');
     const [txnDate, setTxnDate] = useState<string>('');
 
     const resetOcrState = () => {
+        ocrRequestId.current += 1;
         setSelectedFile(null);
         setPreviewUrl('');
         setUploadError('');
@@ -26,6 +31,9 @@ export function useReceiptOcr(order: Order | null, isOpen: boolean) {
         setPaymentAmount('');
         setTxnDate('');
         setOcrProgress(0);
+        setIsReceiptImage(false);
+        setOcrReviewRequired(false);
+        setOcrConfidence(0);
         setIsOcrLoading(false);
     };
 
@@ -33,24 +41,22 @@ export function useReceiptOcr(order: Order | null, isOpen: boolean) {
     useEffect(() => {
         if (isOpen) {
             resetOcrState();
+        } else {
+            ocrRequestId.current += 1;
         }
     }, [isOpen]);
 
     const runOcr = async (file: File) => {
+        const requestId = ++ocrRequestId.current;
         setIsOcrLoading(true);
         setOcrProgress(0);
         setUploadError('');
-
-        // Playwright Mock Fallback for E2E fast testing
-        if (file.name === 'receipt.png' || file.name === 'screenshot.png' || file.name.includes('test')) {
-            await new Promise(r => setTimeout(r, 800));
-            setRefNo('UBTXN1023984712');
-            setPaymentAmount(order?.total_price.toString() || '150');
-            setTxnDate(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
-            setIsOcrLoading(false);
-            setOcrProgress(100);
-            return;
-        }
+        setIsReceiptImage(false);
+        setOcrReviewRequired(false);
+        setOcrConfidence(0);
+        setRefNo('');
+        setPaymentAmount('');
+        setTxnDate('');
 
         try {
             const result = await Tesseract.recognize(
@@ -64,7 +70,11 @@ export function useReceiptOcr(order: Order | null, isOpen: boolean) {
                     }
                 }
             );
+            if (requestId !== ocrRequestId.current) return;
+
             const rawText = result.data.text || '';
+            const confidence = result.data.confidence ?? 0;
+            setOcrConfidence(confidence);
 
             // Clean & normalize OCR text
             const text = rawText
@@ -75,8 +85,7 @@ export function useReceiptOcr(order: Order | null, isOpen: boolean) {
             // --- 1. REFERENCE NUMBER EXTRACTION ---
             let foundRef = '';
             const refRegexes = [
-                /(?:ref\.?\s*(?:no\.?|id|number)?|reference(?:\s*no\.?|\s*number|\s*id)?|txn\s*(?:id|no\.?|number)?|transaction\s*(?:id|no\.?|number)?|instapay\s*ref|control\s*no\.?|trace\s*no\.?|seq\s*no\.?|auth(?:orization)?\s*code)[:\s=]*([A-Z0-9 \t\-]{6,35})/im,
-                /(?:express\s*send|sent\s*to|paid\s*to|gcash|paymaya|maya|unionbank|bdo|bpi)[:\s]*.*?([A-Z0-9]{8,25})/im,
+                /\b(?:reference(?:\s*(?:id|no\.?|number))?|ref\.?(?:\s*(?:id|no\.?|number))?|txn\s*(?:id|no\.?|number)|transaction\s*(?:id|no\.?|number)|control\s*no\.?|trace\s*no\.?|seq\s*no\.?|auth(?:orization)?\s*code)\s*[:#=]?\s*([A-Z0-9][A-Z0-9 \t\-]{5,34})/im,
             ];
 
             for (const regex of refRegexes) {
@@ -97,23 +106,11 @@ export function useReceiptOcr(order: Order | null, isOpen: boolean) {
                 }
             }
 
-            if (!foundRef) {
-                const longNumMatch = text.match(/\b\d{8,20}\b/);
-                if (longNumMatch) {
-                    foundRef = longNumMatch[0];
-                }
-            }
-
-            if (foundRef) {
-                setRefNo(foundRef);
-            }
-
             // --- 2. AMOUNT EXTRACTION ---
             let foundAmount = '';
             const amtRegexes = [
-                /(?:amount\s*(?:paid|sent|total)?|total\s*amount|total|paid|php)[:\s=]*([₱P]?\s*[\d,]+\s*\.\s*\d{2})/i,
-                /PHP\s*([\d,]+\s*\.\s*\d{2})/i,
-                /(?:₱|P)\s*([\d,]+\s*\.\s*\d{2})/i,
+                /(?:amount(?:\s*(?:paid|sent|transferred|received|total))?|total\s*amount|paid)\s*[:=]?\s*(?:PHP\s*)?([\d,]+(?:\.\d{1,2})?)/i,
+                /\bPHP\s*([\d,]+(?:\.\d{1,2})?)/i,
             ];
 
             for (const regex of amtRegexes) {
@@ -128,58 +125,61 @@ export function useReceiptOcr(order: Order | null, isOpen: boolean) {
                 }
             }
 
-            const expectedVal = order ? (typeof order.total_price === 'number' ? order.total_price : parseFloat(order.total_price || '0')) : 0;
-            if (!foundAmount && expectedVal > 0) {
-                const targetStr = expectedVal.toFixed(2);
-                if (text.includes(targetStr) || text.includes(expectedVal.toString())) {
-                    foundAmount = targetStr;
-                }
-            }
-
-            if (!foundAmount) {
-                const matches = text.match(/[\d,]+\.\d{2}/g);
-                if (matches && matches.length > 0) {
-                    let maxVal = 0;
-                    let bestMatch = '';
-                    for (const m of matches) {
-                        const val = parseFloat(m.replace(/,/g, ''));
-                        if (val > maxVal) {
-                            maxVal = val;
-                            bestMatch = val.toFixed(2);
-                        }
-                    }
-                    if (bestMatch) foundAmount = bestMatch;
-                }
-            }
-
-            if (foundAmount) {
-                setPaymentAmount(foundAmount);
-            }
-
             // --- 3. DATE EXTRACTION ---
             const dateRegex = /(?:\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4})/i;
             const dateMatch = text.match(dateRegex);
-            if (dateMatch) {
-                setTxnDate(dateMatch[0]);
-            } else {
-                setTxnDate(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
+            const foundDate = dateMatch?.[0] || '';
+            const classification = classifyReceiptText(
+                text,
+                {
+                    amount: foundAmount,
+                    referenceNo: foundRef,
+                    transactionDate: foundDate,
+                },
+                confidence
+            );
+
+            if (!classification.isReceipt) {
+                setUploadError('This image does not look like an online payment confirmation. Upload a clear screenshot showing payment or transfer details.');
+                return;
             }
 
+            setIsReceiptImage(true);
+            setOcrReviewRequired(classification.requiresManualReview);
+            setRefNo(foundRef);
+            setPaymentAmount(confidence >= 70 ? foundAmount : '');
+            setTxnDate(foundDate);
         } catch (err) {
+            if (requestId !== ocrRequestId.current) return;
             console.error('OCR Parsing Error:', err);
-            setUploadError('Automatic scanning encountered an issue. Please enter reference details below manually.');
+            setUploadError('We could not verify that this image is a payment confirmation. Upload a clearer screenshot and try again.');
         } finally {
-            setIsOcrLoading(false);
+            if (requestId === ocrRequestId.current) {
+                setIsOcrLoading(false);
+            }
         }
     };
 
     const validateAndSetFile = (file: File) => {
+        ocrRequestId.current += 1;
+        setSelectedFile(null);
+        setIsReceiptImage(false);
+        setOcrReviewRequired(false);
+        setOcrConfidence(0);
+        setRefNo('');
+        setPaymentAmount('');
+        setTxnDate('');
+        setIsOcrLoading(false);
+        setOcrProgress(0);
+
         if (!file.type.match(/^image\/(jpeg|png|jpg)$/)) {
             setUploadError('Only JPG, JPEG, and PNG images are accepted.');
+            setPreviewUrl('');
             return;
         }
         if (file.size > 3 * 1024 * 1024) {
             setUploadError('Receipt image must be under 3 MB.');
+            setPreviewUrl('');
             return;
         }
         setSelectedFile(file);
@@ -200,6 +200,9 @@ export function useReceiptOcr(order: Order | null, isOpen: boolean) {
         setUploadSuccess,
         isOcrLoading,
         ocrProgress,
+        isReceiptImage,
+        ocrReviewRequired,
+        ocrConfidence,
         refNo,
         setRefNo,
         paymentAmount,

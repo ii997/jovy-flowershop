@@ -124,6 +124,27 @@ class OrderPaymentTest extends TestCase
         $this->assertEquals('awaiting_verification', $response->json('payment_status'));
     }
 
+    public function test_submit_payment_persists_ocr_manual_review_flag(): void
+    {
+        Storage::fake('public');
+
+        $order = $this->createOrder();
+        $file = UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg');
+
+        $response = $this->actingAs($this->customer)
+            ->postJson("/api/orders/{$order->id}/payment", [
+                'receipt' => $file,
+                'reference_no' => 'REF12345',
+                'amount' => $this->product->price,
+                'ocr_review_required' => '1',
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('payment_details.ocr_review_required', true);
+
+        $this->assertTrue($order->fresh()->payment_details['ocr_review_required']);
+    }
+
     public function test_cannot_submit_payment_for_another_users_order(): void
     {
         Storage::fake('public');
@@ -296,20 +317,18 @@ class OrderPaymentTest extends TestCase
         $this->assertEquals('cancelled', $response->json('status'));
     }
 
-    public function test_cancel_order_with_refund_sets_refunded(): void
+    public function test_cancel_order_retains_payment_status_without_refund(): void
     {
         $order = $this->createOrder(['payment_status' => 'verified']);
 
         $response = $this->actingAs($this->admin)
             ->postJson("/api/admin/orders/{$order->id}/cancel", [
-                'reason' => 'Customer requested cancellation with refund.',
-                'refund_amount' => $this->product->price,
-                'refund_method' => 'original_payment',
+                'reason' => 'Customer requested cancellation per policy.',
             ]);
 
         $response->assertStatus(200);
         $this->assertEquals('cancelled', $response->json('status'));
-        $this->assertEquals('refunded', $response->json('payment_status'));
+        $this->assertEquals('verified', $response->json('payment_status'));
     }
 
     public function test_double_cancellation_rejected(): void
@@ -876,4 +895,3 @@ class OrderPaymentTest extends TestCase
         }
     }
 }
-

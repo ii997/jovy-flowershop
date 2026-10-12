@@ -16,6 +16,7 @@ import { Order } from '../../types';
 import { DashboardSkeleton } from '../ui/Skeleton';
 import { getOrderUrgency } from './orders/utils';
 import { MonthlyProductBreakdownSection } from './MonthlyProductBreakdownSection';
+import { toast } from '../ui/Toast';
 import {
     DollarSign,
     ShieldCheck,
@@ -26,7 +27,8 @@ import {
     Leaf,
     Clock,
     Package,
-    ArrowRight
+    ArrowRight,
+    Printer
 } from 'reicon-react';
 
 ChartJS.register(
@@ -60,6 +62,7 @@ interface DashboardTabProps {
         occasions_breakdown?: Record<string, number>;
         seasons_breakdown?: Record<string, number>;
         trends?: {
+            hourly?: { hour: number; hour_label: string; total: string; count: number }[];
             daily: { date: string; total: string; count: number }[];
             monthly: { month: string; total: string; count: number }[];
             yearly: { year: string; total: string; count: number }[];
@@ -70,7 +73,6 @@ interface DashboardTabProps {
             }[];
         };
         patterns?: {
-            average_order_size: number;
             repeat_rate: number;
             total_customers: number;
         };
@@ -105,6 +107,7 @@ const endLabelPlugin = {
 
 export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: DashboardTabProps) {
     const [trendPeriod, setTrendPeriod] = useState<'daily' | 'monthly' | 'yearly'>('daily');
+    const [dailySubView, setDailySubView] = useState<'hourly' | '7d' | '30d'>('7d');
     const [selectedYear, setSelectedYear] = useState<string>('2025');
     const [selectedMonthForModal, setSelectedMonthForModal] = useState<string | null>(null);
     const [yoyMetric, setYoyMetric] = useState<'sales' | 'orders'>('sales');
@@ -121,6 +124,17 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
         return shortMonths[monthNum - 1] || dateStr;
     };
 
+    const formatCalendarDate = (dateStr: string) => {
+        if (!dateStr) return '';
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            const m = parseInt(parts[1], 10);
+            const d = parseInt(parts[2], 10);
+            return `${shortMonths[m - 1] || parts[1]} ${d}`;
+        }
+        return dateStr;
+    };
+
     // Extract all distinct years available in data
     const monthlyRawList = stats?.trends?.monthly || [];
     const yearlyRawList = stats?.trends?.yearly || [];
@@ -135,6 +149,7 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
     // 1. Transaction Trends Chart Configuration
     let trendLabels: string[] = [];
     let trendAmounts: number[] = [];
+    let trendCounts: number[] = [];
     let trendMonthKeys: string[] = []; // Store actual "YYYY-MM" for click handling
 
     if (trendPeriod === 'monthly') {
@@ -142,6 +157,7 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
             // All months sorted chronologically
             trendLabels = monthlyRawList.map((item: any) => `${formatToShortMonth(item.month)} '${item.month.split('-')[0].slice(-2)}`);
             trendAmounts = monthlyRawList.map((item: any) => parseFloat(item.total) || 0);
+            trendCounts = monthlyRawList.map((item: any) => item.count || 0);
             trendMonthKeys = monthlyRawList.map((item: any) => item.month);
         } else {
             // Full Jan to Dec representation for the specific chosen year (e.g. Jan to Dec 2024 separate from 2025)
@@ -151,16 +167,35 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                 const found = monthlyRawList.find((item: any) => item.month === mKey);
                 return found ? parseFloat(found.total) || 0 : 0;
             });
+            trendCounts = trendMonthKeys.map(mKey => {
+                const found = monthlyRawList.find((item: any) => item.month === mKey);
+                return found ? (found.count || 0) : 0;
+            });
         }
     } else if (trendPeriod === 'daily') {
-        const dailyList = stats?.trends?.daily || [];
-        trendLabels = dailyList.map((item: any) => formatToShortMonth(item.date));
-        trendAmounts = dailyList.map((item: any) => parseFloat(item.total) || 0);
-        trendMonthKeys = dailyList.map((item: any) => item.date ? item.date.slice(0, 7) : '');
+        if (dailySubView === 'hourly') {
+            // 24-hour hourly curve for today (12:00 AM - 11:00 PM)
+            const hourlyList = stats?.trends?.hourly || [];
+            trendLabels = hourlyList.map(item => item.hour_label);
+            trendAmounts = hourlyList.map(item => parseFloat(item.total) || 0);
+            trendCounts = hourlyList.map(item => item.count || 0);
+            trendMonthKeys = hourlyList.map(() => '');
+        } else {
+            // Calendar daily trend: last 7 days vs last 30 days
+            const dailyList = stats?.trends?.daily || [];
+            const sliceCount = dailySubView === '7d' ? 7 : 30;
+            const slicedList = dailyList.slice(-sliceCount);
+
+            trendLabels = slicedList.map((item: any) => formatCalendarDate(item.date));
+            trendAmounts = slicedList.map((item: any) => parseFloat(item.total) || 0);
+            trendCounts = slicedList.map((item: any) => item.count || 0);
+            trendMonthKeys = slicedList.map((item: any) => item.date ? item.date.slice(0, 7) : '');
+        }
     } else {
         // Yearly
         trendLabels = yearlyRawList.map((item: any) => String(item.year));
         trendAmounts = yearlyRawList.map((item: any) => parseFloat(item.total) || 0);
+        trendCounts = yearlyRawList.map((item: any) => item.count || 0);
         trendMonthKeys = yearlyRawList.map((item: any) => String(item.year));
     }
 
@@ -230,13 +265,20 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                 callbacks: {
                     label: (context: any) => {
                         const val = parseFloat(context.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        const idx = context.dataIndex;
+                        const count = trendCounts[idx] !== undefined ? trendCounts[idx] : null;
+                        const countStr = count !== null ? ` · ${count} ${count === 1 ? 'order' : 'orders'}` : '';
+
                         if (trendPeriod === 'yearly') {
-                            return ` Revenue: ₱${val} (Click to drill down into months)`;
+                            return ` Revenue: ₱${val}${countStr} (Click to drill down into months)`;
                         }
                         if (trendPeriod === 'monthly') {
-                            return ` Revenue: ₱${val} (Click to view products)`;
+                            return ` Revenue: ₱${val}${countStr} (Click to view products)`;
                         }
-                        return ` Revenue: ₱${val}`;
+                        if (trendPeriod === 'daily' && dailySubView === 'hourly') {
+                            return ` Revenue: ₱${val}${countStr} (Approved between this hour)`;
+                        }
+                        return ` Realized Sales: ₱${val}${countStr}`;
                     }
                 }
             }
@@ -583,16 +625,61 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                             <span className="text-[10px] font-bold text-[#D97706] uppercase tracking-wider">Revenue Analysis</span>
                             <h3 className="font-serif text-lg font-bold text-[#0A2A1B]">Transaction & Sales Trends</h3>
                             <p className="text-[11px] text-[#0A2A1B]/50 mt-0.5">
-                                {trendPeriod === 'monthly' ? (
+                                {trendPeriod === 'daily' ? (
+                                    dailySubView === 'hourly' ? (
+                                        <span>Viewing <strong>Today's 24-Hour Peak Velocity</strong> (12:00 AM – 11:59 PM credited payments).</span>
+                                    ) : dailySubView === '7d' ? (
+                                        <span>Viewing <strong>Last 7 Days</strong> realized daily gross sales (approved payments between 12 AM – 11:59 PM).</span>
+                                    ) : (
+                                        <span>Viewing <strong>Last 30 Days</strong> realized daily gross sales (approved payments between 12 AM – 11:59 PM).</span>
+                                    )
+                                ) : trendPeriod === 'monthly' ? (
                                     <span>Viewing <strong>{selectedYear === 'all' ? 'All Recorded Years' : `Jan to Dec ${selectedYear}`}</strong>. Click any month point to view products.</span>
-                                ) : trendPeriod === 'yearly' ? (
-                                    <span>Viewing <strong>Annual Totals</strong>. Click any year point to drill down into its monthly breakdown.</span>
                                 ) : (
-                                    <span>Track sales patterns across time.</span>
+                                    <span>Viewing <strong>Annual Totals</strong>. Click any year point to drill down into its monthly breakdown.</span>
                                 )}
                             </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                            {/* Sub-view Filter Pills for Daily view */}
+                            {trendPeriod === 'daily' && (
+                                <div className="inline-flex bg-[#FAF9F6] p-1 rounded-xl border border-[#0A2A1B]/10 text-[11px] font-bold">
+                                    <button
+                                        type="button"
+                                        onClick={() => setDailySubView('hourly')}
+                                        className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${dailySubView === 'hourly'
+                                            ? 'bg-[#0A2A1B] text-white shadow-2xs'
+                                            : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
+                                            }`}
+                                        title="Hourly sales velocity for today (12 AM - 11 PM)"
+                                    >
+                                        TODAY (24H)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDailySubView('7d')}
+                                        className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${dailySubView === '7d'
+                                            ? 'bg-[#0A2A1B] text-white shadow-2xs'
+                                            : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
+                                            }`}
+                                        title="Daily sales for the last 7 calendar days"
+                                    >
+                                        LAST 7D
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDailySubView('30d')}
+                                        className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${dailySubView === '30d'
+                                            ? 'bg-[#0A2A1B] text-white shadow-2xs'
+                                            : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
+                                            }`}
+                                        title="Daily sales for the last 30 calendar days"
+                                    >
+                                        LAST 30D
+                                    </button>
+                                </div>
+                            )}
+
                             {/* Year Filter Pills for Monthly view */}
                             {trendPeriod === 'monthly' && (
                                 <div className="inline-flex bg-[#FAF9F6] p-1 rounded-xl border border-[#0A2A1B]/10 text-[11px] font-bold">
@@ -637,6 +724,107 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                                     </button>
                                 ))}
                             </div>
+
+                            {/* Print Sales Trend Report */}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const printWindow = window.open('', '_blank');
+                                    if (!printWindow) {
+                                        toast.error('Unable to open print preview. Please check popup permissions.');
+                                        return;
+                                    }
+
+                                    const totalTrendRevenue = trendAmounts.reduce((sum, val) => sum + val, 0);
+                                    const totalTrendOrders = trendCounts.reduce((sum, val) => sum + val, 0);
+                                    const viewScopeTitle = trendPeriod === 'daily'
+                                        ? (dailySubView === 'hourly' ? "Today's 24-Hour Hourly Trend (Peak Business Hours)" : dailySubView === '7d' ? 'Last 7 Calendar Days Trend' : 'Last 30 Calendar Days Trend')
+                                        : trendPeriod === 'monthly'
+                                            ? (selectedYear === 'all' ? 'All Recorded Years (Monthly)' : `Calendar Year ${selectedYear} (Jan - Dec)`)
+                                            : 'Annual Totals by Year';
+
+                                    const rowsHtml = trendLabels.map((lbl, idx) => `
+                                        <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+                                            <td style="padding: 8px 10px; font-weight: bold; color: #0A2A1B;">${lbl}</td>
+                                            <td style="padding: 8px 10px; text-align: center; font-weight: 600;">${trendCounts[idx] || 0}</td>
+                                            <td style="padding: 8px 10px; text-align: right; font-weight: bold; font-family: monospace; color: #0A2A1B;">₱${(trendAmounts[idx] || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        </tr>
+                                    `).join('');
+
+                                    const html = `
+                                        <!DOCTYPE html>
+                                        <html>
+                                        <head>
+                                            <title>Sales Trend Report - Jovy's Flowershop</title>
+                                            <style>
+                                                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #0A2A1B; line-height: 1.4; }
+                                                .header { text-align: center; border-bottom: 2px solid #0A2A1B; padding-bottom: 12px; margin-bottom: 16px; }
+                                                .title { font-size: 20px; font-weight: 800; text-transform: uppercase; margin: 0; color: #0A2A1B; }
+                                                .subtitle { font-size: 11px; color: #D97706; font-weight: bold; margin-top: 4px; }
+                                                .meta { font-size: 12px; color: #64748b; margin-top: 6px; }
+                                                .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 18px; }
+                                                .kpi-card { background: #FAF9F6; border: 1px solid #e2e8f0; padding: 12px 16px; border-radius: 8px; }
+                                                .kpi-title { font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: bold; }
+                                                .kpi-value { font-size: 20px; font-weight: 800; color: #0A2A1B; margin-top: 2px; }
+                                                table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                                                th { text-align: left; padding: 8px 10px; font-size: 10px; text-transform: uppercase; color: #64748b; border-bottom: 2px solid #0A2A1B; }
+                                                .footer { margin-top: 30px; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+                                                @media print { body { padding: 0; } }
+                                            </style>
+                                        </head>
+                                        <body>
+                                            <div class="header">
+                                                <div class="title">Jovy's Flowershop</div>
+                                                <div class="subtitle">TRANSACTION & SALES TRENDS AUDIT REPORT</div>
+                                                <div class="meta">Scope: ${viewScopeTitle} • Generated: ${new Date().toLocaleString('en-PH')}</div>
+                                                <div style="font-size: 10px; color: #64748b; margin-top: 4px; font-style: italic;">* Audit Basis: Orders completed with approved payments between 12:00 AM and 11:59 PM cutoff window.</div>
+                                            </div>
+
+                                            <div class="kpi-grid">
+                                                <div class="kpi-card">
+                                                    <div class="kpi-title">Total Realized Revenue in Period</div>
+                                                    <div class="kpi-value">₱${totalTrendRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                                </div>
+                                                <div class="kpi-card">
+                                                    <div class="kpi-title">Total Volume / Orders Count</div>
+                                                    <div class="kpi-value">${totalTrendOrders} orders</div>
+                                                </div>
+                                            </div>
+
+                                            <table>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Timeline / Point</th>
+                                                        <th style="text-align: center;">Orders Count</th>
+                                                        <th style="text-align: right;">Gross Sales (PHP)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    ${rowsHtml.length > 0 ? rowsHtml : '<tr><td colspan="3" style="text-align:center; padding: 20px; color:#94a3b8;">No transaction data recorded for this period.</td></tr>'}
+                                                </tbody>
+                                            </table>
+
+                                            <div class="footer">
+                                                <div>Generated from Jovy's Flowershop Analytics Dashboard</div>
+                                                <div>Page 1 of 1</div>
+                                            </div>
+
+                                            <script>
+                                                window.onload = function() { window.print(); }
+                                            </script>
+                                        </body>
+                                        </html>
+                                    `;
+
+                                    printWindow.document.write(html);
+                                    printWindow.document.close();
+                                }}
+                                className="px-3 py-1.5 bg-[#FAF9F6] hover:bg-[#0A2A1B] hover:text-white border border-[#0A2A1B]/15 text-[#0A2A1B] text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95 shrink-0"
+                                title="Print Transaction & Sales Trends Report"
+                            >
+                                <Printer className="w-3.5 h-3.5" />
+                                <span>Print Trend</span>
+                            </button>
                         </div>
                     </div>
                     <div className="h-68 pt-2">
@@ -659,14 +847,6 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                     </div>
 
                     <div className="flex-1 flex flex-col justify-around py-2 space-y-4">
-                        <div className="bg-[#FAF9F6] border border-[#0A2A1B]/5 p-4 rounded-2xl space-y-1">
-                            <span className="text-[11px] font-bold text-[#0A2A1B]/60 uppercase tracking-wider block">Average Basket Value</span>
-                            <div className="text-2xl font-bold text-[#0A2A1B] font-mono">
-                                ₱{(stats?.patterns?.average_order_size ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </div>
-                            <span className="text-[10px] text-[#0A2A1B]/50 block">Average spend per completed transaction</span>
-                        </div>
-
                         <div className="bg-[#FAF9F6] border border-[#0A2A1B]/5 p-4 rounded-2xl space-y-1">
                             <span className="text-[11px] font-bold text-[#0A2A1B]/60 uppercase tracking-wider block">Registered Client Base</span>
                             <div className="flex items-baseline gap-2">
@@ -929,4 +1109,3 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
         </div>
     );
 }
-

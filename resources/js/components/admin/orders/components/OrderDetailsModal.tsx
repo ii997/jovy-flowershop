@@ -1,4 +1,4 @@
-import { X as XIcon, Printer, Check, XCircle, FileText, Eye } from 'reicon-react';
+import { X as XIcon, Printer, Check, XCircle, FileText, Eye, AlertTriangle } from 'reicon-react';
 import { Order } from '../../../../types';
 import { getStatusStyle, getPaymentStatusLabel, printOrderSlip, getOrderUrgency } from '../utils';
 
@@ -16,10 +16,6 @@ interface OrderDetailsModalProps {
     setShowCancelForm: (show: boolean) => void;
     cancelReason: string;
     setCancelReason: (val: string) => void;
-    cancelRefundAmount: string;
-    setCancelRefundAmount: (val: string) => void;
-    cancelRefundMethod: string;
-    setCancelRefundMethod: (val: string) => void;
     onCancelOrder: (orderId: number) => void;
     cancelling: boolean;
 }
@@ -38,10 +34,6 @@ export function OrderDetailsModal({
     setShowCancelForm,
     cancelReason,
     setCancelReason,
-    cancelRefundAmount,
-    setCancelRefundAmount,
-    cancelRefundMethod,
-    setCancelRefundMethod,
     onCancelOrder,
     cancelling,
 }: OrderDetailsModalProps) {
@@ -190,6 +182,16 @@ export function OrderDetailsModal({
 
                                 {order.payment_receipt ? (
                                     <div className="space-y-3">
+                                        {order.payment_details?.ocr_review_required && (
+                                            <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-amber-900">
+                                                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                                                <div>
+                                                    <p className="text-[10px] font-extrabold uppercase tracking-wider">OCR needs manual review</p>
+                                                    <p className="mt-0.5 text-[10px] leading-relaxed">Some payment details were missing or unclear in the customer’s screenshot. Verify the receipt image and transaction manually.</p>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* Reference & Amount Summary Card */}
                                         <div className="bg-white border border-[#0A2A1B]/10 p-3.5 rounded-xl space-y-2">
                                             <div className="flex justify-between items-center">
@@ -411,36 +413,10 @@ export function OrderDetailsModal({
                                                 rows={3}
                                                 className="w-full px-3 py-2 bg-white border border-rose-200 rounded-lg text-xs text-slate-800 outline-none focus:border-rose-500 resize-none" 
                                             />
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div>
-                                                    <label className="text-[9px] font-semibold text-rose-700 block mb-1">Refund Amount</label>
-                                                    <input 
-                                                        type="number" 
-                                                        step="0.01" 
-                                                        min="0" 
-                                                        placeholder="0.00" 
-                                                        value={cancelRefundAmount}
-                                                        onChange={(e) => setCancelRefundAmount(e.target.value)}
-                                                        className="w-full px-3 py-2 bg-white border border-rose-200 rounded-lg text-xs text-slate-800 outline-none focus:border-rose-500" 
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[9px] font-semibold text-rose-700 block mb-1">Refund Method</label>
-                                                    <select 
-                                                        value={cancelRefundMethod} 
-                                                        onChange={(e) => setCancelRefundMethod(e.target.value)}
-                                                        className="w-full px-3 py-2 bg-white border border-rose-200 rounded-lg text-xs text-slate-800 outline-none focus:border-rose-500 cursor-pointer"
-                                                    >
-                                                        <option value="none">No Refund</option>
-                                                        <option value="original_payment">Original Payment</option>
-                                                        <option value="store_credit">Store Credit</option>
-                                                    </select>
-                                                </div>
-                                            </div>
                                             <div className="grid grid-cols-2 gap-2 pt-1">
                                                 <button 
                                                     type="button"
-                                                    onClick={() => { setShowCancelForm(false); setCancelReason(''); setCancelRefundAmount(''); setCancelRefundMethod('none'); }}
+                                                    onClick={() => { setShowCancelForm(false); setCancelReason(''); }}
                                                     disabled={cancelling}
                                                     className="px-4 py-2 bg-slate-200 hover:bg-slate-300 disabled:bg-gray-100 text-slate-700 disabled:text-gray-400 text-xs font-medium rounded-lg cursor-pointer transition-colors disabled:cursor-not-allowed"
                                                 >

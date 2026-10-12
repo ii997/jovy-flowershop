@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
-import { X as XIcon, ShoppingBag, Filter, Calendar, Award, Package, Sparkles } from 'reicon-react';
+import { X as XIcon, ShoppingBag, Filter, Calendar, Award, Package, Sparkles, Printer } from 'reicon-react';
 import { useMonthlyProductSales } from '../../lib/adminQueries';
 import { MonthlyProductSale } from '../../types';
 import { Skeleton } from '../ui/Skeleton';
+import { toast } from '../ui/Toast';
 
 interface MonthlyProductBreakdownSectionProps {
     month: string | null; // e.g. "2025-01"
@@ -78,6 +79,101 @@ export function MonthlyProductBreakdownSection({ month, onClose }: MonthlyProduc
         return { totalRev, totalUnits, topProduct };
     }, [filteredProducts]);
 
+    const handlePrintReport = () => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            toast.error('Unable to open print preview. Please check popup permissions.');
+            return;
+        }
+
+        const rowsHtml = filteredProducts.map((p, idx) => `
+            <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+                <td style="padding: 8px 6px; font-weight: bold; color: #64748b;">#${idx + 1}</td>
+                <td style="padding: 8px 6px; font-weight: bold; color: #0A2A1B;">${p.name}</td>
+                <td style="padding: 8px 6px;">${p.category}</td>
+                <td style="padding: 8px 6px;">${Array.isArray(p.occasions) && p.occasions.length > 0 ? p.occasions.join(', ') : 'General'}</td>
+                <td style="padding: 8px 6px; text-align: center; font-weight: 600;">${p.units_sold}</td>
+                <td style="padding: 8px 6px; text-align: right; font-family: monospace;">₱${(p.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="padding: 8px 6px; text-align: right; font-weight: bold; font-family: monospace; color: #0A2A1B;">₱${(p.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            </tr>
+        `).join('');
+
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Product Sales Performance - ${formattedTitle}</title>
+                <style>
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #0A2A1B; line-height: 1.4; }
+                    .header { text-align: center; border-bottom: 2px solid #0A2A1B; padding-bottom: 12px; margin-bottom: 16px; }
+                    .title { font-size: 20px; font-weight: 800; text-transform: uppercase; margin: 0; color: #0A2A1B; }
+                    .subtitle { font-size: 11px; color: #D97706; font-weight: bold; margin-top: 4px; }
+                    .meta { font-size: 12px; color: #64748b; margin-top: 6px; }
+                    .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+                    .kpi-card { background: #FAF9F6; border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 8px; }
+                    .kpi-title { font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: bold; }
+                    .kpi-value { font-size: 18px; font-weight: 800; color: #0A2A1B; margin-top: 2px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                    th { text-align: left; padding: 8px 6px; font-size: 10px; text-transform: uppercase; color: #64748b; border-bottom: 2px solid #0A2A1B; }
+                    .footer { margin-top: 30px; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+                    @media print { body { padding: 0; } }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="title">Jovy's Flowershop</div>
+                    <div class="subtitle">MONTHLY PRODUCT SALES BREAKDOWN & PERFORMANCE REPORT</div>
+                    <div class="meta">Period: ${formattedTitle} • Category: ${selectedCategory.toUpperCase()} • Occasion: ${selectedOccasion.toUpperCase()} • Generated: ${new Date().toLocaleString('en-PH')}</div>
+                </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-title">Total Filtered Revenue</div>
+                        <div class="kpi-value">₱${monthStats.totalRev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-title">Total Units Sold</div>
+                        <div class="kpi-value">${monthStats.totalUnits} items</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-title">Top Performing Arrangement</div>
+                        <div class="kpi-value" style="font-size: 14px;">${monthStats.topProduct?.name || 'N/A'}</div>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Arrangement Name</th>
+                            <th>Category</th>
+                            <th>Occasions</th>
+                            <th style="text-align: center;">Units Sold</th>
+                            <th style="text-align: right;">Unit Price</th>
+                            <th style="text-align: right;">Total Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml.length > 0 ? rowsHtml : '<tr><td colspan="7" style="text-align:center; padding: 20px; color:#94a3b8;">No product sales recorded in this period.</td></tr>'}
+                    </tbody>
+                </table>
+
+                <div class="footer">
+                    <div>Generated by Store Manager / Inventory Lead</div>
+                    <div>Page 1 of 1</div>
+                </div>
+
+                <script>
+                    window.onload = function() { window.print(); }
+                </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(html);
+        printWindow.document.close();
+    };
+
     if (!month) return null;
 
     return (
@@ -105,7 +201,16 @@ export function MonthlyProductBreakdownSection({ month, onClose }: MonthlyProduc
                     </p>
                 </div>
 
-                <div className="flex items-center gap-3 self-end sm:self-start">
+                <div className="flex items-center gap-2 self-end sm:self-start">
+                    <button
+                        type="button"
+                        onClick={handlePrintReport}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-[#FAF9F6] text-[#0A2A1B] hover:bg-[#0A2A1B] hover:text-white rounded-xl border border-[#0A2A1B]/10 cursor-pointer transition-colors shadow-2xs active:scale-95"
+                        title="Print Monthly Product Breakdown Report"
+                    >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Print Report</span>
+                    </button>
                     <button
                         type="button"
                         onClick={onClose}

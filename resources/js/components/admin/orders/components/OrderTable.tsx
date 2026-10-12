@@ -1,7 +1,7 @@
-import { Calendar, Check } from 'reicon-react';
+import { Calendar, Check, Printer } from 'reicon-react';
 import { Order } from '../../../../types';
 import { Pagination } from '../../../Pagination';
-import { getStatusStyle, getPaymentStatusLabel, getOrderUrgency } from '../utils';
+import { getStatusStyle, getPaymentStatusLabel, getOrderUrgency, printOrderSlip } from '../utils';
 
 interface OrderTableProps {
     orders: Order[];
@@ -166,6 +166,19 @@ export function OrderTable({
                                                 )}
                                             </>
                                         )}
+
+                                        {/* Quick Print Slip Button */}
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                printOrderSlip(o);
+                                            }}
+                                            className="p-1.5 bg-[#FAF9F6] hover:bg-[#0A2A1B] hover:text-white border border-[#0A2A1B]/15 text-[#0A2A1B]/70 text-[10px] font-bold rounded-xl transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95"
+                                            title="Print Florist Assembly Slip"
+                                        >
+                                            <Printer className="w-3.5 h-3.5" />
+                                        </button>
 
                                         {/* Manage / Inspection Button */}
                                         <button
