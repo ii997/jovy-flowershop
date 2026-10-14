@@ -7,6 +7,7 @@ import { Lock, Search, ChevronDown, SearchStatus } from 'reicon-react';
 interface ProductListProps {
     products: Product[];
     onOrderBouquet: (product: Product) => void;
+    onAddToCart: (product: Product) => void;
     isAuthenticated: boolean;
     onAuthClick: () => void;
     isLoading?: boolean;
@@ -30,6 +31,7 @@ const OCCASIONS = [
 export function ProductList({ 
     products, 
     onOrderBouquet, 
+    onAddToCart,
     isAuthenticated, 
     onAuthClick, 
     isLoading = false,
@@ -172,6 +174,7 @@ export function ProductList({
                                         key={product.id}
                                         product={product}
                                         onOrderBouquet={onOrderBouquet}
+                                        onAddToCart={onAddToCart}
                                     />
                                 ))}
                             </div>

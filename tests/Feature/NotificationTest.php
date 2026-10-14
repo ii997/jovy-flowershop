@@ -157,6 +157,7 @@ class NotificationTest extends TestCase
             'recipient_name' => 'John Doe',
             'recipient_phone' => '+639170000000',
             'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'pickup_time' => '09:00',
             'wrapper_type' => 'Classic Kraft Paper',
             'gift_message' => 'Happy Birthday!',
             'items' => [
@@ -255,6 +256,7 @@ class NotificationTest extends TestCase
             'recipient_name' => 'Jane Doe',
             'recipient_phone' => '09170000000',
             'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'pickup_time' => '09:00',
             'total_price' => 500,
             'downpayment_amount' => 150,
             'status' => 'confirmed',

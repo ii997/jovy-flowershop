@@ -7,9 +7,10 @@ import { ChevronLeft, ChevronRight, Star, Leaf } from 'reicon-react';
 interface ProductCardProps {
     product: Product;
     onOrderBouquet: (product: Product) => void;
+    onAddToCart?: (product: Product) => void;
 }
 
-export function ProductCard({ product, onOrderBouquet }: ProductCardProps) {
+export function ProductCard({ product, onOrderBouquet, onAddToCart }: ProductCardProps) {
     const [activeImageIndex, setActiveImageIndex] = useState(0);
 
     const hasGallery = product.gallery && product.gallery.length > 1;
@@ -149,17 +150,27 @@ export function ProductCard({ product, onOrderBouquet }: ProductCardProps) {
 
 
                     {product.availability ? (
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.96 }}
-                            transition={transition}
-                            onClick={() => {
-                                onOrderBouquet(product);
-                            }}
-                            className="px-6 py-2 bg-[#D97706] hover:bg-[#0A2A1B] text-white text-xs font-semibold rounded-full border border-transparent shadow-xs transition-colors duration-300 cursor-pointer"
-                        >
-                            Order Bouquet
-                        </motion.button>
+                        <div className="flex flex-col gap-2 items-end">
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.96 }}
+                                transition={transition}
+                                onClick={() => {
+                                    onOrderBouquet(product);
+                                }}
+                                className="px-6 py-2 bg-[#D97706] hover:bg-[#0A2A1B] text-white text-xs font-semibold rounded-full border border-transparent shadow-xs transition-colors duration-300 cursor-pointer"
+                            >
+                                Order Bouquet
+                            </motion.button>
+                            <button
+                                onClick={() => {
+                                    onAddToCart?.(product);
+                                }}
+                                className="px-6 py-1.5 bg-white hover:bg-[#0A2A1B]/5 text-[#0A2A1B] text-xs font-semibold rounded-full border border-[#0A2A1B]/15 transition-colors cursor-pointer"
+                            >
+                                Add to Cart
+                            </button>
+                        </div>
                     ) : (
                         <button
                             disabled

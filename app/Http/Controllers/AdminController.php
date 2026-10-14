@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Services\NotificationService;
 use App\Support\ProductPricing;
+use Carbon\Carbon;
 
 class AdminController extends Controller
 {
@@ -313,6 +314,7 @@ class AdminController extends Controller
             'recipient_phone' => 'nullable|string|max:20',
             'order_type' => 'nullable|string|in:walk-in,purchase,reservation',
             'pickup_date' => 'nullable|date',
+            'pickup_time' => 'nullable|date_format:H:i',
             'payment_method' => 'required|string|in:cash,gcash',
             'status' => 'required|string|in:confirmed,delivered',
             'gift_message' => 'nullable|string|max:500',
@@ -355,6 +357,7 @@ class AdminController extends Controller
 
             $orderType = $validated['order_type'] ?? 'walk-in';
             $pickupDate = !empty($validated['pickup_date']) ? $validated['pickup_date'] : now()->toDateString();
+            $pickupTime = !empty($validated['pickup_time']) ? $validated['pickup_time'] : now()->format('H:i');
             $recipientPhone = !empty($validated['recipient_phone']) ? $validated['recipient_phone'] : '09000000000';
 
             $order = Order::create([
@@ -363,6 +366,7 @@ class AdminController extends Controller
                 'recipient_name' => $validated['recipient_name'],
                 'recipient_phone' => $recipientPhone,
                 'pickup_date' => $pickupDate,
+                'pickup_time' => $pickupTime,
                 'gift_message' => $validated['gift_message'] ?? null,
                 'items' => $processedItems,
                 'total_price' => $totalPrice,
@@ -409,13 +413,14 @@ class AdminController extends Controller
 
         if ($order->status === 'preparing') {
             $title = '✿ Order Preparing';
-            $message = "Your order #JFS-{$order->id} is now being prepared! We will notify you once shipped.";
+            $message = "Your order #JFS-{$order->id} is now being prepared. We will notify you when it is ready for pickup.";
         } elseif ($order->status === 'delivered') {
-            $title = '✔ Order Delivered';
-            $message = "Your order #JFS-{$order->id} has been delivered successfully! Thank you for ordering from Jovy's Flowershop.";
+            $title = '✔ Order Picked Up';
+            $message = "Your order #JFS-{$order->id} has been picked up successfully. Thank you for ordering from Jovy's Flowershop.";
         } elseif ($order->status === 'ready_for_pickup') {
             $title = '✔ Order Ready for Pickup';
-            $message = "Your order #JFS-{$order->id} is now ready for pickup! You may claim it at the store.";
+            $pickupTime = $order->pickup_time ? Carbon::parse($order->pickup_time)->format('g:i A') : 'your scheduled time';
+            $message = "Your order #JFS-{$order->id} is now ready for pickup! You may claim it at the store at {$pickupTime}.";
         } elseif ($order->status === 'confirmed') {
             $title = 'Order Confirmed';
             $message = "Your order/reservation #JFS-{$order->id} has been confirmed.";

@@ -3,7 +3,7 @@ import { User } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAnimationTransition } from './animations';
 import { NotificationBell } from './NotificationBell';
-import { ArrowRight, User as UserIcon, ChevronDown } from 'reicon-react';
+import { ArrowRight, User as UserIcon, ChevronDown, ShoppingCart } from 'reicon-react';
 
 interface HeaderProps {
     user: User | null;
@@ -11,6 +11,8 @@ interface HeaderProps {
     onDashboardClick: () => void;
     onLogout: () => void;
     onProfileClick: () => void;
+    cartCount?: number;
+    onCartClick?: () => void;
 }
 
 export function Header({
@@ -19,6 +21,8 @@ export function Header({
     onDashboardClick,
     onLogout,
     onProfileClick,
+    cartCount = 0,
+    onCartClick,
 }: HeaderProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const transition = useAnimationTransition('snappy');
@@ -58,6 +62,21 @@ export function Header({
                     )}
 
                     {user && <NotificationBell />}
+
+                    {user && (
+                        <button
+                            onClick={onCartClick}
+                            className="relative p-2 hover:bg-[#0A2A1B]/5 rounded-full text-[#0A2A1B] transition-all cursor-pointer border border-[#0A2A1B]/10"
+                            aria-label="Open cart"
+                        >
+                            <ShoppingCart className="h-4 w-4" />
+                            {cartCount > 0 && (
+                                <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-[#D97706] text-white text-[10px] font-bold flex items-center justify-center">
+                                    {cartCount > 99 ? '99+' : cartCount}
+                                </span>
+                            )}
+                        </button>
+                    )}
 
                     {user ? (
                         <div className="relative">

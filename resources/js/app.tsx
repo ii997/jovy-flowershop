@@ -1,13 +1,15 @@
-import { StrictMode, useState, useEffect, lazy, Suspense } from 'react';
+import { StrictMode, useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Product, User, Order } from './types';
+import { Product, User, Order, CartItem } from './types';
 import { csrfToken } from './lib/utils';
+import { addToCart as addToCartHelper, cartCount, clearCartStorage, loadStoredCart, maxQtyFor, rehydrateCart, saveCart } from './lib/cart';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { Features } from './components/Features';
 import { ProductList } from './components/ProductList';
 import { Footer } from './components/Footer';
 import { ToastContainer, toast } from './components/ui/Toast';
+import { ConfirmationDialog } from './components/ui/ConfirmationDialog';
 import { AlertTriangle } from 'reicon-react';
 
 // Lazy-loaded — only fetched when first needed.
@@ -18,17 +20,25 @@ const CheckoutModal = lazy(() => import('./components/CheckoutModal').then(m => 
 const OrderSummaryModal = lazy(() => import('./components/OrderSummaryModal').then(m => ({ default: m.OrderSummaryModal })));
 const OrderConfirmedModal = lazy(() => import('./components/OrderConfirmedModal').then(m => ({ default: m.OrderConfirmedModal })));
 const PaymentResubmissionModal = lazy(() => import('./components/PaymentResubmissionModal').then(m => ({ default: m.PaymentResubmissionModal })));
+const CartDrawer = lazy(() => import('./components/CartDrawer').then(m => ({ default: m.CartDrawer })));
 
 function App() {
     // Dynamic catalog & order states
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoadingProducts, setIsLoadingProducts] = useState(true);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const [cart, setCart] = useState<CartItem[]>([]);
+    const [checkoutItems, setCheckoutItems] = useState<CartItem[]>([]);
+    const [isCartOpen, setIsCartOpen] = useState(false);
+    const [isCartCheckout, setIsCartCheckout] = useState(false);
+    const cartRehydrated = useRef(false);
 
     // Authentication states
     const [user, setUser] = useState<User | null>(null);
     const [isAuthOpen, setIsAuthOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     // Order states
     const [orders, setOrders] = useState<Order[]>([]);
@@ -119,12 +129,88 @@ function App() {
         checkSession();
     }, []);
 
+    // Persist cart across reloads (id+qty only; snapshots refreshed from catalog)
+    useEffect(() => {
+        if (!cartRehydrated.current) return;
+        saveCart(cart);
+    }, [cart]);
+
+    // Rehydrate persisted cart against the fresh catalog so prices/availability never go stale
+    useEffect(() => {
+        if (cartRehydrated.current || products.length === 0) return;
+        cartRehydrated.current = true;
+        setCart(rehydrateCart(loadStoredCart(), products));
+    }, [products]);
+
     const handleOrderBouquet = (product: Product) => {
         if (isMaintenanceMode && user?.role !== 'admin' && user?.role !== 'staff') {
             toast.error('Store is currently undergoing scheduled maintenance. New orders & reservations are temporarily disabled.');
             return;
         }
         setSelectedProduct(product);
+        setCheckoutItems([{ product, quantity: 1 }]);
+        setIsCartCheckout(false);
+        setIsCheckoutOpen(true);
+    };
+
+    const handleAddToCart = (product: Product) => {
+        if (!user) {
+            setIsAuthOpen(true);
+            return;
+        }
+        if (!product.availability) {
+            toast.error(`${product.name} is currently out of stock.`);
+            return;
+        }
+        const cap = maxQtyFor(product);
+        const current = cart.find(i => i.product.id === product.id)?.quantity ?? 0;
+        if (current >= cap) {
+            toast.error(`Only ${cap} × ${product.name} available.`);
+            return;
+        }
+        setCart(prev => addToCartHelper(prev, product, 1));
+        toast.success(`${product.name} added to cart!`);
+    };
+
+    const handleUpdateCartQty = (productId: number, qty: number) => {
+        if (qty <= 0) {
+            setCart(prev => prev.filter(i => i.product.id !== productId));
+            return;
+        }
+        const product = cart.find(i => i.product.id === productId)?.product
+            ?? products.find(p => p.id === productId);
+        const cap = product ? maxQtyFor(product) : 99;
+        if (qty > cap) {
+            toast.error(`Only ${cap} available.`);
+            return;
+        }
+        setCart(prev => prev.map(i =>
+            i.product.id === productId ? { ...i, quantity: Math.min(qty, cap) } : i
+        ));
+    };
+
+    const handleRemoveFromCart = (productId: number) => {
+        setCart(prev => prev.filter(i => i.product.id !== productId));
+    };
+
+    const handleClearCart = () => {
+        setCart([]);
+        clearCartStorage();
+    };
+
+    const handleCartCheckout = () => {
+        if (cart.length === 0) {
+            toast.error('Your cart is empty.');
+            return;
+        }
+        if (isMaintenanceMode && user?.role !== 'admin' && user?.role !== 'staff') {
+            toast.error('Store is currently undergoing scheduled maintenance. New orders & reservations are temporarily disabled.');
+            return;
+        }
+        setSelectedProduct(null);
+        setCheckoutItems(cart);
+        setIsCartCheckout(true);
+        setIsCartOpen(false);
         setIsCheckoutOpen(true);
     };
 
@@ -138,6 +224,11 @@ function App() {
     };
 
     const handleLogout = async () => {
+        setIsLogoutConfirmOpen(true);
+    };
+
+    const confirmLogout = async () => {
+        setIsLoggingOut(true);
         try {
             const response = await fetch('/api/logout', {
                 method: 'POST',
@@ -159,6 +250,8 @@ function App() {
         setUser(null);
         setOrders([]);
         setIsProfileOpen(false);
+        setIsLogoutConfirmOpen(false);
+        setIsLoggingOut(false);
         toast.success('Logged out successfully!');
     };
 
@@ -175,6 +268,13 @@ function App() {
         setActiveOrder(order);
         setIsCheckoutOpen(false);
         setIsSummaryOpen(true);
+        if (isCartCheckout) {
+            setCart([]);
+            clearCartStorage();
+            setIsCartCheckout(false);
+        }
+        setCheckoutItems([]);
+        setSelectedProduct(null);
         fetchOrders(user);
         fetchProducts(); // Refresh product quantities so cards show updated stock
     };
@@ -189,6 +289,21 @@ function App() {
                 onDashboardClick={() => { window.location.href = '/admin'; }}
                 onLogout={handleLogout}
                 onProfileClick={() => setIsProfileOpen(true)}
+                cartCount={cartCount(cart)}
+                onCartClick={() => setIsCartOpen(true)}
+            />
+            <ConfirmationDialog
+                isOpen={isLogoutConfirmOpen}
+                title="Log out?"
+                message="Are you sure you want to log out of your Jovy's Flowershop account?"
+                confirmLabel="Log Out"
+                cancelLabel="Stay Logged In"
+                variant="danger"
+                isProcessing={isLoggingOut}
+                onConfirm={confirmLogout}
+                onCancel={() => {
+                    if (!isLoggingOut) setIsLogoutConfirmOpen(false);
+                }}
             />
             {isMaintenanceMode && (
                 <div className="bg-[#D97706] text-white px-4 py-3 text-center text-xs font-bold tracking-wide shadow-md flex items-center justify-center gap-2 select-none border-b border-[#D97706]/20">
@@ -223,6 +338,7 @@ function App() {
             <ProductList
                 products={products}
                 onOrderBouquet={handleOrderBouquet}
+                onAddToCart={handleAddToCart}
                 isAuthenticated={!!user}
                 onAuthClick={() => setIsAuthOpen(true)}
                 isLoading={isLoadingProducts}
@@ -266,7 +382,18 @@ function App() {
                     isOpen={isCheckoutOpen}
                     onClose={() => setIsCheckoutOpen(false)}
                     product={selectedProduct}
+                    items={checkoutItems}
                     onCheckoutSuccess={handleCheckoutSuccess}
+                />
+
+                <CartDrawer
+                    isOpen={isCartOpen}
+                    onClose={() => setIsCartOpen(false)}
+                    items={cart}
+                    onUpdateQty={handleUpdateCartQty}
+                    onRemove={handleRemoveFromCart}
+                    onCheckout={handleCartCheckout}
+                    onClear={handleClearCart}
                 />
 
                 <OrderSummaryModal

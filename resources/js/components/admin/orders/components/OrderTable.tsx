@@ -2,6 +2,7 @@ import { Calendar, Check, Printer } from 'reicon-react';
 import { Order } from '../../../../types';
 import { Pagination } from '../../../Pagination';
 import { getStatusStyle, getPaymentStatusLabel, getOrderUrgency, printOrderSlip } from '../utils';
+import { formatPickupTime, getFulfillmentStatusLabel } from '../../../../lib/orderDisplay';
 
 interface OrderTableProps {
     orders: Order[];
@@ -79,6 +80,9 @@ export function OrderTable({
                                             <Calendar className="w-3.5 h-3.5 text-[#D97706]" />
                                             <span className="font-semibold text-xs text-[#0A2A1B]">{o.pickup_date || 'Not specified'}</span>
                                         </div>
+                                        <div className="text-[10px] text-[#0A2A1B]/60 font-medium pl-5">
+                                            {formatPickupTime(o.pickup_time)}
+                                        </div>
                                         {o.gift_message && (
                                             <span className="inline-block italic text-[10px] text-[#0A2A1B]/60 truncate max-w-[150px]" title={o.gift_message}>
                                                 "{o.gift_message}"
@@ -101,7 +105,7 @@ export function OrderTable({
                                 {/* Fulfillment Status */}
                                 <td className="py-3.5 px-3">
                                     <span className={`text-[9px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full ${getStatusStyle(o.status)}`}>
-                                        {o.status}
+                                        {getFulfillmentStatusLabel(o.status)}
                                     </span>
                                 </td>
 
@@ -150,7 +154,37 @@ export function OrderTable({
                                                     </button>
                                                 )}
 
-                                                {!isAwaiting && (o.status === 'confirmed' || o.status === 'preparing') && (
+                                                {!isAwaiting && o.status === 'confirmed' && (
+                                                    <button
+                                                        disabled={updatingStatus}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onStatusChange(o.id, 'preparing');
+                                                        }}
+                                                        className="px-2.5 py-1.5 bg-[#0A2A1B] hover:bg-[#D97706] disabled:bg-gray-200 text-white text-[10px] font-bold rounded-xl shadow-2xs hover:shadow-xs transition-all cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
+                                                        title="Mark order as preparing"
+                                                    >
+                                                        <Check className="w-3 h-3" />
+                                                        <span>Preparing</span>
+                                                    </button>
+                                                )}
+
+                                                {!isAwaiting && o.status === 'preparing' && (
+                                                    <button
+                                                        disabled={updatingStatus}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onStatusChange(o.id, 'ready_for_pickup');
+                                                        }}
+                                                        className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 disabled:bg-gray-200 text-white text-[10px] font-bold rounded-xl shadow-2xs hover:shadow-xs transition-all cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
+                                                        title="Mark order as ready for pickup"
+                                                    >
+                                                        <Check className="w-3 h-3" />
+                                                        <span>Ready</span>
+                                                    </button>
+                                                )}
+
+                                                {!isAwaiting && o.status === 'ready_for_pickup' && (
                                                     <button
                                                         disabled={updatingStatus}
                                                         onClick={(e) => {
@@ -158,10 +192,10 @@ export function OrderTable({
                                                             onStatusChange(o.id, 'delivered');
                                                         }}
                                                         className="px-2.5 py-1.5 bg-[#0A2A1B] hover:bg-[#D97706] disabled:bg-gray-200 text-white text-[10px] font-bold rounded-xl shadow-2xs hover:shadow-xs transition-all cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
-                                                        title="Mark order as fulfilled / delivered"
+                                                        title="Mark order as picked up"
                                                     >
                                                         <Check className="w-3 h-3" />
-                                                        <span>Mark Delivered</span>
+                                                        <span>Picked Up</span>
                                                     </button>
                                                 )}
                                             </>

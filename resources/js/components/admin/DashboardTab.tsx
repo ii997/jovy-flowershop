@@ -15,6 +15,7 @@ import { Line, Bar } from 'react-chartjs-2';
 import { Order } from '../../types';
 import { DashboardSkeleton } from '../ui/Skeleton';
 import { getOrderUrgency } from './orders/utils';
+import { formatPickupTime } from '../../lib/orderDisplay';
 import { MonthlyProductBreakdownSection } from './MonthlyProductBreakdownSection';
 import { toast } from '../ui/Toast';
 import {
@@ -111,6 +112,7 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
     const [selectedYear, setSelectedYear] = useState<string>('2025');
     const [selectedMonthForModal, setSelectedMonthForModal] = useState<string | null>(null);
     const [yoyMetric, setYoyMetric] = useState<'sales' | 'orders'>('sales');
+    const [orderQueueFilter, setOrderQueueFilter] = useState<'recent' | 'birthday'>('recent');
 
     if (isLoading) {
         return <DashboardSkeleton />;
@@ -134,6 +136,10 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
         }
         return dateStr;
     };
+
+    const recentOrders = stats?.recent_orders || [];
+    const birthdayPriorityOrders = recentOrders.filter((order: Order) => getOrderUrgency(order).type === 'birthday');
+    const displayedQueueOrders = orderQueueFilter === 'birthday' ? birthdayPriorityOrders : recentOrders;
 
     // Extract all distinct years available in data
     const monthlyRawList = stats?.trends?.monthly || [];
@@ -1027,22 +1033,48 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                 </div>
             </div>
 
-            {/* Recent Orders Queue Table */}
+            {/* Orders Queue Table */}
             <div className="bg-white border border-[#0A2A1B]/10 rounded-3xl p-6 shadow-xs space-y-4 hover:border-[#0A2A1B]/20 transition-all duration-300">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                     <div>
                         <span className="text-[10px] font-bold text-[#D97706] uppercase tracking-wider">Live Queue</span>
-                        <h3 className="font-serif text-lg font-bold text-[#0A2A1B]">Recent Incoming Orders</h3>
+                        <h3 className="font-serif text-lg font-bold text-[#0A2A1B]">
+                            {orderQueueFilter === 'birthday' ? 'Birthday Priority Orders' : 'Recent Incoming Orders'}
+                        </h3>
                     </div>
-                    {onViewAllOrders && (
-                        <button
-                            onClick={onViewAllOrders}
-                            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0A2A1B] hover:text-[#D97706] transition-colors cursor-pointer"
-                        >
-                            <span>View all orders</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
-                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="inline-flex bg-[#FAF9F6] p-1 rounded-xl border border-[#0A2A1B]/10 text-[11px] font-bold">
+                            <button
+                                type="button"
+                                onClick={() => setOrderQueueFilter('recent')}
+                                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${orderQueueFilter === 'recent'
+                                    ? 'bg-[#0A2A1B] text-white shadow-2xs'
+                                    : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
+                                }`}
+                            >
+                                Recent Orders ({recentOrders.length})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setOrderQueueFilter('birthday')}
+                                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${orderQueueFilter === 'birthday'
+                                    ? 'bg-amber-700 text-white shadow-2xs'
+                                    : 'text-[#0A2A1B]/60 hover:text-[#0A2A1B]'
+                                }`}
+                            >
+                                Birthday Priority ({birthdayPriorityOrders.length})
+                            </button>
+                        </div>
+                        {onViewAllOrders && (
+                            <button
+                                onClick={onViewAllOrders}
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0A2A1B] hover:text-[#D97706] transition-colors cursor-pointer"
+                            >
+                                <span>View all orders</span>
+                                <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -1057,7 +1089,7 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[#0A2A1B]/5 text-[#0A2A1B]">
-                            {stats?.recent_orders?.map((o: any) => {
+                            {displayedQueueOrders.map((o: any) => {
                                 const urgency = getOrderUrgency(o);
                                 return (
                                     <tr key={o.id} className={`hover:bg-[#FAF9F6] transition-colors ${urgency.type === 'funeral' ? 'bg-purple-50/20' : urgency.type === 'birthday' ? 'bg-amber-50/15' : ''}`}>
@@ -1086,6 +1118,7 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                                                 <Calendar className="w-3.5 h-3.5 text-[#D97706]" />
                                                 <span>{o.pickup_date}</span>
                                             </div>
+                                            <div className="text-[10px] text-[#0A2A1B]/50 pl-5">{formatPickupTime(o.pickup_time)}</div>
                                         </td>
                                         <td className="py-3.5 px-4 text-right font-mono font-bold text-[#0A2A1B]">
                                             ₱{parseFloat(o.total_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1093,10 +1126,10 @@ export function DashboardTab({ stats, isLoading = false, onViewAllOrders }: Dash
                                     </tr>
                                 );
                             })}
-                            {(!stats?.recent_orders || stats.recent_orders.length === 0) && (
+                            {displayedQueueOrders.length === 0 && (
                                 <tr>
                                     <td colSpan={5} className="py-8 text-center text-[#0A2A1B]/40">
-                                        No recent orders found.
+                                        {orderQueueFilter === 'birthday' ? 'No birthday priority orders found.' : 'No recent orders found.'}
                                     </td>
                                 </tr>
                             )}

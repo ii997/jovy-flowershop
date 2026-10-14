@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Order, Product } from '../../../types';
 import { OrdersTabSkeleton } from '../../ui/Skeleton';
 import { useAdminProducts } from '../../../lib/adminQueries';
@@ -11,6 +11,7 @@ import { OrderTable } from './components/OrderTable';
 import { OrderDetailsModal } from './components/OrderDetailsModal';
 import { ImageZoomModal } from './components/ImageZoomModal';
 import { CreateOrderModal } from './components/CreateOrderModal';
+import { ConfirmationModal, ConfirmationRequest } from './components/ConfirmationModal';
 import { printOrderSummaryReport } from './utils';
 
 export interface OrdersTabProps {
@@ -27,12 +28,30 @@ export function OrdersTab({ orders, products, onUpdateOrders, isLoading = false 
     const [adminNotes, setAdminNotes] = useState('');
     const [zoomImage, setZoomImage] = useState<string | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [confirmation, setConfirmation] = useState<ConfirmationRequest | null>(null);
+    const confirmationResolver = useRef<((confirmed: boolean) => void) | null>(null);
 
     const adminProductsQuery = useAdminProducts();
     const catalogProducts = products && products.length > 0 ? products : (adminProductsQuery.data || []);
 
     const metrics = useOrderMetrics(orders);
     const filters = useOrderFilters(orders);
+    const requestConfirmation = (request: ConfirmationRequest) => {
+        if (confirmation) {
+            return Promise.resolve(false);
+        }
+        setConfirmation(request);
+        return new Promise<boolean>(resolve => {
+            confirmationResolver.current = resolve;
+        });
+    };
+
+    const resolveConfirmation = (confirmed: boolean) => {
+        confirmationResolver.current?.(confirmed);
+        confirmationResolver.current = null;
+        setConfirmation(null);
+    };
+
     const mutations = useOrderMutations({
         orders,
         onUpdateOrders,
@@ -43,6 +62,7 @@ export function OrdersTab({ orders, products, onUpdateOrders, isLoading = false 
         cancelReason,
         setCancelReason,
         setShowCancelForm,
+        requestConfirmation,
     });
 
     const closeModal = () => {
@@ -137,6 +157,17 @@ export function OrdersTab({ orders, products, onUpdateOrders, isLoading = false 
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 products={catalogProducts}
+            />
+
+            <ConfirmationModal
+                isOpen={!!confirmation}
+                title={confirmation?.title || ''}
+                message={confirmation?.message || ''}
+                confirmLabel={confirmation?.confirmLabel}
+                cancelLabel={confirmation?.cancelLabel}
+                variant={confirmation?.variant}
+                onConfirm={() => resolveConfirmation(true)}
+                onCancel={() => resolveConfirmation(false)}
             />
         </div>
     );

@@ -5,6 +5,27 @@ import { getOrderUrgency } from '../utils';
 
 export const ORDER_PER_PAGE = 10;
 
+const getPickupTimestamp = (order: Order): number | null => {
+    if (!order.pickup_date) return null;
+
+    const datePart = order.pickup_date.includes('T') ? order.pickup_date.split('T')[0] : order.pickup_date;
+    const timeMatch = (order.pickup_time || '').match(/(\d{1,2}):(\d{2})/);
+    const timePart = timeMatch
+        ? `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`
+        : '00:00';
+    const parsed = new Date(`${datePart}T${timePart}`).getTime();
+
+    return Number.isNaN(parsed) ? null : parsed;
+};
+
+/** Missing/invalid pickup schedules always sort last, regardless of direction. */
+const comparePickupTimestamps = (a: number | null, b: number | null, order: OrderSortOrder) => {
+    if (a === null && b === null) return 0;
+    if (a === null) return 1;
+    if (b === null) return -1;
+    return order === 'asc' ? a - b : b - a;
+};
+
 export function useOrderFilters(orders: Order[]) {
     const [orderSearch, setOrderSearch] = useState('');
     const [dateQuickFilter, setDateQuickFilter] = useState<DateQuickFilter>('all');
@@ -69,7 +90,7 @@ export function useOrderFilters(orders: Order[]) {
                 // Status filter
                 if (selectedStatusFilter !== 'All') {
                     if (selectedStatusFilter === 'active') {
-                        if (order.status !== 'confirmed' && order.status !== 'preparing') return false;
+                        if (!['pending', 'confirmed', 'preparing', 'ready_for_pickup'].includes(order.status)) return false;
                     } else if (order.status !== selectedStatusFilter) {
                         return false;
                     }
@@ -93,14 +114,14 @@ export function useOrderFilters(orders: Order[]) {
                             : urgencyA.priority - urgencyB.priority;
                     }
                     // For equal urgency, prioritize earlier pickup dates
-                    const dateA = new Date(a.pickup_date || 0).getTime();
-                    const dateB = new Date(b.pickup_date || 0).getTime();
-                    return dateA - dateB;
+                    const dateA = getPickupTimestamp(a);
+                    const dateB = getPickupTimestamp(b);
+                    return comparePickupTimestamps(dateA, dateB, 'asc');
                 }
                 if (orderSortBy === 'date') {
-                    const fieldA = new Date(a.pickup_date || 0).getTime();
-                    const fieldB = new Date(b.pickup_date || 0).getTime();
-                    return orderSortOrder === 'asc' ? fieldA - fieldB : fieldB - fieldA;
+                    const fieldA = getPickupTimestamp(a);
+                    const fieldB = getPickupTimestamp(b);
+                    return comparePickupTimestamps(fieldA, fieldB, orderSortOrder);
                 }
                 if (orderSortBy === 'price') {
                     const fieldA = parseFloat((a.total_price || 0).toString());
@@ -142,4 +163,3 @@ export function useOrderFilters(orders: Order[]) {
         perPage: ORDER_PER_PAGE,
     };
 }
-

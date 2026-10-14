@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Product, User } from './types';
 import { AdminPanel } from './components/AdminPanel';
 import { ToastContainer } from './components/ui/Toast';
+import { ConfirmationDialog } from './components/ui/ConfirmationDialog';
 import { csrfToken } from './lib/utils';
 
 const queryClient = new QueryClient({
@@ -20,6 +21,8 @@ function AdminApp() {
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+    const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     // Load active session and products
     useEffect(() => {
@@ -61,6 +64,11 @@ function AdminApp() {
     }, []);
 
     const handleLogout = async () => {
+        setIsLogoutConfirmOpen(true);
+    };
+
+    const confirmLogout = async () => {
+        setIsLoggingOut(true);
         try {
             await fetch('/api/logout', {
                 method: 'POST',
@@ -93,16 +101,31 @@ function AdminApp() {
     }
 
     return (
-        <AdminPanel
-            user={user}
-            products={products}
-            isLoadingProducts={isLoadingProducts}
-            onUpdateProducts={(updated) => setProducts(updated)}
-            onBackToStore={() => {
-                window.location.href = '/';
-            }}
-            onLogout={handleLogout}
-        />
+        <>
+            <AdminPanel
+                user={user}
+                products={products}
+                isLoadingProducts={isLoadingProducts}
+                onUpdateProducts={(updated) => setProducts(updated)}
+                onBackToStore={() => {
+                    window.location.href = '/';
+                }}
+                onLogout={handleLogout}
+            />
+            <ConfirmationDialog
+                isOpen={isLogoutConfirmOpen}
+                title="Log out?"
+                message="Are you sure you want to log out of the admin dashboard?"
+                confirmLabel="Log Out"
+                cancelLabel="Stay Logged In"
+                variant="danger"
+                isProcessing={isLoggingOut}
+                onConfirm={confirmLogout}
+                onCancel={() => {
+                    if (!isLoggingOut) setIsLogoutConfirmOpen(false);
+                }}
+            />
+        </>
     );
 }
 

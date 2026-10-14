@@ -69,7 +69,7 @@ export function OrderMetricsBar({
                 <div className="text-[10px] text-sky-700/70 mt-0.5">Active fulfillment queue</div>
             </div>
 
-            {/* Ready / Delivered Card */}
+            {/* Picked Up Card */}
             <div 
                 onClick={() => { setSelectedStatusFilter('delivered'); setSelectedPaymentFilter('All'); }}
                 className={`bg-white p-4 rounded-3xl border transition-all cursor-pointer shadow-2xs hover:shadow-xs ${
@@ -78,7 +78,7 @@ export function OrderMetricsBar({
             >
                 <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
                     <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Fulfilled / Ready</span>
+                    <span>Picked Up</span>
                 </div>
                 <div className="text-2xl font-bold font-mono text-emerald-900 mt-1">{metrics.delivered}</div>
                 <div className="text-[10px] text-emerald-700/70 mt-0.5">Completed orders</div>

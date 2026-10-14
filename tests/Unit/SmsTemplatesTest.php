@@ -29,8 +29,12 @@ class SmsTemplatesTest extends TestCase
         $this->assertStringEndsWith('(Do not reply)', $preparing);
 
         $delivered = SmsTemplates::orderDelivered(103);
-        $this->assertStringContainsString('Order #JFS-103 is ready for pickup', $delivered);
+        $this->assertStringContainsString('Order #JFS-103 has been picked up', $delivered);
         $this->assertStringEndsWith('(Do not reply)', $delivered);
+
+        $ready = SmsTemplates::orderReadyForPickup(103, '9:00 AM');
+        $this->assertStringContainsString('Order #JFS-103 is ready for pickup at 9:00 AM', $ready);
+        $this->assertStringEndsWith('(Do not reply)', $ready);
 
         $cancelled = SmsTemplates::orderCancelled(104, 'Out of stock');
         $this->assertStringContainsString('Order #JFS-104 has been cancelled', $cancelled);
@@ -71,6 +75,7 @@ class SmsTemplatesTest extends TestCase
         $templates = [
             SmsTemplates::orderConfirmed(1),
             SmsTemplates::orderPreparing(1),
+            SmsTemplates::orderReadyForPickup(1, '9:00 AM'),
             SmsTemplates::orderDelivered(1),
             SmsTemplates::orderCancelled(1, 'Please visit http://example.com/cancel for details'),
             SmsTemplates::paymentVerified(1, 999.00),
@@ -100,6 +105,7 @@ class SmsTemplatesTest extends TestCase
         $templates = [
             SmsTemplates::orderConfirmed(99999),
             SmsTemplates::orderPreparing(99999),
+            SmsTemplates::orderReadyForPickup(99999, '9:00 AM'),
             SmsTemplates::orderDelivered(99999),
             SmsTemplates::orderCancelled(99999, $veryLongReason),
             SmsTemplates::paymentVerified(99999, 999999.99),

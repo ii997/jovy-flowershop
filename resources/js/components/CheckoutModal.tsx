@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Product } from '../types';
+import { CartItem, Product } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAnimationTransition } from './animations';
 import { X, Check, AlertTriangle } from 'reicon-react';
@@ -9,14 +9,16 @@ interface CheckoutModalProps {
     isOpen: boolean;
     onClose: () => void;
     product: Product | null;
+    items?: CartItem[];
     onCheckoutSuccess: (order: any) => void;
 }
 
-export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: CheckoutModalProps) {
+export function CheckoutModal({ isOpen, onClose, product, items, onCheckoutSuccess }: CheckoutModalProps) {
     const [orderType, setOrderType] = useState<'purchase' | 'reservation'>('purchase');
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
     const [date, setDate] = useState('');
+    const [time, setTime] = useState('');
     const [giftMessage, setGiftMessage] = useState('');
     const [agreedToNoRefund, setAgreedToNoRefund] = useState(false);
     const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -49,6 +51,10 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
             setDate(todayStr);
         }
 
+        if (!time) {
+            setTime('09:00');
+        }
+
         const fetchSettings = async () => {
             try {
                 const res = await fetch('/api/settings');
@@ -79,14 +85,18 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
         };
 
         fetchSettings();
-    }, [isOpen, todayStr, date]);
+    }, [isOpen, todayStr, date, time]);
 
     const csrfToken = () => {
         const meta = document.querySelector('meta[name="csrf-token"]');
         return meta ? meta.getAttribute('content') : '';
     };
 
-    const cartTotal = product ? product.price : 0;
+    const cartTotal = items && items.length > 0
+        ? items.reduce((sum, i) => sum + i.product.price * i.quantity, 0)
+        : product ? product.price : 0;
+
+    const hasItems = (items && items.length > 0) || !!product;
 
     // Real-time Field Validations
     const isNameValid = useMemo(() => {
@@ -104,7 +114,12 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
         return date >= todayStr && date <= maxDateStr;
     }, [date, todayStr, maxDateStr]);
 
-    const isFormValid = isNameValid && isPhoneValid && isDateValid && !!product && agreedToNoRefund;
+    const isTimeValid = useMemo(() => {
+        if (!time) return false;
+        return time >= '05:00' && time <= '20:00';
+    }, [time]);
+
+    const isFormValid = isNameValid && isPhoneValid && isDateValid && isTimeValid && hasItems && agreedToNoRefund;
 
     // Input handlers with strict character enforcement (Fool-proof)
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,6 +169,17 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
         }
     };
 
+    const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setTime(e.target.value);
+        if (errors.pickup_time) {
+            setErrors(prev => {
+                const next = { ...prev };
+                delete next.pickup_time;
+                return next;
+            });
+        }
+    };
+
     const handleGiftMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         // Enforce 300 character max limit
         setGiftMessage(e.target.value.slice(0, 300));
@@ -163,7 +189,7 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
         e.preventDefault();
         
         // Client-side guard checks
-        if (!product) {
+        if (!hasItems) {
             toast.error('No arrangement selected for checkout.');
             return;
         }
@@ -188,22 +214,35 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
             return;
         }
 
+        if (!isTimeValid) {
+            setErrors({ pickup_time: ['Please select a pickup time between 5:00 AM and 8:00 PM.'] });
+            return;
+        }
+
         setIsLoading(true);
         setErrors({});
 
-        // Map item for database
-        const orderItems = [{
-            id: product.id,
-            name: product.name,
-            price: product.price,
-            quantity: 1,
-        }];
+        // Map items for database
+        const orderItems = items && items.length > 0
+            ? items.map(({ product: p, quantity }) => ({
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                quantity,
+            }))
+            : [{
+                id: product!.id,
+                name: product!.name,
+                price: product!.price,
+                quantity: 1,
+            }];
 
         const payload = {
             order_type: orderType,
             recipient_name: name.trim(),
             recipient_phone: phone.trim(),
             pickup_date: date,
+            pickup_time: time,
             gift_message: giftMessage.trim() || null,
             items: orderItems,
         };
@@ -383,7 +422,8 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
                                 {errors.recipient_phone && <p className="text-red-600 text-xs mt-1">{errors.recipient_phone[0]}</p>}
                             </div>
 
-                            {/* Pickup Date */}
+                            {/* Pickup Schedule */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1">
                                 <div className="flex justify-between items-center">
                                     <label className="text-xs font-semibold text-[#0A2A1B] block">
@@ -414,6 +454,38 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
                                 )}
                                 {errors.pickup_date && <p className="text-red-600 text-xs mt-1">{errors.pickup_date[0]}</p>}
                             </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between items-center">
+                                    <label className="text-xs font-semibold text-[#0A2A1B] block">
+                                        Pickup Time <span className="text-red-500">*</span>
+                                    </label>
+                                    {isTimeValid && (
+                                        <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
+                                            <Check className="h-3 w-3" /> Selected
+                                        </span>
+                                    )}
+                                </div>
+                                <input
+                                    type="time"
+                                    name="pickup_time"
+                                    min="05:00"
+                                    max="20:00"
+                                    value={time}
+                                    onChange={handleTimeChange}
+                                    className={`w-full px-4 py-2.5 bg-white border rounded-xl text-sm text-[#0A2A1B] focus:outline-none transition-colors ${
+                                        time && !isTimeValid
+                                            ? 'border-red-400 focus:border-red-500'
+                                            : 'border-[#0A2A1B]/15 focus:border-[#D97706]'
+                                    }`}
+                                    required
+                                />
+                                <p className="text-[10px] text-slate-400">Pickup hours: 5:00 AM – 8:00 PM</p>
+                                {time && !isTimeValid && (
+                                    <p className="text-red-600 text-xs mt-0.5">Pickup time must be within store hours.</p>
+                                )}
+                                {errors.pickup_time && <p className="text-red-600 text-xs mt-1">{errors.pickup_time[0]}</p>}
+                            </div>
+                            </div>
 
                             {/* Gift Message */}
                             <div className="space-y-1">
@@ -438,6 +510,16 @@ export function CheckoutModal({ isOpen, onClose, product, onCheckoutSuccess }: C
 
                             {/* Total Summary Row */}
                             <div className="bg-[#FAF9F6] p-4 rounded-2xl border border-[#0A2A1B]/5 space-y-2">
+                                {items && items.length > 1 && (
+                                    <div className="space-y-1.5 border-b border-[#0A2A1B]/5 pb-2">
+                                        {items.map(({ product: p, quantity }) => (
+                                            <div key={p.id} className="flex justify-between items-center text-xs">
+                                                <span className="font-medium text-[#0A2A1B]/80">{p.name} <span className="text-[#0A2A1B]/50">x{quantity}</span></span>
+                                                <span className="font-mono font-semibold">₱{(p.price * quantity).toFixed(2)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                                 <div className="flex justify-between items-center">
                                     <span className="text-xs font-bold text-[#0A2A1B]/60 uppercase tracking-wider">Total Cart Amount</span>
                                     <span className="text-base font-bold text-[#0A2A1B] font-mono">₱{cartTotal.toFixed(2)}</span>

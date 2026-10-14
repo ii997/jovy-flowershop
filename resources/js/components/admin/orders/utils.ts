@@ -1,11 +1,13 @@
 import { Order } from '../../../types';
 import { toast } from '../../ui/Toast';
+import { formatPickupTime, getFulfillmentStatusLabel } from '../../../lib/orderDisplay';
 
 export const getStatusStyle = (status: string) => {
     switch (status) {
         case 'verified': return 'bg-emerald-50 text-emerald-700 border border-emerald-300';
         case 'confirmed': return 'bg-amber-50 text-amber-800 border border-amber-300';
         case 'preparing': return 'bg-sky-50 text-sky-800 border border-sky-300';
+        case 'ready_for_pickup': return 'bg-emerald-50 text-emerald-700 border border-emerald-300';
         case 'delivered': return 'bg-[#0A2A1B]/10 text-[#0A2A1B] border border-[#0A2A1B]/20';
         case 'cancelled': case 'failed': case 'refunded': return 'bg-rose-50 text-rose-700 border border-rose-300';
         case 'awaiting_verification': return 'bg-amber-100 text-amber-900 border border-amber-400 font-extrabold';
@@ -168,7 +170,8 @@ export const printOrderSlip = (order: Order) => {
                 <div class="card">
                     <h4>Scheduled Handoff</h4>
                     <div><strong>Date: ${order.pickup_date || 'N/A'}</strong></div>
-                    <div>Status: ${order.status.toUpperCase()}</div>
+                    <div><strong>Time: ${formatPickupTime(order.pickup_time)}</strong></div>
+                    <div>Status: ${getFulfillmentStatusLabel(order.status)}</div>
                     <div>Payment: ${order.payment_status?.toUpperCase() || 'PENDING'}</div>
                 </div>
             </div>
@@ -222,8 +225,8 @@ export const printOrderSummaryReport = (orders: Order[], filterDescription: stri
             <td style="padding: 8px 6px;">${o.recipient_name}</td>
             <td style="padding: 8px 6px;">${o.recipient_phone || '—'}</td>
             <td style="padding: 8px 6px; text-transform: uppercase;">${o.order_type}</td>
-            <td style="padding: 8px 6px;">${o.pickup_date || 'N/A'}</td>
-            <td style="padding: 8px 6px; text-transform: capitalize;">${o.status}</td>
+            <td style="padding: 8px 6px;">${o.pickup_date || 'N/A'} at ${formatPickupTime(o.pickup_time)}</td>
+            <td style="padding: 8px 6px; text-transform: capitalize;">${getFulfillmentStatusLabel(o.status)}</td>
             <td style="padding: 8px 6px; font-weight: 600; text-transform: uppercase;">${o.payment_status || 'PENDING'}</td>
             <td style="padding: 8px 6px; text-align: right; font-weight: bold; font-family: monospace;">₱${(parseFloat(o.total_price.toString()) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
         </tr>

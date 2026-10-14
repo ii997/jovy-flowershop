@@ -99,6 +99,7 @@ class AccountDeletionTest extends TestCase
             'recipient_name' => 'Jane Doe',
             'recipient_phone' => '09123456789',
             'pickup_date' => now()->addDays(1)->format('Y-m-d'),
+            'pickup_time' => '09:00',
             'items' => [['id' => $product->id, 'name' => $product->name, 'price' => $product->price, 'quantity' => 1]],
             'total_price' => $product->price,
             'status' => 'confirmed',
