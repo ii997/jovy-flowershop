@@ -52,19 +52,7 @@ class SmsTemplates
         $header = self::header();
         $suffix = self::customerSuffix();
 
-        return "{$header} Order #JFS-{$orderId} has been picked up / completed. Thank you!{$suffix}";
-    }
-
-    /**
-     * Order ready for pickup notice to customer.
-     */
-    public static function orderReadyForPickup(int $orderId, ?string $pickupTime = null): string
-    {
-        $header = self::header();
-        $suffix = self::customerSuffix();
-        $timeText = $pickupTime ? " at {$pickupTime}" : '';
-
-        return "{$header} Order #JFS-{$orderId} is ready for pickup{$timeText}. Please claim it at the store.{$suffix}";
+        return "{$header} Order #JFS-{$orderId} is ready for pickup / completed. Thank you!{$suffix}";
     }
 
     /**

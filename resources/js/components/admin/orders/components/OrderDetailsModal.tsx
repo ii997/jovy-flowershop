@@ -1,7 +1,6 @@
 import { X as XIcon, Printer, Check, XCircle, FileText, Eye, AlertTriangle } from 'reicon-react';
 import { Order } from '../../../../types';
 import { getStatusStyle, getPaymentStatusLabel, printOrderSlip, getOrderUrgency } from '../utils';
-import { formatPickupTime, getFulfillmentStatusLabel } from '../../../../lib/orderDisplay';
 
 interface OrderDetailsModalProps {
     order: Order;
@@ -109,16 +108,6 @@ export function OrderDetailsModal({
                                         const d = new Date(order.pickup_date.includes('T') ? order.pickup_date : `${order.pickup_date}T00:00:00`);
                                         return isNaN(d.getTime()) ? order.pickup_date : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                                     })()}
-                                </span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-[#0A2A1B]/60">Pickup Time</span>
-                                <span className="font-semibold">{formatPickupTime(order.pickup_time)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-[#0A2A1B]/60">Status</span>
-                                <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${getStatusStyle(order.status)}`}>
-                                    {getFulfillmentStatusLabel(order.status)}
                                 </span>
                             </div>
                             {order.gift_message && (
@@ -343,36 +332,20 @@ export function OrderDetailsModal({
                                             <span className="text-[10px] font-bold text-emerald-700 mt-2 uppercase tracking-wider">Confirmed</span>
                                         </div>
 
-                                        {/* Step 2: Preparing */}
+                                        {/* Step 2: Delivered */}
                                         <div className="relative z-10 flex flex-col items-center">
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300 ${
-                                                ['preparing', 'ready_for_pickup', 'delivered'].includes(order.status)
-                                                    ? 'bg-sky-50 text-sky-700 border-sky-600 shadow-xs'
+                                                order.status === 'delivered'
+                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-600 shadow-xs'
                                                     : 'bg-white text-slate-400 border-slate-300'
                                             }`}>
                                                 2
                                             </div>
                                             <span className={`text-[10px] font-bold mt-2 uppercase tracking-wider transition-all duration-300 ${
-                                                ['preparing', 'ready_for_pickup', 'delivered'].includes(order.status)
-                                                    ? 'text-sky-700'
-                                                    : 'text-slate-400'
-                                            }`}>Preparing</span>
-                                        </div>
-
-                                        {/* Step 3: Ready */}
-                                        <div className="relative z-10 flex flex-col items-center">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300 ${
-                                                ['ready_for_pickup', 'delivered'].includes(order.status)
-                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-600 shadow-xs'
-                                                    : 'bg-white text-slate-400 border-slate-300'
-                                            }`}>
-                                                3
-                                            </div>
-                                            <span className={`text-[10px] font-bold mt-2 uppercase tracking-wider transition-all duration-300 ${
-                                                ['ready_for_pickup', 'delivered'].includes(order.status)
+                                                order.status === 'delivered'
                                                     ? 'text-emerald-700'
                                                     : 'text-slate-400'
-                                            }`}>Ready to Pickup</span>
+                                            }`}>Delivered / Completed</span>
                                         </div>
                                     </div>
 
@@ -381,39 +354,28 @@ export function OrderDetailsModal({
                                         {order.status === 'confirmed' && order.payment_status === 'awaiting_verification' && (
                                             <div className="p-3 bg-amber-50/80 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-center gap-2">
                                                 <span className="text-base">ℹ</span>
-                                                <span className="font-medium">Approve payment proof above to verify customer payment and prepare for pickup.</span>
+                                                <span className="font-medium">Approve payment proof above to verify customer payment and prepare for delivery/handoff.</span>
                                             </div>
                                         )}
 
                                         {order.status === 'confirmed' && order.payment_status !== 'awaiting_verification' && (
                                             <button 
                                                 disabled={updatingStatus}
-                                                onClick={() => onStatusChange(order.id, 'preparing')}
+                                                onClick={() => onStatusChange(order.id, 'delivered')}
                                                 className="w-full py-2.5 bg-[#0A2A1B] hover:bg-[#D97706] disabled:bg-gray-100 text-white text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-xs"
                                             >
                                                 <Check className="h-4 w-4" strokeWidth={2.5} />
-                                                <span>Mark Order as Preparing</span>
+                                                <span>Mark Order as Delivered / Completed</span>
                                             </button>
                                         )}
 
                                         {order.status === 'preparing' && (
                                             <button 
                                                 disabled={updatingStatus}
-                                                onClick={() => onStatusChange(order.id, 'ready_for_pickup')}
-                                                className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 disabled:bg-gray-100 text-white text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-xs"
-                                            >
-                                                <span>Mark as Ready to Pickup</span>
-                                                <Check className="h-4 w-4" strokeWidth={2.5} />
-                                            </button>
-                                        )}
-
-                                        {order.status === 'ready_for_pickup' && (
-                                            <button
-                                                disabled={updatingStatus}
                                                 onClick={() => onStatusChange(order.id, 'delivered')}
                                                 className="w-full py-2.5 bg-[#0A2A1B] hover:bg-[#D97706] disabled:bg-gray-100 text-white text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-xs"
                                             >
-                                                <span>Mark as Picked Up / Completed</span>
+                                                <span>Complete Order (Ready for Handoff)</span>
                                                 <Check className="h-4 w-4" strokeWidth={2.5} />
                                             </button>
                                         )}
@@ -421,7 +383,7 @@ export function OrderDetailsModal({
                                         {order.status === 'delivered' && (
                                             <div className="flex items-center justify-center gap-1.5 p-3 bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl text-xs font-bold">
                                                 <Check className="h-4 w-4 text-emerald-700" strokeWidth={3} />
-                                                <span>Order Successfully Picked Up & Completed</span>
+                                                <span>Order Successfully Fulfilled & Delivered</span>
                                             </div>
                                         )}
                                     </div>

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { ShoppingBag } from 'reicon-react';
 import { toast } from '../../ui/Toast';
-import { formatPickupTime, getFulfillmentStatusLabel } from '../../../lib/orderDisplay';
 
 interface ProfileOrdersTabProps {
     orders: any[];
@@ -89,20 +88,15 @@ export function ProfileOrdersTab({
                                     <span className={`text-[9px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full ${
                                         order.status === 'cancelled'
                                             ? 'bg-red-100 text-red-700 border border-red-200'
-                                            : order.status === 'ready_for_pickup'
-                                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                                            : order.status === 'preparing'
-                                            ? 'bg-sky-100 text-sky-700 border border-sky-200'
-                                            : 'bg-[#D97706]/10 text-[#D97706] border border-[#D97706]/20'
-                                    }`}>
-                                        {getFulfillmentStatusLabel(order.status)}
-                                    </span>
-                                    <span className={`text-[9px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full ${
-                                        order.order_type === 'purchase'
+                                            : order.order_type === 'purchase'
                                             ? 'bg-green-100 text-green-700 border border-green-200'
                                             : 'bg-[#D97706]/10 text-[#D97706] border border-[#D97706]/20'
                                     }`}>
-                                        {order.order_type === 'purchase' ? 'Purchase' : 'Reservation'}
+                                        {order.status === 'cancelled'
+                                            ? 'Cancelled'
+                                            : order.order_type === 'purchase'
+                                            ? 'Purchase'
+                                            : 'Reservation'}
                                     </span>
                                     {order.order_type === 'purchase' && order.status !== 'cancelled' && (
                                         <span className={`text-[9px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full ${
@@ -136,7 +130,6 @@ export function ProfileOrdersTab({
                                 <div className="space-y-0.5">
                                     <span className="text-[#0A2A1B]/50 block">Pickup Details</span>
                                      <p className="font-semibold text-[#0A2A1B]">Pickup Date: {order.pickup_date}</p>
-                                     <p className="text-[#0A2A1B]/75">Pickup Time: {formatPickupTime(order.pickup_time)}</p>
                                 </div>
                             </div>
 

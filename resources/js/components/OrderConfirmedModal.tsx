@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Order } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAnimationTransition } from './animations';
-import { formatPickupTime, getFulfillmentStatusLabel } from '../lib/orderDisplay';
 
 interface ConfettiParticle {
     id: number;
@@ -209,12 +208,8 @@ export function OrderConfirmedModal({ isOpen, onClose, order }: OrderConfirmedMo
                                 <span className="font-semibold text-[#0A2A1B]">{order.pickup_date}</span>
                             </div>
                             <div className="flex justify-between border-b border-[#0A2A1B]/5 pb-2">
-                                <span className="text-[#0A2A1B]/55 font-medium">Pickup Time</span>
-                                <span className="font-semibold text-[#0A2A1B]">{formatPickupTime(order.pickup_time)}</span>
-                            </div>
-                            <div className="flex justify-between border-b border-[#0A2A1B]/5 pb-2">
-                                <span className="text-[#0A2A1B]/55 font-medium">Status</span>
-                                <span className="font-semibold text-[#0A2A1B]">{getFulfillmentStatusLabel(order.status)}</span>
+                                <span className="text-[#0A2A1B]/55 font-medium">Fulfillment</span>
+                                <span className="font-semibold text-[#0A2A1B]">Store Pickup</span>
                             </div>
                             <div className="flex justify-between border-t border-[#0A2A1B]/10 pt-3 text-sm">
                                 <span className="font-bold text-[#0A2A1B]">Total Amount</span>

@@ -160,14 +160,6 @@ export function InventoryTab({
         }
     };
 
-    const showOutOfStockArrangements = () => {
-        setSearchQuery('');
-        setSelectedCategory('all');
-        setStockFilter('out_of_stock');
-        setArchiveFilter('active');
-        setPagination(prev => ({ ...prev, pageIndex: 0 }));
-    };
-
     /** Table meta shape */
     interface InventoryTabMeta {
         isAdmin: boolean;
@@ -395,22 +387,14 @@ export function InventoryTab({
                     <div className="text-[10px] text-emerald-700/70 mt-0.5">Available for instant ordering</div>
                 </div>
 
-                <button
-                    type="button"
-                    onClick={showOutOfStockArrangements}
-                    className={`text-left bg-white border p-4 rounded-3xl shadow-xs transition-all cursor-pointer active:scale-[0.98] ${stockFilter === 'out_of_stock' && archiveFilter === 'active'
-                        ? 'border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/30'
-                        : 'border-rose-200/80 hover:border-rose-400 hover:shadow-sm'
-                    }`}
-                    title="Show out-of-stock arrangements"
-                >
+                <div className="bg-white border border-rose-200/80 p-4 rounded-3xl shadow-xs">
                     <div className="flex items-center gap-2 text-[10px] font-bold text-rose-700 uppercase tracking-wider">
                         <Archive className="w-3.5 h-3.5 text-rose-600" />
                         <span>Out of Stock</span>
                     </div>
                     <div className="text-2xl font-bold font-mono text-rose-900 mt-1">{outOfStockCount}</div>
-                    <div className="text-[10px] text-rose-700/70 mt-0.5">Click to view hidden checkout items</div>
-                </button>
+                    <div className="text-[10px] text-rose-700/70 mt-0.5">Hidden from active checkout</div>
+                </div>
 
                 <div className="bg-white border border-[#0A2A1B]/10 p-4 rounded-3xl shadow-xs">
                     <div className="flex items-center gap-2 text-[10px] font-bold text-[#D97706] uppercase tracking-wider">
@@ -622,3 +606,4 @@ export function InventoryTab({
         </div>
     );
 }
+

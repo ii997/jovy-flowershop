@@ -21,7 +21,7 @@ export function useOrderMetrics(orders: Order[]): OrderMetrics {
         }).length;
 
         const totalActiveVolume = list
-            .filter(o => ['pending', 'confirmed', 'preparing', 'ready_for_pickup'].includes(o.status))
+            .filter(o => o.status !== 'cancelled')
             .reduce((acc, o) => acc + (parseFloat(o.total_price?.toString() || '0')), 0);
 
         return { awaitingPayment, preparing, confirmed, delivered, todayPickups, totalActiveVolume };

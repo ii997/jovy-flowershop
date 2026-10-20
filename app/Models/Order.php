@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
     'recipient_name',
     'recipient_phone',
     'pickup_date',
-    'pickup_time',
     'gift_message',
     'items',
     'total_price',
@@ -52,7 +51,6 @@ class Order extends Model
         return [
             'items' => 'array',
             'pickup_date' => 'date:Y-m-d',
-            'pickup_time' => 'datetime:H:i',
             'payment_details' => 'array',
             'payment_status' => 'string',
             'total_price' => 'decimal:2',

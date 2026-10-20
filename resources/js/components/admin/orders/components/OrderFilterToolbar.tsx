@@ -140,13 +140,10 @@ export function OrderFilterToolbar({
                     onChange={(e) => setSelectedStatusFilter(e.target.value)}
                     className="px-3 py-2 bg-[#FAF9F6] border border-[#0A2A1B]/10 rounded-xl text-xs font-semibold text-[#0A2A1B] focus:outline-none focus:border-[#D97706] cursor-pointer"
                 >
-                    <option value="active">Active Orders</option>
+                    <option value="active">Active Orders (Confirmed)</option>
                     <option value="All">All Fulfillment Statuses</option>
-                    <option value="pending">Pending Only</option>
                     <option value="confirmed">Confirmed Only</option>
-                    <option value="preparing">Preparing Only</option>
-                    <option value="ready_for_pickup">Ready to Pickup</option>
-                    <option value="delivered">Picked Up / Completed</option>
+                    <option value="delivered">Delivered / Completed</option>
                     <option value="cancelled">Cancelled Only</option>
                 </select>
 
@@ -175,8 +172,8 @@ export function OrderFilterToolbar({
                     className="px-3 py-2 bg-[#FAF9F6] border border-[#0A2A1B]/10 rounded-xl text-xs font-semibold text-[#0A2A1B] focus:outline-none focus:border-[#D97706] cursor-pointer"
                 >
                     <option value="urgency-desc">🚨 Priority: Urgent Orders First</option>
-                    <option value="date-asc">Pickup: Sooner First</option>
-                    <option value="date-desc">Pickup: Later First</option>
+                    <option value="date-desc">Pickup: Sooner First</option>
+                    <option value="date-asc">Pickup: Later First</option>
                     <option value="id-desc">Newest Order ID First</option>
                     <option value="price-desc">Total: Highest First</option>
                     <option value="price-asc">Total: Lowest First</option>

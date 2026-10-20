@@ -35,16 +35,7 @@ export function FlowersTab({ flowers, onFlowersChange, isAdmin, isLoading = fals
     return (
         <div className="space-y-6 select-none">
             {/* Top Inventory Summary KPI Cards */}
-            <FlowerMetricsBar
-                metrics={metrics}
-                stockFilter={filters.stockFilter}
-                setStockFilter={(filter) => {
-                    filters.setSearchQuery('');
-                    filters.setUnitFilter('all');
-                    filters.setStockFilter(filter);
-                    setPagination(prev => ({ ...prev, pageIndex: 0 }));
-                }}
-            />
+            <FlowerMetricsBar metrics={metrics} />
 
             {/* Header & Filter Controls Toolbar */}
             <FlowerToolbar

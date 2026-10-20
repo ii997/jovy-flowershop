@@ -11,7 +11,6 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
 use Throwable;
 
 class SendStatusUpdateSMS implements ShouldQueue
@@ -127,7 +126,6 @@ class SendStatusUpdateSMS implements ShouldQueue
             'order_cancelled_customer' => SmsTemplates::customerCancelledAlert($order->id, $order->recipient_name),
             'confirmed' => SmsTemplates::orderConfirmed($order->id),
             'preparing', 'shipped' => SmsTemplates::orderPreparing($order->id),
-            'ready_for_pickup' => SmsTemplates::orderReadyForPickup($order->id, $order->pickup_time ? Carbon::parse($order->pickup_time)->format('g:i A') : null),
             'delivered' => SmsTemplates::orderDelivered($order->id),
             'payment_received', 'payment_verified' => SmsTemplates::paymentVerified($order->id, (float) $order->total_price),
             'payment_failed', 'payment_rejected' => SmsTemplates::paymentRejected($order->id),

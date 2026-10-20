@@ -258,7 +258,6 @@ export function useCreateManualOrder() {
             recipient_phone?: string;
             order_type?: string;
             pickup_date?: string;
-            pickup_time?: string;
             payment_method: 'cash' | 'gcash';
             status: 'confirmed' | 'delivered';
             gift_message?: string;

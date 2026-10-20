@@ -1,5 +1,4 @@
 import { Order } from '../types';
-import { formatPickupTime, getFulfillmentStatusLabel } from '../lib/orderDisplay';
 
 interface OrderSummaryDetailsProps {
     order: Order;
@@ -25,14 +24,6 @@ export function OrderSummaryDetails({ order, totalPrice }: OrderSummaryDetailsPr
                 <div className="flex justify-between border-b border-[#0A2A1B]/5 pb-2">
                     <span className="text-[#0A2A1B]/60">Pickup Date</span>
                     <span className="font-semibold text-[#0A2A1B]">{order.pickup_date}</span>
-                </div>
-                <div className="flex justify-between border-b border-[#0A2A1B]/5 pb-2">
-                    <span className="text-[#0A2A1B]/60">Pickup Time</span>
-                    <span className="font-semibold text-[#0A2A1B]">{formatPickupTime(order.pickup_time)}</span>
-                </div>
-                <div className="flex justify-between border-b border-[#0A2A1B]/5 pb-2">
-                    <span className="text-[#0A2A1B]/60">Status</span>
-                    <span className="font-semibold text-[#0A2A1B]">{getFulfillmentStatusLabel(order.status)}</span>
                 </div>
                 {order.gift_message && (
                     <div className="space-y-1 border-t border-[#0A2A1B]/5 pt-2">

@@ -22,7 +22,6 @@ export function CreateOrderModal({ isOpen, onClose, products, onOrderCreated }: 
     const [recipientName, setRecipientName] = useState('Walk-in Customer');
     const [recipientPhone, setRecipientPhone] = useState('09000000000');
     const [pickupDate, setPickupDate] = useState(todayStr);
-    const [pickupTime, setPickupTime] = useState('09:00');
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'gcash'>('cash');
     const [isHandedOverImmediately, setIsHandedOverImmediately] = useState(true);
     const [notes, setNotes] = useState('');
@@ -103,7 +102,6 @@ export function CreateOrderModal({ isOpen, onClose, products, onOrderCreated }: 
                 recipient_phone: recipientPhone.trim() || '09000000000',
                 order_type: 'walk-in',
                 pickup_date: pickupDate,
-                pickup_time: pickupTime,
                 payment_method: paymentMethod,
                 status: isHandedOverImmediately ? 'delivered' : 'confirmed',
                 gift_message: notes.trim() || undefined,
@@ -179,20 +177,6 @@ export function CreateOrderModal({ isOpen, onClose, products, onOrderCreated }: 
                                 className="w-full px-3 py-2 bg-white border border-[#0A2A1B]/15 rounded-xl text-xs text-[#0A2A1B] focus:outline-none focus:border-[#D97706]"
                                 required
                             />
-                        </div>
-
-                        <div>
-                            <label className="text-[11px] font-bold text-[#0A2A1B] block mb-1">Pickup / Order Time</label>
-                            <input
-                                type="time"
-                                min="05:00"
-                                max="20:00"
-                                value={pickupTime}
-                                onChange={e => setPickupTime(e.target.value)}
-                                className="w-full px-3 py-2 bg-white border border-[#0A2A1B]/15 rounded-xl text-xs text-[#0A2A1B] focus:outline-none focus:border-[#D97706]"
-                                required
-                            />
-                            <p className="text-[10px] text-[#0A2A1B]/45 mt-1">Store pickup hours: 5:00 AM – 8:00 PM</p>
                         </div>
 
                         <div>

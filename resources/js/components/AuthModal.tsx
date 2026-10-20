@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { User } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAnimationTransition } from './animations';
@@ -35,18 +35,6 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
     const [errors, setErrors] = useState<Record<string, string[]>>({});
     const [message, setMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [loginProgress, setLoginProgress] = useState(0);
-    const [isCompletingLogin, setIsCompletingLogin] = useState(false);
-    const loginTimer = useRef<number | null>(null);
-
-    const clearLoginTimer = () => {
-        if (loginTimer.current !== null) {
-            window.clearInterval(loginTimer.current);
-            loginTimer.current = null;
-        }
-    };
-
-    useEffect(() => clearLoginTimer, []);
 
     // Agreement & legal modal states
     const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -66,7 +54,6 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
     };
 
     const clearState = () => {
-        clearLoginTimer();
         setName('');
         setEmail('');
         setPassword('');
@@ -74,31 +61,7 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
         setTouched({});
         setErrors({});
         setMessage('');
-        setLoginProgress(0);
-        setIsCompletingLogin(false);
         setAgreedToTerms(false);
-    };
-
-    const showLoginProgress = (loggedUser: User) => {
-        setIsCompletingLogin(true);
-        setLoginProgress(12);
-        setMessage(loggedUser.role === 'admin' || loggedUser.role === 'staff'
-            ? 'Login successful. Preparing your dashboard...'
-            : 'Login successful. Preparing your account...'
-        );
-
-        return new Promise<void>(resolve => {
-            let progress = 12;
-            clearLoginTimer();
-            loginTimer.current = window.setInterval(() => {
-                progress = Math.min(progress + 11, 100);
-                setLoginProgress(progress);
-                if (progress >= 100) {
-                    clearLoginTimer();
-                    window.setTimeout(resolve, 180);
-                }
-            }, 85);
-        });
     };
 
     const handleTabChange = (tab: 'login' | 'register' | 'forgot') => {
@@ -155,12 +118,11 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
             const data = await response.json();
 
             if (response.ok) {
-                await showLoginProgress(data);
+                toast.success('Logged in successfully!');
                 onLoginSuccess(data);
                 onClose();
                 clearState();
                 setIsLoading(false);
-                toast.success('Logged in successfully!');
                 return true;
             } else {
                 setErrors(data.errors || { email: [data.message || 'Invalid credentials.'] });
@@ -269,7 +231,7 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
                 <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center" role="dialog" aria-modal="true">
                     {/* Backdrop */}
                     <motion.div
-                        onClick={() => { if (!isCompletingLogin) onClose(); }}
+                        onClick={onClose}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -292,8 +254,7 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
                         {activeTab === 'forgot' && 'Reset Password'}
                     </h3>
                     <button
-                        onClick={() => { if (!isCompletingLogin) onClose(); }}
-                        disabled={isCompletingLogin}
+                        onClick={onClose}
                         className="p-1 rounded-full hover:bg-[#0A2A1B]/5 text-[#0A2A1B]/60 hover:text-[#0A2A1B] cursor-pointer transition-all active:scale-90"
                         aria-label="Close modal"
                     >
@@ -396,20 +357,6 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
                         >
                             {isLoading ? 'Signing in...' : 'Sign In'}
                         </button>
-
-                        {(isLoading || isCompletingLogin) && (
-                            <div className="space-y-2">
-                                <div className="h-2 w-full overflow-hidden rounded-full bg-[#0A2A1B]/10">
-                                    <div
-                                        className="h-full rounded-full bg-[#D97706] transition-all duration-200 ease-out"
-                                        style={{ width: `${isCompletingLogin ? loginProgress : 35}%` }}
-                                    />
-                                </div>
-                                <p className="text-[10px] font-semibold text-[#0A2A1B]/55 text-center">
-                                    {isCompletingLogin ? message : 'Signing you in securely...'}
-                                </p>
-                            </div>
-                        )}
                     </form>
                 )}
 
@@ -703,3 +650,4 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
         </AnimatePresence>
     );
 }
+

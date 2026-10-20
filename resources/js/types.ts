@@ -39,7 +39,6 @@ export interface Order {
     recipient_name: string;
     recipient_phone: string;
     pickup_date: string;
-    pickup_time?: string | null;
     order_type: string;
     total_price: number | string;
     gift_message?: string;
