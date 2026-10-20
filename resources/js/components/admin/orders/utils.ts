@@ -194,13 +194,11 @@ export const printOrderSlip = (order: Order) => {
                 Assembled By: ___________________ | Inspected By: ___________________ | Date: ____________
             </div>
 
-            <script>
-                window.onload = function() { window.print(); }
-            </script>
         </body>
         </html>
     `;
 
+    printWindow.addEventListener('load', () => printWindow.print(), { once: true });
     printWindow.document.write(html);
     printWindow.document.close();
 };
@@ -300,13 +298,11 @@ export const printOrderSummaryReport = (orders: Order[], filterDescription: stri
                 <div>Page 1 of 1</div>
             </div>
 
-            <script>
-                window.onload = function() { window.print(); }
-            </script>
         </body>
         </html>
     `;
 
+    printWindow.addEventListener('load', () => printWindow.print(), { once: true });
     printWindow.document.write(html);
     printWindow.document.close();
 };

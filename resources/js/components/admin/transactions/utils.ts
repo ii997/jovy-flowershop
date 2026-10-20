@@ -94,13 +94,11 @@ export const printCashUpSlip = (metrics: TransactionMetrics) => {
                 <div>Date Verified: ____________________</div>
             </div>
 
-            <script>
-                window.onload = function() { window.print(); }
-            </script>
         </body>
         </html>
     `;
 
+    printWindow.addEventListener('load', () => printWindow.print(), { once: true });
     printWindow.document.write(html);
     printWindow.document.close();
 };
@@ -183,13 +181,11 @@ export const printTransactionReceipt = (tx: FlattenedTransaction) => {
                 <div style="margin-top: 4px;">Verified by Store Cashier / System Auditor</div>
             </div>
 
-            <script>
-                window.onload = function() { window.print(); }
-            </script>
         </body>
         </html>
     `;
 
+    printWindow.addEventListener('load', () => printWindow.print(), { once: true });
     printWindow.document.write(html);
     printWindow.document.close();
 };

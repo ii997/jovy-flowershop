@@ -24,33 +24,41 @@ class SecurityHeaders
         $response->headers->set('X-Frame-Options', 'DENY');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-        // Detect dynamic Vite dev server if running
+        // The hot file exists only while Vite's development server is running.
         $isViteDev = file_exists(public_path('hot'));
-        $viteUrl = '';
-        $viteWsUrl = '';
+
+        // Chromium rejects IPv6 loopback URLs such as http://[::1]:5173 as CSP
+        // host sources. In dev, allow only the actual Vite origin from the hot file;
+        // production remains nonce-based and does not permit arbitrary external scripts.
+        $viteOrigin = '';
         if ($isViteDev) {
-            try {
-                $viteUrl = trim(file_get_contents(public_path('hot')));
-                $viteWsUrl = str_replace(['http://', 'https://'], ['ws://', 'wss://'], $viteUrl);
-            } catch (\Exception) {
-                // Fallback
+            $viteUrl = trim((string) @file_get_contents(public_path('hot')));
+            $parsedViteUrl = parse_url($viteUrl);
+            if (is_array($parsedViteUrl) && isset($parsedViteUrl['scheme'], $parsedViteUrl['host'])) {
+                $viteOrigin = $parsedViteUrl['scheme'].'://'.$parsedViteUrl['host']
+                    .(isset($parsedViteUrl['port']) ? ':'.$parsedViteUrl['port'] : '');
             }
         }
-
-        // Content Security Policy supporting strict-dynamic, nonces, Tesseract.js workers, and Vite dev server
-        // - 'strict-dynamic' propagates trust from nonced scripts to dynamically loaded ones (Vite HMR, lazy imports)
-        // - 'unsafe-eval' retained for Tesseract.js v7 WASM compilation in Web Workers
-        // - 'unsafe-inline' in style-src retained for React 19 + Tailwind v4 dynamic inline styles
-        $envkitSha = app()->environment('local') ? " 'sha256-SglC9JRcZEOK7ObqMm9pispirNdXzvijloNQtOtN+kE='" : '';
+        $viteWsOrigin = $viteOrigin !== ''
+            ? preg_replace('/^https?:/', static fn (array $match): string => $match[0] === 'https:' ? 'wss:' : 'ws:', $viteOrigin)
+            : '';
+        $scriptSrc = $isViteDev
+            ? "'self' 'unsafe-inline' 'unsafe-eval' blob: {$viteOrigin} https://cdn.jsdelivr.net https://unpkg.com"
+            : "'nonce-{$nonce}' 'strict-dynamic' 'self' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://unpkg.com";
+        $styleSrc = "'self' 'unsafe-inline' https://fonts.googleapis.com" . ($viteOrigin !== '' ? " {$viteOrigin}" : '');
+        $fontSrc = "'self' https://fonts.gstatic.com" . ($viteOrigin !== '' ? " {$viteOrigin}" : '');
+        $imgSrc = "'self' data: blob: https:" . ($viteOrigin !== '' ? " {$viteOrigin}" : '');
+        $connectSrc = "'self' blob: data: https://tessdata.projectnaptha.com https://cdn.jsdelivr.net"
+            . ($viteOrigin !== '' ? " {$viteOrigin} {$viteWsOrigin}" : '');
         $csp = "default-src 'self'; " .
-               "script-src 'nonce-{$nonce}' 'strict-dynamic' 'self' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://unpkg.com{$envkitSha}; " .
+               "script-src {$scriptSrc}; " .
                "worker-src 'self' blob: data: https://cdn.jsdelivr.net; " .
                "object-src 'none'; " .
                "base-uri 'self'; " .
-               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
-               "font-src 'self' https://fonts.gstatic.com" . ($viteUrl ? " {$viteUrl}" : "") . "; " .
-               "img-src 'self' data: blob: https:" . ($viteUrl ? " {$viteUrl}" : "") . "; " .
-               "connect-src 'self' blob: data: https://tessdata.projectnaptha.com https://cdn.jsdelivr.net" . ($viteUrl ? " {$viteUrl} {$viteWsUrl}" : "") . "; " .
+               "style-src {$styleSrc}; " .
+               "font-src {$fontSrc}; " .
+               "img-src {$imgSrc}; " .
+               "connect-src {$connectSrc}; " .
                "form-action 'self'; " .
                "frame-ancestors 'none';";
 

@@ -27,6 +27,7 @@
         @fonts
 
         <!-- Styles / Scripts -->
+        @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx'])
 
         <!-- JSON-LD Structured Data / Schema Markup -->

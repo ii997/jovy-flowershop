@@ -184,6 +184,35 @@ class OrderPaymentTest extends TestCase
         ]);
     }
 
+
+    public function test_payment_reference_cannot_be_reused_for_another_order(): void
+    {
+        Storage::fake('public');
+
+        $firstOrder = $this->createOrder();
+        $secondOrder = $this->createOrder();
+        $reference = 'Ref-Unique-123';
+
+        $this->actingAs($this->customer)->postJson("/api/orders/{$firstOrder->id}/payment", [
+            'receipt' => UploadedFile::fake()->create('first-receipt.jpg', 100, 'image/jpeg'),
+            'reference_no' => $reference,
+            'amount' => $this->product->price,
+        ])->assertOk();
+
+        $response = $this->actingAs($this->customer)->postJson("/api/orders/{$secondOrder->id}/payment", [
+            'receipt' => UploadedFile::fake()->create('second-receipt.jpg', 100, 'image/jpeg'),
+            'reference_no' => '  ref-unique-123  ',
+            'amount' => $this->product->price,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertSee('payment reference number has already been used');
+        $this->assertDatabaseMissing('payment_transactions', [
+            'order_id' => $secondOrder->id,
+            'reference_no' => 'REF-UNIQUE-123',
+        ]);
+    }
+
     public function test_duplicate_payment_rejected_if_verified(): void
     {
         Storage::fake('public');

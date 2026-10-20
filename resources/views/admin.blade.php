@@ -16,6 +16,7 @@
         @fonts
 
         <!-- Styles / Scripts -->
+        @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/admin.tsx'])
     </head>
     <body class="bg-[#FAF9F6] text-[#0A2A1B] antialiased">

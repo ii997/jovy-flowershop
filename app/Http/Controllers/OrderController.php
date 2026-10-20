@@ -12,6 +12,9 @@ use App\Services\NotificationService;
 use App\Support\ProductPricing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
@@ -215,6 +218,21 @@ class OrderController extends Controller
             'ocr_review_required' => 'nullable|boolean',
         ]);
 
+        // Payment references identify the external transaction and may not be reused.
+        // Normalize the value so casing or accidental outer whitespace cannot bypass
+        // the duplicate check. The database unique index is the final race-safe guard.
+        $referenceNo = isset($validated['reference_no'])
+            ? strtoupper(trim($validated['reference_no']))
+            : null;
+        $referenceNo = $referenceNo ?: null;
+        $referenceKey = $referenceNo;
+
+        if ($referenceNo !== null && PaymentTransaction::query()
+            ->whereRaw('UPPER(TRIM(reference_no)) = ?', [$referenceNo])
+            ->exists()) {
+            abort(422, 'This payment reference number has already been used. Please upload the receipt for a different transaction.');
+        }
+
         $downpaymentPct = 30;
         $settingsPath = storage_path('app/settings.json');
         if (file_exists($settingsPath)) {
@@ -236,26 +254,34 @@ class OrderController extends Controller
 
         $path = $request->file('receipt')->store('receipts', 'public');
 
-        // Keep backward-compatible fields for existing frontend code
-        $order->payment_receipt = '/storage/'.$path;
-        $order->payment_details = [
-            'reference_no' => $validated['reference_no'] ?? null,
-            'amount' => $validated['amount'] ?? null,
-            'transaction_date' => $validated['transaction_date'] ?? null,
-            'ocr_review_required' => (bool) ($validated['ocr_review_required'] ?? false),
-        ];
-        $order->payment_status = 'awaiting_verification';
-        $order->save();
+        try {
+            DB::transaction(function () use ($order, $validated, $referenceNo, $referenceKey, $path): void {
+                // Keep backward-compatible fields for existing frontend code
+                $order->payment_receipt = '/storage/'.$path;
+                $order->payment_details = [
+                    'reference_no' => $referenceNo,
+                    'amount' => $validated['amount'] ?? null,
+                    'transaction_date' => $validated['transaction_date'] ?? null,
+                    'ocr_review_required' => (bool) ($validated['ocr_review_required'] ?? false),
+                ];
+                $order->payment_status = 'awaiting_verification';
+                $order->save();
 
-        // Record the transaction in the audit table
-        PaymentTransaction::create([
-            'order_id' => $order->id,
-            'type' => 'payment',
-            'amount' => $validated['amount'] ?? $order->total_price,
-            'method' => 'instapay',
-            'reference_no' => $validated['reference_no'],
-            'receipt_image' => '/storage/'.$path,
-        ]);
+                PaymentTransaction::create([
+                    'order_id' => $order->id,
+                    'type' => 'payment',
+                    'amount' => $validated['amount'] ?? $order->total_price,
+                    'method' => 'instapay',
+                    'reference_no' => $referenceNo,
+                    'reference_key' => $referenceKey,
+                    'receipt_image' => '/storage/'.$path,
+                ]);
+            });
+        } catch (UniqueConstraintViolationException) {
+            Storage::disk('public')->delete($path);
+
+            abort(422, 'This payment reference number has already been used. Please upload the receipt for a different transaction.');
+        }
 
         // Fetch store owner contact number from settings
         $settingsPath = storage_path('app/settings.json');
@@ -279,7 +305,7 @@ class OrderController extends Controller
         NotificationService::send(
             null,
             'New Payment Receipt',
-            "New payment proof uploaded for order #JFS-{$order->id}. Reference: ".($validated['reference_no'] ?? 'N/A').'. Action required: Review.',
+            "New payment proof uploaded for order #JFS-{$order->id}. Reference: ".($referenceNo ?? 'N/A').'. Action required: Review.',
             'payment_review_alert',
             true,
             ! empty($storePhone),

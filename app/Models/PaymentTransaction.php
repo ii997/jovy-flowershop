@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
     'amount',
     'method',
     'reference_no',
+    'reference_key',
     'receipt_image',
     'admin_notes',
     'verified_by',
@@ -18,6 +19,15 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 ])]
 class PaymentTransaction extends Model
 {
+    protected static function booted(): void
+    {
+        static::creating(function (self $transaction): void {
+            $transaction->reference_key = $transaction->reference_no
+                ? strtoupper(trim($transaction->reference_no))
+                : null;
+        });
+    }
+
     public function order()
     {
         return $this->belongsTo(Order::class);

@@ -163,13 +163,11 @@ export function MonthlyProductBreakdownSection({ month, onClose }: MonthlyProduc
                     <div>Page 1 of 1</div>
                 </div>
 
-                <script>
-                    window.onload = function() { window.print(); }
-                </script>
             </body>
             </html>
         `;
 
+        printWindow.addEventListener('load', () => printWindow.print(), { once: true });
         printWindow.document.write(html);
         printWindow.document.close();
     };
