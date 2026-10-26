@@ -167,7 +167,7 @@ class OrderController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
         } else {
-            $orders = Order::with('paymentTransactions', 'cancellation')
+            $orders = Order::with('paymentTransactions', 'cancellation', 'review')
                 ->where('user_id', $user->id)
                 ->orderBy('created_at', 'desc')
                 ->get();

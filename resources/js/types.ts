@@ -57,6 +57,14 @@ export interface Order {
     user?: User;
     created_at?: string;
     updated_at?: string;
+    review?: OrderReview | null;
+}
+
+export interface OrderReview {
+    id: number;
+    rating: number;
+    comment?: string | null;
+    published_at?: string;
 }
 
 export interface DashboardStats {

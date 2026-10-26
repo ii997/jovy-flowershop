@@ -8,7 +8,8 @@
     "require": {
         "php": "^8.3",
         "giggsey/libphonenumber-for-php": "^9.0",
-        "laravel/framework": "^13.8"
+        "laravel/framework": "^13.8",
+        "resend/resend-php": "1.0"
     },
     "require-dev": {
         "laravel/tinker": "^3.0",

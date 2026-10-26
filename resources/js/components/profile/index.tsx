@@ -17,6 +17,7 @@ export interface ProfileModalProps {
     onSelectOrderToPay: (order: any) => void;
     onSelectOrderToResubmit?: (order: any) => void;
     onCancelSuccess: () => void;
+    onReviewSuccess: (orderId: number, review: any) => void;
     onLogout?: () => void;
 }
 
@@ -29,6 +30,7 @@ export function ProfileModal({
     onSelectOrderToPay,
     onSelectOrderToResubmit,
     onCancelSuccess,
+    onReviewSuccess,
     onLogout,
 }: ProfileModalProps) {
     const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'transactions'>('profile');
@@ -159,6 +161,7 @@ export function ProfileModal({
                                     onSelectOrderToPay={onSelectOrderToPay}
                                     onSelectOrderToResubmit={onSelectOrderToResubmit}
                                     onCancelSuccess={onCancelSuccess}
+                                    onReviewSuccess={onReviewSuccess}
                                 />
                             )}
 

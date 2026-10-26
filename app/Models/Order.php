@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
     'user_id',
@@ -34,6 +34,11 @@ class Order extends Model
     public function cancellation()
     {
         return $this->hasOne(OrderCancellation::class);
+    }
+
+    public function review()
+    {
+        return $this->hasOne(OrderReview::class);
     }
 
     public function notifications()

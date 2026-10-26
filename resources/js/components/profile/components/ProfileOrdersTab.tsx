@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ShoppingBag } from 'reicon-react';
+import { ShoppingBag, Star } from 'reicon-react';
 import { toast } from '../../ui/Toast';
 
 interface ProfileOrdersTabProps {
@@ -7,6 +7,7 @@ interface ProfileOrdersTabProps {
     onSelectOrderToPay: (order: any) => void;
     onSelectOrderToResubmit?: (order: any) => void;
     onCancelSuccess: () => void;
+    onReviewSuccess: (orderId: number, review: any) => void;
 }
 
 export function ProfileOrdersTab({
@@ -14,11 +15,17 @@ export function ProfileOrdersTab({
     onSelectOrderToPay,
     onSelectOrderToResubmit,
     onCancelSuccess,
+    onReviewSuccess,
 }: ProfileOrdersTabProps) {
     const [cancellingOrderId, setCancellingOrderId] = useState<number | null>(null);
     const [cancelReason, setCancelReason] = useState('');
     const [cancelError, setCancelError] = useState('');
     const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
+    const [reviewingOrderId, setReviewingOrderId] = useState<number | null>(null);
+    const [reviewRating, setReviewRating] = useState(5);
+    const [reviewComment, setReviewComment] = useState('');
+    const [reviewError, setReviewError] = useState('');
+    const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
     const csrfToken = () => {
         const meta = document.querySelector('meta[name="csrf-token"]');
@@ -58,6 +65,44 @@ export function ProfileOrdersTab({
             setCancelError('Connection error. Please check your network and try again.');
         } finally {
             setIsSubmittingCancel(false);
+        }
+    };
+
+    const startReview = (order: any) => {
+        setReviewingOrderId(order.id);
+        setReviewRating(order.review?.rating ?? 5);
+        setReviewComment(order.review?.comment ?? '');
+        setReviewError('');
+    };
+
+    const handleReview = async (orderId: number) => {
+        setIsSubmittingReview(true);
+        setReviewError('');
+
+        try {
+            const response = await fetch(`/api/orders/${orderId}/review`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken() || '',
+                },
+                body: JSON.stringify({ rating: reviewRating, comment: reviewComment.trim() || null }),
+            });
+
+            const data = await response.json().catch(() => null);
+            if (!response.ok) {
+                setReviewError(data?.message || 'Unable to save your feedback. Please try again.');
+                return;
+            }
+
+            onReviewSuccess(orderId, data);
+            setReviewingOrderId(null);
+            toast.success('Thank you for sharing your feedback.');
+        } catch {
+            setReviewError('Connection error. Please try again.');
+        } finally {
+            setIsSubmittingReview(false);
         }
     };
 
@@ -237,6 +282,50 @@ export function ProfileOrdersTab({
                                     <p className="text-xs text-red-800 leading-relaxed">
                                         <span className="font-semibold text-red-900">Reason:</span> {order.cancellation.reason}
                                     </p>
+                                </div>
+                            )}
+
+                            {order.status === 'delivered' && order.payment_status === 'verified' && (
+                                <div className="border-t border-[#0A2A1B]/5 pt-3 mt-3">
+                                    {reviewingOrderId !== order.id ? (
+                                        <div className="flex items-center justify-between gap-3">
+                                            {order.review ? (
+                                                <div className="flex items-center gap-2 text-xs text-[#0A2A1B]/70">
+                                                    <span className="flex gap-0.5 text-[#D97706]" aria-label={`${order.review.rating} out of 5 stars`}>
+                                                        {Array.from({ length: 5 }, (_, index) => (
+                                                            <Star key={index} className="h-3.5 w-3.5" weight={index < order.review.rating ? 'Filled' : 'Regular'} aria-hidden={true} />
+                                                        ))}
+                                                    </span>
+                                                    <span>Thanks for your feedback</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs font-semibold text-[#0A2A1B]/65">How did we do?</span>
+                                            )}
+                                            <button type="button" onClick={() => startReview(order)} className="px-3.5 py-1.5 bg-[#0A2A1B] hover:bg-[#D97706] text-white text-[10px] font-bold rounded-full transition-all cursor-pointer uppercase tracking-wider">
+                                                {order.review ? 'Edit Feedback' : 'Leave Feedback'}
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] font-bold text-[#0A2A1B] uppercase tracking-wider">Rate your completed order</p>
+                                            <div className="flex gap-1" role="radiogroup" aria-label="Order rating">
+                                                {Array.from({ length: 5 }, (_, index) => {
+                                                    const rating = index + 1;
+                                                    return (
+                                                        <button key={rating} type="button" role="radio" aria-checked={reviewRating === rating} aria-label={`${rating} star${rating === 1 ? '' : 's'}`} onClick={() => setReviewRating(rating)} className="text-[#D97706] cursor-pointer hover:scale-110 transition-transform">
+                                                            <Star className="h-6 w-6" weight={rating <= reviewRating ? 'Filled' : 'Regular'} aria-hidden={true} />
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            <textarea value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} maxLength={1000} placeholder="Tell us about your flowers (optional)" className="w-full px-3 py-2 border border-[#0A2A1B]/15 rounded-xl text-xs resize-none h-20 focus:outline-none focus:border-[#D97706]" />
+                                            {reviewError && <p className="text-[10px] font-semibold text-red-600">{reviewError}</p>}
+                                            <div className="flex justify-end gap-2">
+                                                <button type="button" onClick={() => setReviewingOrderId(null)} className="px-3.5 py-1.5 border border-[#0A2A1B]/10 text-[#0A2A1B] text-[10px] font-bold rounded-full cursor-pointer">Cancel</button>
+                                                <button type="button" disabled={isSubmittingReview} onClick={() => handleReview(order.id)} className="px-4 py-1.5 bg-[#D97706] disabled:bg-[#D97706]/50 text-white text-[10px] font-bold rounded-full cursor-pointer">{isSubmittingReview ? 'Saving...' : 'Publish Feedback'}</button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

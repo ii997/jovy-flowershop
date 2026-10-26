@@ -9,6 +9,7 @@ import { ProductList } from './components/ProductList';
 import { Footer } from './components/Footer';
 import { ToastContainer, toast } from './components/ui/Toast';
 import { AlertTriangle } from 'reicon-react';
+import { CustomerReviews } from './components/CustomerReviews';
 
 // Lazy-loaded — only fetched when first needed.
 // React.lazy() requires a default export, so we map the named export.
@@ -220,6 +221,7 @@ function App() {
                 products={products}
                 onSelectOccasionFlower={handleSelectOccasionFlower}
             />
+            <CustomerReviews />
             <ProductList
                 products={products}
                 onOrderBouquet={handleOrderBouquet}
@@ -258,6 +260,9 @@ function App() {
                     onCancelSuccess={() => {
                         fetchOrders(user);
                         fetchProducts();
+                    }}
+                    onReviewSuccess={(orderId, review) => {
+                        setOrders((currentOrders) => currentOrders.map((order) => order.id === orderId ? { ...order, review } : order));
                     }}
                     onLogout={handleLogout}
                 />

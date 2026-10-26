@@ -6,6 +6,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ReviewController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -29,6 +30,10 @@ Route::post('/api/orders', [OrderController::class, 'store'])->middleware('auth'
 Route::get('/api/orders', [OrderController::class, 'index'])->middleware('auth');
 Route::post('/api/orders/{id}/payment', [OrderController::class, 'submitPayment'])->middleware('auth');
 Route::post('/api/orders/{id}/cancel', [OrderController::class, 'cancel'])->middleware('auth');
+Route::post('/api/orders/{id}/review', [ReviewController::class, 'store'])->middleware('auth');
+
+// Public customer feedback
+Route::get('/api/reviews', [ReviewController::class, 'index']);
 
 // Notifications routes
 Route::get('/api/notifications', [NotificationController::class, 'index'])->middleware('auth');
