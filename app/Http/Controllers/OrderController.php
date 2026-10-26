@@ -10,11 +10,11 @@ use App\Models\PaymentTransaction;
 use App\Models\Product;
 use App\Services\NotificationService;
 use App\Support\ProductPricing;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
@@ -127,16 +127,13 @@ class OrderController extends Controller
             $storePhone = $settings['phone'] ?? null;
         }
 
-        // Notify Customer (In-App + SMS)
-        NotificationService::send(
-            $order->user_id,
+        // Notify Customer through in-app, email, and SMS delivery.
+        NotificationService::sendCustomer(
+            $order,
             'Order Submitted Successfully',
             "Your order #JFS-{$order->id} has been submitted. Status: Pending Payment.",
             'confirmed',
-            false,
-            true,
-            $order->recipient_phone,
-            $order->id
+            "order:{$order->id}:confirmed"
         );
 
         // Notify Admin/Staff (In-App + SMS)
@@ -255,7 +252,7 @@ class OrderController extends Controller
         $path = $request->file('receipt')->store('receipts', 'public');
 
         try {
-            DB::transaction(function () use ($order, $validated, $referenceNo, $referenceKey, $path): void {
+            $paymentTransaction = DB::transaction(function () use ($order, $validated, $referenceNo, $referenceKey, $path): PaymentTransaction {
                 // Keep backward-compatible fields for existing frontend code
                 $order->payment_receipt = '/storage/'.$path;
                 $order->payment_details = [
@@ -267,7 +264,7 @@ class OrderController extends Controller
                 $order->payment_status = 'awaiting_verification';
                 $order->save();
 
-                PaymentTransaction::create([
+                return PaymentTransaction::create([
                     'order_id' => $order->id,
                     'type' => 'payment',
                     'amount' => $validated['amount'] ?? $order->total_price,
@@ -291,14 +288,13 @@ class OrderController extends Controller
             $storePhone = $settings['phone'] ?? null;
         }
 
-        // Notify Customer (In-App only)
-        NotificationService::send(
-            $order->user_id,
+        // Notify Customer through in-app, email, and SMS delivery.
+        NotificationService::sendCustomer(
+            $order,
             'Payment Receipt Uploaded',
             "We are reviewing your payment for order #JFS-{$order->id}. We will notify you once verified.",
             'payment_uploaded',
-            false,
-            false
+            "payment:{$paymentTransaction->id}:uploaded"
         );
 
         // Notify Admin/Staff (In-App + SMS)
@@ -346,7 +342,7 @@ class OrderController extends Controller
             'reason' => 'required|string|min:5|max:1000',
         ]);
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($order, $validated, $request) {
+        DB::transaction(function () use ($order, $validated, $request) {
             OrderCancellation::create([
                 'order_id' => $order->id,
                 'cancelled_by' => $request->user()->id,
@@ -396,6 +392,15 @@ class OrderController extends Controller
             $settings = json_decode(file_get_contents($settingsPath), true);
             $storePhone = $settings['phone'] ?? null;
         }
+
+        // Notify Customer through in-app, email, and SMS delivery.
+        NotificationService::sendCustomer(
+            $order,
+            'Order Cancelled',
+            "Your order #JFS-{$order->id} has been cancelled. Reason: ".strip_tags($validated['reason']).'.',
+            'cancelled',
+            "order:{$order->id}:cancelled"
+        );
 
         // Notify Admin/Staff (In-App + SMS)
         NotificationService::send(

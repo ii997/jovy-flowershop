@@ -4,14 +4,19 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Jobs\SendStatusUpdateSMS;
+use App\Jobs\SendTransactionalEmail;
+use App\Mail\TransactionalNotificationMail;
 use App\Models\Notification;
+use App\Models\NotificationDelivery;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Services\SmsTemplates;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -182,6 +187,18 @@ class NotificationTest extends TestCase
 
         // Verify SendStatusUpdateSMS job was dispatched to queue
         Queue::assertPushedOn('sms', SendStatusUpdateSMS::class);
+        Queue::assertPushed(SendTransactionalEmail::class);
+
+        $this->assertDatabaseHas('notification_deliveries', [
+            'channel' => 'email',
+            'event' => 'confirmed',
+            'status' => 'queued',
+        ]);
+        $this->assertDatabaseHas('notification_deliveries', [
+            'channel' => 'sms',
+            'event' => 'confirmed',
+            'status' => 'queued',
+        ]);
     }
 
     public function test_sms_delivery_failure_logs_failed_sms_log(): void
@@ -208,6 +225,88 @@ class NotificationTest extends TestCase
             'gateway' => 'none',
             'status' => 'failed',
         ]);
+    }
+
+    public function test_transactional_email_job_sends_to_customer_account_email(): void
+    {
+        Mail::fake();
+
+        $customer = User::factory()->create([
+            'role' => UserRole::Customer,
+            'email' => 'customer@example.com',
+        ]);
+        $order = Order::create([
+            'user_id' => $customer->id,
+            'order_type' => 'purchase',
+            'recipient_name' => 'Jane Doe',
+            'recipient_phone' => '09170000000',
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'items' => [],
+            'total_price' => 500,
+            'status' => 'confirmed',
+            'payment_status' => 'pending',
+        ]);
+
+        NotificationService::sendCustomer(
+            $order,
+            'Order Confirmed',
+            'Your order is confirmed.',
+            'confirmed',
+            "order:{$order->id}:confirmed"
+        );
+
+        $delivery = NotificationDelivery::where('channel', 'email')->firstOrFail();
+        (new SendTransactionalEmail($delivery->id))->handle();
+
+        Mail::assertSent(TransactionalNotificationMail::class, function (TransactionalNotificationMail $mail) {
+            return $mail->hasTo('customer@example.com')
+                && $mail->title === 'Order Confirmed';
+        });
+        $this->assertDatabaseHas('notification_deliveries', [
+            'id' => $delivery->id,
+            'status' => 'sent',
+        ]);
+    }
+
+    public function test_customer_notification_is_idempotent_for_the_same_transaction(): void
+    {
+        Queue::fake();
+
+        $customer = User::factory()->create([
+            'role' => UserRole::Customer,
+            'email' => 'customer@example.com',
+        ]);
+        $order = Order::create([
+            'user_id' => $customer->id,
+            'order_type' => 'purchase',
+            'recipient_name' => 'Jane Doe',
+            'recipient_phone' => '09170000000',
+            'pickup_date' => now()->addDays(2)->format('Y-m-d'),
+            'items' => [],
+            'total_price' => 500,
+            'status' => 'confirmed',
+            'payment_status' => 'pending',
+        ]);
+
+        NotificationService::sendCustomer($order, 'Order Confirmed', 'Confirmed.', 'confirmed', 'order:1:confirmed');
+        NotificationService::sendCustomer($order, 'Order Confirmed', 'Confirmed.', 'confirmed', 'order:1:confirmed');
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $customer->id,
+            'transaction_key' => 'order:1:confirmed',
+        ]);
+        $this->assertSame(1, Notification::where('user_id', $customer->id)->count());
+        $this->assertDatabaseCount('notification_deliveries', 2);
+        Queue::assertPushed(SendTransactionalEmail::class, 1);
+        Queue::assertPushed(SendStatusUpdateSMS::class, 1);
+    }
+
+    public function test_receipt_upload_has_a_customer_specific_sms_template(): void
+    {
+        $message = SmsTemplates::forEvent(42, 'payment_uploaded');
+
+        $this->assertStringContainsString('Payment proof for Order #JFS-42 was received', $message);
+        $this->assertStringNotContainsString('Status: Payment_uploaded', $message);
     }
 
     public function test_sms_falls_back_to_httpsms_when_textbee_fails(): void

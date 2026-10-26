@@ -55,6 +55,14 @@ class SmsTemplates
         return "{$header} Order #JFS-{$orderId} is ready for pickup / completed. Thank you!{$suffix}";
     }
 
+    public static function orderReadyForPickup(int $orderId): string
+    {
+        $header = self::header();
+        $suffix = self::customerSuffix();
+
+        return "{$header} Order #JFS-{$orderId} is ready for pickup at the store.{$suffix}";
+    }
+
     /**
      * Order cancelled by shop notice to customer.
      */
@@ -148,6 +156,34 @@ class SmsTemplates
         $refText = $referenceNo ? ' Ref: '.self::sanitize($referenceNo, 20).'.' : '';
 
         return "{$header} Alert: New payment proof uploaded for Order #JFS-{$orderId}.{$refText} Action required: Review.";
+    }
+
+    public static function paymentUploaded(int $orderId): string
+    {
+        $header = self::header();
+        $suffix = self::customerSuffix();
+
+        return "{$header} Payment proof for Order #JFS-{$orderId} was received and is being reviewed.{$suffix}";
+    }
+
+    public static function forEvent(int $orderId, string $eventType, ?string $recipientName = null, ?float $totalPrice = null): string
+    {
+        return match ($eventType) {
+            'new_order_alert' => self::newOrderAlert($orderId, $recipientName ?? 'customer', $totalPrice ?? 0),
+            'payment_review_alert' => self::paymentReviewAlert($orderId),
+            'payment_uploaded' => self::paymentUploaded($orderId),
+            'order_cancelled_customer' => self::customerCancelledAlert($orderId, $recipientName ?? 'customer'),
+            'confirmed' => self::orderConfirmed($orderId),
+            'preparing', 'shipped' => self::orderPreparing($orderId),
+            'delivered' => self::orderDelivered($orderId),
+            'ready_for_pickup' => self::orderReadyForPickup($orderId),
+            'payment_received', 'payment_verified' => self::paymentVerified($orderId, $totalPrice),
+            'payment_failed', 'payment_rejected' => self::paymentRejected($orderId),
+            'payment_underpaid' => self::paymentUnderpaid($orderId),
+            'payment_overpaid' => self::paymentOverpaid($orderId),
+            'cancelled' => self::orderCancelled($orderId),
+            default => self::statusUpdate($orderId, $eventType),
+        };
     }
 
     /**

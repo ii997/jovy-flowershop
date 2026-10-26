@@ -63,6 +63,7 @@ Route::prefix('/api/admin')->middleware(['auth', 'admin.session.timeout'])->grou
         Route::get('/flowers', [AdminController::class, 'flowers']);
         Route::post('/flowers/{id}/availability', [AdminController::class, 'toggleFlowerAvailability']);
         Route::get('/sms-logs', [AdminController::class, 'getSmsLogs']);
+        Route::get('/notification-deliveries', [AdminController::class, 'getNotificationDeliveries']);
         Route::post('/settings', [AdminController::class, 'saveSettings']);
     });
 });

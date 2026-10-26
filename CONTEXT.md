@@ -45,3 +45,29 @@ _Avoid_: Static photo gallery, hero slider
 **Occasion Mapping**:
 The classification of floral arrangements by intended life event or sentiment (e.g., Birthday, Wedding, Funeral, Anniversary, Valentine's), surfaced through visual occasion badge pills.
 _Avoid_: Occasion filter tag, event category
+
+### Notifications
+
+**Transactional Notification**:
+A customer-facing message about an order or payment state, including order confirmation, fulfillment updates, cancellation, receipt review, and payment verification outcomes. These notices are operational and cannot be opted out of.
+_Avoid_: Marketing message, promotional notification
+
+**Notification Recipient**:
+For transactional notices, the authenticated customer's account email is the email destination and the order recipient phone is the SMS destination.
+_Avoid_: Staff alert recipient, arbitrary contact
+
+**Notification Delivery**:
+An asynchronous, non-blocking delivery attempt that occurs after the related order or payment state is committed. Email and SMS failures are retried and logged without blocking the order workflow; SMS may fall back across configured gateways.
+_Avoid_: Synchronous notification, delivery-gated order
+
+**Notification Event**:
+A meaningful change in an order or payment lifecycle that can notify the customer through both email and SMS, such as confirmation, fulfillment progress, cancellation, receipt review, or payment outcome.
+_Avoid_: Every API request, arbitrary status poll
+
+**Delivery Record**:
+The persistent history of a channel's notification attempts, including its recipient, associated order, attempt count, outcome, and failure details, used for support and retry diagnosis.
+_Avoid_: Ephemeral log line, notification preference
+
+**Meaningful Transaction**:
+A durable order or payment action that represents a real business event. Repeated requests that do not create a new action are not separately notified; a genuine payment resubmission is a new transaction and may notify the customer again.
+_Avoid_: HTTP request, page refresh, duplicate callback

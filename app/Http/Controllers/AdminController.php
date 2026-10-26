@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Flower;
 use App\Models\OrderCancellation;
 use App\Models\PaymentTransaction;
+use App\Models\NotificationDelivery;
 use App\Enums\UserRole;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -400,6 +401,9 @@ class AdminController extends Controller
         if ($order->status === 'cancelled') {
             abort(422, 'Cannot modify a cancelled order.');
         }
+        if ($order->status === $validated['status']) {
+            return response()->json($order->load('paymentTransactions', 'cancellation'));
+        }
         $order->status = $validated['status'];
         $order->save();
 
@@ -421,15 +425,12 @@ class AdminController extends Controller
             $message = "Your order/reservation #JFS-{$order->id} has been confirmed.";
         }
 
-        NotificationService::send(
-            $order->user_id,
+        NotificationService::sendCustomer(
+            $order,
             $title,
             $message,
             $order->status,
-            false,
-            true,
-            $order->recipient_phone,
-            $order->id
+            "order:{$order->id}:status:{$order->status}"
         );
 
         return response()->json($order->load('paymentTransactions', 'cancellation'));
@@ -454,6 +455,7 @@ class AdminController extends Controller
         $notes = isset($validated['admin_notes']) ? strip_tags($validated['admin_notes']) : null;
 
         $latestTx = $order->paymentTransactions()->latest()->first();
+        $paymentTransactionId = $latestTx?->id ?? $order->id;
         if ($latestTx) {
             if ($validated['payment_status'] === 'verified') {
                 $latestTx->verified_by = $request->user()->id;
@@ -469,15 +471,12 @@ class AdminController extends Controller
 
         // Send payment updates to Customer (In-App + SMS)
         if ($order->payment_status === 'verified') {
-            NotificationService::send(
-                $order->user_id,
+            NotificationService::sendCustomer(
+                $order,
                 '✔ Payment Verified',
                 "Payment for order #JFS-{$order->id} has been confirmed. Thank you!",
                 'payment_verified',
-                false,
-                true,
-                $order->recipient_phone,
-                $order->id
+                "payment:{$paymentTransactionId}:verified"
             );
         } elseif ($order->payment_status === 'failed') {
             $notes = strip_tags($validated['admin_notes'] ?? 'No reason provided');
@@ -497,15 +496,12 @@ class AdminController extends Controller
                 $type = 'payment_overpaid';
             }
 
-            NotificationService::send(
-                $order->user_id,
+            NotificationService::sendCustomer(
+                $order,
                 $title,
                 $message,
                 $type,
-                false,
-                true,
-                $order->recipient_phone,
-                $order->id
+                "payment:{$paymentTransactionId}:{$type}"
             );
         }
 
@@ -568,15 +564,12 @@ class AdminController extends Controller
         });
 
         // Notify Customer (In-App + SMS)
-        NotificationService::send(
-            $order->user_id,
+        NotificationService::sendCustomer(
+            $order,
             'Order Cancelled by Shop',
             "Your order #JFS-{$order->id} has been cancelled by the shop. Reason: " . strip_tags($validated['reason']) . ".",
             'cancelled',
-            false,
-            true,
-            $order->recipient_phone,
-            $order->id
+            "order:{$order->id}:cancelled"
         );
 
         return response()->json($order->load('paymentTransactions', 'cancellation'));
@@ -855,5 +848,16 @@ class AdminController extends Controller
     {
         $logs = \App\Models\SmsLog::orderBy('created_at', 'desc')->take(100)->get();
         return response()->json($logs);
+    }
+
+    public function getNotificationDeliveries()
+    {
+        return response()->json(
+            NotificationDelivery::with(['order:id,user_id', 'user:id,name,email'])
+                ->where('status', 'failed')
+                ->latest()
+                ->take(100)
+                ->get()
+        );
     }
 }

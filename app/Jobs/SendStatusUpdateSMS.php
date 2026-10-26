@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\NotificationDelivery;
 use App\Models\Order;
 use App\Models\SmsLog;
 use App\Services\NotificationService;
@@ -41,7 +42,8 @@ class SendStatusUpdateSMS implements ShouldQueue
     public function __construct(
         public int $orderId,
         public string $eventType,
-        public ?string $phone = null
+        public ?string $phone = null,
+        public ?int $deliveryId = null,
     ) {
         $this->onQueue(config('sms.queue', 'sms'));
     }
@@ -72,6 +74,15 @@ class SendStatusUpdateSMS implements ShouldQueue
 
         $message = $this->buildSmsMessage($order, $this->eventType);
 
+        $delivery = $this->deliveryId ? NotificationDelivery::find($this->deliveryId) : null;
+        if ($delivery?->status === 'sent') {
+            return;
+        }
+        $delivery?->update([
+            'status' => 'sending',
+            'attempts' => $currentAttempt,
+        ]);
+
         // Dispatch SMS via NotificationService and pass order context and current attempt
         $success = NotificationService::sendSmsDirect(
             $recipientPhone,
@@ -83,12 +94,21 @@ class SendStatusUpdateSMS implements ShouldQueue
         if (! $success) {
             $errorMsg = "SMS dispatch attempt {$currentAttempt} failed for Order #JFS-{$order->id} to {$recipientPhone}.";
             Log::warning($errorMsg);
+            $delivery?->update([
+                'status' => $currentAttempt < $this->tries ? 'retrying' : 'failed',
+                'error_details' => NotificationService::safeFailureReason('sms'),
+            ]);
 
             // Re-throw exception if attempts remain so Laravel Queue retries with backoff (skipped in unit testing)
             if ($currentAttempt < $this->tries && ! app()->environment('testing')) {
                 throw new \RuntimeException($errorMsg);
             }
         } else {
+            $delivery?->update([
+                'status' => 'sent',
+                'sent_at' => now(),
+                'error_details' => null,
+            ]);
             Log::info("SMS successfully sent for Order #JFS-{$order->id} to {$recipientPhone} on attempt {$currentAttempt}.");
         }
     }
@@ -98,8 +118,10 @@ class SendStatusUpdateSMS implements ShouldQueue
      */
     public function failed(?Throwable $exception): void
     {
-        $errorDetails = $exception ? $exception->getMessage() : 'Job exceeded maximum retry attempts.';
-        Log::error("SMS Job permanently failed for Order #JFS-{$this->orderId}. Reason: {$errorDetails}");
+        $errorDetails = NotificationService::safeFailureReason('sms', $exception);
+        Log::error("SMS Job permanently failed for Order #JFS-{$this->orderId}.", [
+            'reason' => $errorDetails,
+        ]);
 
         $order = Order::find($this->orderId);
         $phone = $this->phone ?: ($order ? $order->recipient_phone : 'unknown');
@@ -111,8 +133,16 @@ class SendStatusUpdateSMS implements ShouldQueue
             'gateway' => 'none',
             'status' => 'failed',
             'attempts' => $this->tries,
-            'error_details' => "Job failed after {$this->tries} attempts: ".$errorDetails,
+            'error_details' => "Job failed after {$this->tries} attempts: {$errorDetails}",
         ]);
+
+        if ($this->deliveryId) {
+            NotificationDelivery::whereKey($this->deliveryId)->update([
+                'status' => 'failed',
+                'attempts' => $this->tries,
+                'error_details' => $errorDetails,
+            ]);
+        }
     }
 
     /**
@@ -120,19 +150,6 @@ class SendStatusUpdateSMS implements ShouldQueue
      */
     protected function buildSmsMessage(Order $order, string $eventType): string
     {
-        return match ($eventType) {
-            'new_order_alert' => SmsTemplates::newOrderAlert($order->id, $order->recipient_name, (float) $order->total_price),
-            'payment_review_alert' => SmsTemplates::paymentReviewAlert($order->id),
-            'order_cancelled_customer' => SmsTemplates::customerCancelledAlert($order->id, $order->recipient_name),
-            'confirmed' => SmsTemplates::orderConfirmed($order->id),
-            'preparing', 'shipped' => SmsTemplates::orderPreparing($order->id),
-            'delivered' => SmsTemplates::orderDelivered($order->id),
-            'payment_received', 'payment_verified' => SmsTemplates::paymentVerified($order->id, (float) $order->total_price),
-            'payment_failed', 'payment_rejected' => SmsTemplates::paymentRejected($order->id),
-            'payment_underpaid' => SmsTemplates::paymentUnderpaid($order->id),
-            'payment_overpaid' => SmsTemplates::paymentOverpaid($order->id),
-            'cancelled' => SmsTemplates::orderCancelled($order->id),
-            default => SmsTemplates::statusUpdate($order->id, $order->status),
-        };
+        return SmsTemplates::forEvent($order->id, $eventType, $order->recipient_name, (float) $order->total_price);
     }
 }

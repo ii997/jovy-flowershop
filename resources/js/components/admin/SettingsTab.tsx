@@ -4,6 +4,7 @@ import { toast } from '../ui/Toast';
 import { SettingsTabSkeleton } from '../ui/Skeleton';
 import { validateName, validatePassword } from '../../lib/authValidation';
 import { Image } from 'reicon-react';
+import { NotificationDeliveryFailures } from './NotificationDeliveryFailures';
 
 interface SettingsTabProps {
     user: User | null;
@@ -578,6 +579,7 @@ export function SettingsTab({ user, isLoading: externalLoading = false }: Settin
                     </form>
                 </div>
             </div>
+            <NotificationDeliveryFailures />
         </div>
     );
 }

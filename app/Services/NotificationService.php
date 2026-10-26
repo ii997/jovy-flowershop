@@ -3,16 +3,117 @@
 namespace App\Services;
 
 use App\Jobs\SendStatusUpdateSMS;
+use App\Jobs\SendTransactionalEmail;
 use App\Models\Notification;
+use App\Models\NotificationDelivery;
+use App\Models\Order;
 use App\Models\SmsLog;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use libphonenumber\NumberParseException;
 use libphonenumber\PhoneNumberFormat;
 use libphonenumber\PhoneNumberUtil;
+use Throwable;
 
 class NotificationService
 {
+    /**
+     * Create a customer notification and queue both delivery channels.
+     */
+    public static function sendCustomer(
+        Order $order,
+        string $title,
+        string $message,
+        string $event,
+        string $transactionKey,
+    ): Notification {
+        $notificationAttributes = [
+            'user_id' => $order->user_id,
+            'type' => $event,
+            'transaction_key' => $transactionKey,
+        ];
+        try {
+            $notification = Notification::firstOrCreate($notificationAttributes, [
+                'title' => $title,
+                'message' => $message,
+                'is_admin' => false,
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            $notification = Notification::where($notificationAttributes)->firstOrFail();
+        }
+
+        $email = $order->user?->email;
+        $emailDelivery = self::firstOrCreateDelivery(
+            ['channel' => 'email', 'transaction_key' => $transactionKey],
+            [
+                'order_id' => $order->id,
+                'user_id' => $order->user_id,
+                'event' => $event,
+                'recipient' => $email ?: 'missing-email',
+                'subject' => $title,
+                'message' => $message,
+            ]
+        );
+
+        if ($emailDelivery->wasRecentlyCreated) {
+            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                SendTransactionalEmail::dispatch($emailDelivery->id)->afterCommit();
+            } else {
+                $emailDelivery->update([
+                    'status' => 'failed',
+                    'error_details' => 'Customer account does not have a valid email address.',
+                ]);
+            }
+        }
+
+        $phone = $order->recipient_phone;
+        $smsMessage = SmsTemplates::forEvent($order->id, $event, $order->recipient_name, (float) $order->total_price);
+        $smsDelivery = self::firstOrCreateDelivery(
+            ['channel' => 'sms', 'transaction_key' => $transactionKey],
+            [
+                'order_id' => $order->id,
+                'user_id' => $order->user_id,
+                'event' => $event,
+                'recipient' => $phone ?: 'missing-phone',
+                'message' => $smsMessage,
+            ]
+        );
+
+        if ($smsDelivery->wasRecentlyCreated) {
+            if (! empty($phone)) {
+                SendStatusUpdateSMS::dispatch($order->id, $event, $phone, $smsDelivery->id)
+                    ->onQueue(config('sms.queue', 'sms'))
+                    ->afterCommit();
+            } else {
+                $smsDelivery->update([
+                    'status' => 'failed',
+                    'error_details' => 'Order does not have a recipient phone number.',
+                ]);
+            }
+        }
+
+        return $notification;
+    }
+
+    private static function firstOrCreateDelivery(array $attributes, array $values): NotificationDelivery
+    {
+        try {
+            return NotificationDelivery::firstOrCreate($attributes, $values);
+        } catch (UniqueConstraintViolationException) {
+            return NotificationDelivery::where($attributes)->firstOrFail();
+        }
+    }
+
+    public static function safeFailureReason(string $channel, ?Throwable $exception = null): string
+    {
+        return match ($channel) {
+            'email' => 'Email provider could not accept the delivery.',
+            'sms' => 'SMS gateway could not accept the delivery.',
+            default => 'Notification delivery failed.',
+        };
+    }
+
     /**
      * Send in-app and optionally dispatch SMS notifications via queue.
      */
