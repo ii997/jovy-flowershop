@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use App\Models\Product;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -21,6 +20,10 @@ class DatabaseSeeder extends Seeder
 
         // Prevent duplicate seeding
         if (Product::count() > 0) {
+            if (! app()->environment('testing')) {
+                $this->call(TrendsSeeder::class);
+            }
+
             return;
         }
 
@@ -253,6 +256,9 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->call(DummyDataSeeder::class);
+
+        if (! app()->environment('testing')) {
+            $this->call(TrendsSeeder::class);
+        }
     }
 }
-
